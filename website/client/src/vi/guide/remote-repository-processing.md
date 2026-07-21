@@ -88,6 +88,18 @@ REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
 `--remote-trust-config` cấp cho cấu hình của kho lưu trữ từ xa mức độ tin cậy ngang với máy của chính bạn. Một cấu hình đáng tin cậy có thể (thông qua `input.processors`) **thực thi các lệnh tùy ý** và (ví dụ thông qua `output.instructionFilePath` hoặc các mẫu include sử dụng `../`) **đọc các tệp cục bộ nằm ngoài kho lưu trữ**. Chỉ sử dụng tùy chọn này cho các kho lưu trữ mà bạn hoàn toàn tin tưởng và đã kiểm tra kỹ, với sự thận trọng tương tự như trước khi chạy `npm install` hoặc `Makefile` từ một nguồn không quen thuộc.
 :::
 
+### Lời nhắc xác nhận
+
+Khi bạn tin tưởng cấu hình của một kho lưu trữ trong terminal tương tác, repomix sẽ hiển thị cấu hình sắp được chạy và yêu cầu bạn xác nhận trước khi tải nó:
+
+- **Có, chỉ lần này**: chỉ tin tưởng lần chạy này.
+- **Có, và không hỏi lại cho kho lưu trữ này**: được ghi nhớ cho đến khi các tệp tạm thời của bạn bị xóa, và chỉ khi tệp cấu hình đó không thay đổi (tệp cấu hình bị chỉnh sửa sẽ khiến lời nhắc xuất hiện lại). Lưu ý rằng điều này chỉ áp dụng cho chính tệp cấu hình: một cấu hình `.ts` / `.js` có thể import các tệp khác, và những tệp đó không nằm trong phạm vi kiểm tra này.
+- **Không**: hủy bỏ mà không chạy cấu hình.
+
+Lời nhắc này sẽ được bỏ qua khi bạn truyền `--force`, trong các shell không tương tác như CI (cấu hình vẫn được tin tưởng như trước, giúp các quy trình tự động hiện có tiếp tục hoạt động), hoặc khi bạn đã chọn luôn tin tưởng kho lưu trữ đó.
+
+Để biết đầy đủ mô hình tin cậy — cấu hình đáng tin cậy có thể làm gì, cách cấu hình hiển thị được bảo vệ khỏi bị giả mạo, và quyết định "không hỏi lại" được lưu trữ ở đâu — xem [Bảo mật](/vi/guide/security#remote-repository-config-trust).
+
 Khi sử dụng `--config` với `--remote`, bắt buộc phải có đường dẫn tuyệt đối:
 
 ```bash

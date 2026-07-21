@@ -62,7 +62,7 @@ description: 查閱 Repomix CLI 的所有選項，涵蓋輸入、輸出、檔案
 |------|------|
 | `--remote <url>` | 複製並打包遠端儲存庫（GitHub URL 或 `user/repo` 格式） |
 | `--remote-branch <name>` | 要使用的特定分支、標籤或提交（預設：儲存庫的預設分支） |
-| `--remote-trust-config` | 信任並載入遠端儲存庫的設定檔。受信任的設定可以執行命令並讀取本機檔案，因此請僅對您完全信任的儲存庫使用（出於安全考量預設停用） |
+| `--remote-trust-config` | 信任並載入遠端儲存庫的設定檔。受信任的設定可以執行命令並讀取本機檔案，因此請僅對您完全信任的儲存庫使用（出於安全考量預設停用）。在互動式終端中會顯示該設定並要求確認 |
 
 ## 組態選項
 
@@ -89,7 +89,7 @@ description: 查閱 Repomix CLI 的所有選項，涵蓋輸入、輸出、檔案
 | `--skill-generate [name]` | 產生 Claude Agent Skills 格式輸出到 `.claude/skills/<name>/` 目錄（省略名稱時自動產生） |
 | `--skill-project-name <name>` | 覆寫產生的 Skills 描述中使用的專案名稱 |
 | `--skill-output <path>` | 直接指定技能輸出目錄路徑（跳過位置選擇提示） |
-| `-f, --force` | 跳過所有確認提示（例如：技能目錄覆蓋） |
+| `-f, --force` | 跳過所有確認提示（技能目錄覆蓋、遠端設定信任） |
 
 ## 監視模式選項
 

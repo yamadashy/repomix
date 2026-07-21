@@ -62,7 +62,7 @@ description: 查阅 Repomix CLI 的所有选项，涵盖输入、输出、文件
 |------|------|
 | `--remote <url>` | 克隆并打包远程仓库（GitHub URL 或 `user/repo` 格式） |
 | `--remote-branch <name>` | 要使用的特定分支、标签或提交（默认：仓库的默认分支） |
-| `--remote-trust-config` | 信任并加载远程仓库的配置文件。被信任的配置可以执行命令并读取本地文件，因此请仅对你完全信任的仓库使用（出于安全考虑默认禁用） |
+| `--remote-trust-config` | 信任并加载远程仓库的配置文件。被信任的配置可以执行命令并读取本地文件，因此请仅对你完全信任的仓库使用（出于安全考虑默认禁用）。在交互式终端中会显示该配置并要求确认 |
 
 ## 配置选项
 
@@ -89,7 +89,7 @@ description: 查阅 Repomix CLI 的所有选项，涵盖输入、输出、文件
 | `--skill-generate [name]` | 生成 Claude Agent Skills 格式输出到 `.claude/skills/<name>/` 目录（省略名称时自动生成） |
 | `--skill-project-name <name>` | 覆盖生成的 Skills 描述中使用的项目名称 |
 | `--skill-output <path>` | 直接指定技能输出目录路径（跳过位置选择提示） |
-| `-f, --force` | 跳过所有确认提示（例如：技能目录覆盖） |
+| `-f, --force` | 跳过所有确认提示（技能目录覆盖、远程配置信任） |
 
 ## 监视模式选项
 

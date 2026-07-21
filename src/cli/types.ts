@@ -46,6 +46,7 @@ export interface CliOptions extends OptionValues {
   remoteBranch?: string;
   remoteTrustConfig?: boolean;
   skipLocalConfig?: boolean; // Internal flag: skip loading config files from the working directory (e.g., untrusted remote repos)
+  skipMigration?: boolean; // Internal flag: never run the Repopack migration (e.g., a throwaway remote clone whose legacy files are attacker-controlled)
   enableFileProcessors?: boolean; // Internal flag: allow input.processors to run external commands. Injected only by the real CLI entry point (auto-on for local runs; gated by --remote-trust-config for remote)
   deferTokenBudgetCheck?: boolean; // Internal flag: skip the token-budget check inside runDefaultAction so the caller can enforce it after delivering output (e.g., remote runs copy out of the temp dir first)
 

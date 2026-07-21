@@ -88,6 +88,18 @@ REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
 `--remote-trust-config` memberikan konfigurasi repositori remote tingkat kepercayaan yang sama dengan mesin Anda sendiri. Konfigurasi yang dipercaya dapat **menjalankan perintah apa pun** (melalui `input.processors`) dan **membaca file lokal di luar repositori** (misalnya melalui `output.instructionFilePath` atau pola include yang menggunakan `../`). Gunakan opsi ini hanya untuk repositori yang sepenuhnya Anda percayai dan telah Anda periksa, dengan tingkat kehati-hatian yang sama seperti sebelum menjalankan `npm install` atau `Makefile` dari sumber yang tidak dikenal.
 :::
 
+### Prompt konfirmasi
+
+Saat Anda mempercayai konfigurasi repositori di terminal interaktif, repomix menampilkan konfigurasi yang akan dijalankan dan meminta Anda mengonfirmasi sebelum memuatnya:
+
+- **Ya, sekali ini saja**: hanya mempercayai proses ini.
+- **Ya, dan jangan tanya lagi untuk repositori ini**: diingat hingga file sementara Anda dihapus, dan hanya selama file konfigurasi tersebut tidak berubah (file konfigurasi yang diedit akan meminta konfirmasi lagi). Perlu diperhatikan, ini hanya mencakup file konfigurasi itu sendiri: konfigurasi `.ts` / `.js` dapat mengimpor file lain, dan file tersebut tidak termasuk dalam pemeriksaan ini.
+- **Tidak**: batalkan tanpa menjalankan konfigurasi.
+
+Prompt ini dilewati saat Anda menyertakan `--force`, di shell non-interaktif seperti CI (konfigurasi tetap dipercaya seperti sebelumnya, sehingga otomatisasi yang ada tetap berjalan), atau setelah Anda memilih untuk selalu mempercayai repositori tersebut.
+
+Untuk model kepercayaan lengkap — apa yang dapat dilakukan konfigurasi tepercaya, bagaimana konfigurasi yang ditampilkan dilindungi dari manipulasi, dan di mana keputusan "jangan tanya lagi" disimpan — lihat [Keamanan](/id/guide/security#remote-repository-config-trust).
+
 Saat menggunakan `--config` dengan `--remote`, path absolut diperlukan:
 
 ```bash

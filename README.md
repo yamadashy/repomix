@@ -662,7 +662,7 @@ Instruction
 |--------|-------------|
 | `--remote <url>` | Clone and pack a remote repository (GitHub URL or `user/repo` format) |
 | `--remote-branch <name>` | Specific branch, tag, or commit to use (default: repository's default branch) |
-| `--remote-trust-config` | Trust and load config files from remote repositories (disabled by default for security) |
+| `--remote-trust-config` | Trust and load config files from remote repositories (disabled by default for security). On an interactive terminal, the config is shown and you are asked to confirm |
 
 #### Configuration Options
 
@@ -689,7 +689,7 @@ Instruction
 | `--skill-generate [name]` | Generate Claude Agent Skills format output to `.claude/skills/<name>/` directory (name auto-generated if omitted) |
 | `--skill-project-name <name>` | Override the project name used in generated Skills descriptions |
 | `--skill-output <path>` | Specify skill output directory path directly (skips location prompt) |
-| `-f, --force` | Skip all confirmation prompts (e.g., skill directory overwrite) |
+| `-f, --force` | Skip all confirmation prompts (skill directory overwrite, remote config trust) |
 
 #### Watch Mode
 - `-w, --watch`: Watch for file changes and automatically re-pack. Debounces rapid changes (300ms) and logs a timestamp on each rebuild. Stop with `Ctrl+C`.
@@ -789,7 +789,7 @@ repomix --remote https://github.com/yamadashy/repomix/commit/836abcd7335137228ad
 ```
 
 > [!NOTE]
-> For security, config files (`repomix.config.*`) in remote repositories are not loaded by default. This prevents untrusted repositories from executing code via config files. Your global config and CLI options are still applied. To trust a remote repository's config, use `--remote-trust-config` or set `REPOMIX_REMOTE_TRUST_CONFIG=true`.
+> For security, config files (`repomix.config.*`) in remote repositories are not loaded by default. This prevents untrusted repositories from executing code via config files. Your global config and CLI options are still applied. To trust a remote repository's config, use `--remote-trust-config` or set `REPOMIX_REMOTE_TRUST_CONFIG=true` — on an interactive terminal Repomix then shows that config and asks you to confirm before loading it. See [Remote Repository Config Trust](#remote-repository-config-trust).
 >
 > When using `--config` with `--remote`, an absolute path is required (e.g., `--config /home/user/repomix.config.json`).
 
@@ -1742,6 +1742,37 @@ repomix --no-security-check
 > [!NOTE]
 > Disabling security checks may expose sensitive information. Use this option with caution and only when necessary, such
 > as when working with test files or documentation that contains example credentials.
+
+### Remote Repository Config Trust
+
+A `repomix.config.*` is code, not just data: a `.ts` / `.js` config is executed when loaded, `input.processors` runs
+external commands, and path options can read files outside the repository. Loading one from an unfamiliar repository is
+comparable to running its `Makefile`.
+
+For that reason, **a cloned repository's config is never loaded by default**. Your global config and CLI options still
+apply.
+
+When you opt in with `--remote-trust-config` (or `REPOMIX_REMOTE_TRUST_CONFIG=true`) on an interactive terminal, Repomix
+shows the config that is about to run and asks before loading it:
+
+- **Yes, once** — trust this run only.
+- **Yes, and don't ask again for this repository** — the decision is *content-pinned*: it records a hash of the config
+  you approved, so you are asked again if that repository later ships a different one (the `direnv allow` model).
+- **No** (the default selection) — abort without loading the config.
+
+The displayed config is written by the repository's author, so control, ANSI, and bidirectional characters are escaped,
+the output is capped, every config line is prefixed, and symlinked configs pointing outside the clone are refused — what
+you review is what runs.
+
+The prompt is skipped with `--force`, in non-interactive shells such as CI (existing automation keeps working), and once
+you have chosen to always trust that repository.
+
+> [!IMPORTANT]
+> The content pin covers the entry config file only. A `.ts` / `.js` config can `import` other files and
+> `input.processors` can invoke external scripts; neither is hashed. Treat "don't ask again" as trust in the repository,
+> not only in the file you read.
+
+See the [security guide](https://repomix.com/guide/security#remote-repository-config-trust) for the full trust model.
 
 ## 🤖 Using Repomix with GitHub Actions
 

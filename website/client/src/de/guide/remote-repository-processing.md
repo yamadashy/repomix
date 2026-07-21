@@ -88,6 +88,18 @@ REPOMIX_REMOTE_TRUST_CONFIG=true repomix --remote user/repo
 `--remote-trust-config` gewährt der Konfiguration des Remote-Repositorys dasselbe Vertrauen wie Ihrer eigenen Maschine. Eine vertrauenswürdige Konfiguration kann (über `input.processors`) **beliebige Befehle ausführen** und (z. B. über `output.instructionFilePath` oder Include-Muster mit `../`) **lokale Dateien außerhalb des Repositorys lesen**. Verwenden Sie diese Option nur für Repositories, denen Sie vollständig vertrauen und die Sie überprüft haben, mit derselben Vorsicht, die Sie vor dem Ausführen eines `npm install` oder eines `Makefile` aus unbekannter Quelle walten lassen würden.
 :::
 
+### Bestätigungsaufforderung
+
+Wenn Sie die Konfiguration eines Repositorys in einem interaktiven Terminal vertrauen, zeigt repomix die Konfiguration an, die ausgeführt werden soll, und bittet Sie um Bestätigung, bevor sie geladen wird:
+
+- **Ja, nur dieses Mal**: Vertraut nur diesem Durchlauf.
+- **Ja, und nicht mehr für dieses Repository fragen**: Wird gespeichert, bis Ihre temporären Dateien gelöscht werden, und nur solange diese Konfigurationsdatei unverändert bleibt (bei einer geänderten Konfigurationsdatei wird erneut gefragt). Beachten Sie, dass sich dies nur auf die Konfigurationsdatei selbst bezieht: Eine `.ts`- / `.js`-Konfiguration kann andere Dateien importieren, und diese sind nicht Teil der Prüfung.
+- **Nein**: Bricht ab, ohne die Konfiguration auszuführen.
+
+Die Abfrage wird übersprungen, wenn Sie `--force` übergeben, in nicht-interaktiven Shells wie CI (die Konfiguration wird wie bisher vertraut, sodass bestehende Automatisierungen weiterhin funktionieren), oder wenn Sie bereits gewählt haben, diesem Repository immer zu vertrauen.
+
+Das vollständige Vertrauensmodell – was eine vertrauenswürdige Konfiguration tun kann, wie die angezeigte Konfiguration vor Manipulation geschützt wird und wo die Entscheidung "nicht mehr fragen" gespeichert wird – finden Sie unter [Sicherheit](/de/guide/security#remote-repository-config-trust).
+
 Bei Verwendung von `--config` mit `--remote` ist ein absoluter Pfad erforderlich:
 
 ```bash

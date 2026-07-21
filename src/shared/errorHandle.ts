@@ -24,6 +24,13 @@ export class OperationCancelledError extends RepomixError {
 }
 
 export const handleError = (error: unknown): void => {
+  // A cancellation is an answer, not a failure. The prompt that raised it has
+  // already told the user what was cancelled, so the error banner, the --verbose
+  // hint and the "file an issue / join Discord" footer would frame a deliberate
+  // choice as a crash. The caller still exits non-zero: the requested operation
+  // did not happen, and a wrapper script must not read that as success.
+  if (isOperationCancelledError(error)) return;
+
   logger.log('');
 
   if (isRepomixError(error)) {
@@ -78,6 +85,16 @@ export const handleError = (error: unknown): void => {
   logger.info(`• File an issue on GitHub: ${REPOMIX_ISSUES_URL}`);
   logger.info(`• Join our Discord community: ${REPOMIX_DISCORD_URL}`);
 };
+
+/**
+ * Checks if an unknown value is an OperationCancelledError.
+ * Matches on the name so a cancellation raised in a worker is still recognized.
+ */
+const isOperationCancelledError = (error: unknown): boolean =>
+  error instanceof OperationCancelledError ||
+  (typeof error === 'object' &&
+    error !== null &&
+    (error as Record<string, unknown>).name === OperationCancelledError.name);
 
 /**
  * Checks if an unknown value is an Error-like object.
