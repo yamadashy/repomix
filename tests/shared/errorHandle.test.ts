@@ -225,18 +225,29 @@ describe('handleError', () => {
     expect(errorSpy).toHaveBeenCalledWith('✖ bad config');
   });
 
-  it('handles duck-typed OperationCancelledError from worker boundary', () => {
-    // OperationCancelledError extends RepomixError. Without the name being
-    // listed in isRepomixError's duck-typed comparison, a structured-clone
-    // copy from a worker would fall into the "Unexpected error" branch
-    // and surface a noisy stack trace for what is actually a user cancel.
+  it('stays quiet on a cancellation instead of reporting a failure', () => {
+    // The prompt has already said what was cancelled. Printing an error banner and
+    // the "file an issue" footer would frame the user's own answer as a crash.
+    logger.setLogLevel(repomixLogLevels.INFO);
+
+    handleError(new OperationCancelledError('Remote config not trusted'));
+
+    expect(errorSpy).not.toHaveBeenCalled();
+    expect(noteSpy).not.toHaveBeenCalled();
+    expect(infoSpy).not.toHaveBeenCalled();
+  });
+
+  it('recognizes a duck-typed cancellation from a worker boundary', () => {
+    // A structured-clone copy loses the prototype, so the name is what identifies it.
+    // Without this it would fall into the "Unexpected error" branch and print a stack
+    // trace for what is actually a user cancel.
     logger.setLogLevel(repomixLogLevels.INFO);
     const workerError = { name: 'OperationCancelledError', message: 'Operation cancelled' };
 
     handleError(workerError);
 
-    expect(errorSpy).toHaveBeenCalledWith('✖ Operation cancelled');
-    expect(errorSpy).not.toHaveBeenCalledWith(expect.stringContaining('Unexpected error'));
+    expect(errorSpy).not.toHaveBeenCalled();
+    expect(infoSpy).not.toHaveBeenCalled();
   });
 
   it('handles unknown non-Error values via inspect()', () => {
