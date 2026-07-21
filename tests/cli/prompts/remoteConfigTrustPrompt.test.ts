@@ -112,6 +112,25 @@ describe('remoteConfigTrustPrompt', () => {
       expect(deps.loadClack).not.toHaveBeenCalled();
     });
 
+    it('rejects a config that is not a regular file', async () => {
+      // A directory or FIFO named repomix.config.json is not a symlink, but reading it
+      // would not give the reviewed bytes either.
+      const deps = makeDeps({
+        lstat: vi.fn().mockResolvedValue({ isSymbolicLink: () => false, isFile: () => false }),
+      });
+      await expect(confirmRemoteConfigTrust(baseOptions, deps)).rejects.toThrow(RepomixError);
+      expect(deps.readFile).not.toHaveBeenCalled();
+    });
+
+    it('warns that a JSON config can still run commands and read files', async () => {
+      const deps = makeDeps();
+      await confirmRemoteConfigTrust(baseOptions, deps);
+      const output = stderrOutput();
+      expect(output).toContain('input.processors');
+      // Only a .ts/.js config is labelled executable; a JSON one must not be.
+      expect(output).not.toContain('executable code');
+    });
+
     it('rejects a symlinked config even under --force', async () => {
       // --force and CI accept running the repo's config, not a file outside the
       // clone. Config loading follows symlinks and checks nothing, so if this guard
@@ -153,7 +172,13 @@ describe('remoteConfigTrustPrompt', () => {
       await confirmRemoteConfigTrust(baseOptions, deps);
       const output = stderrOutput();
       expect(output).toContain('config truncated for display');
-      expect(Buffer.byteLength(output, 'utf8')).toBeLessThan(16 * 1024);
+      // The echoed config itself must respect the 8 KB cap. Measured on the prefixed
+      // lines only, so the surrounding banner and notice do not mask an overrun.
+      const configBytes = output
+        .split('\n')
+        .filter((line: string) => line.startsWith('| '))
+        .join('\n');
+      expect(Buffer.byteLength(configBytes, 'utf8')).toBeLessThanOrEqual(8 * 1024 + 200 * 2);
     });
 
     it('trusts without prompting in a non-interactive shell', async () => {
@@ -255,7 +280,8 @@ describe('remoteConfigTrustPrompt', () => {
       await confirmRemoteConfigTrust(baseOptions, deps);
       const output = stderrOutput();
       expect(output).toContain('config truncated for display');
-      expect(output.split('\n').length).toBeLessThan(300);
+      // Exactly the cap: one prefixed line per displayed config line.
+      expect(output.split('\n').filter((line: string) => line.startsWith('| ')).length).toBe(200);
     });
 
     it('escapes astral-plane tag characters as whole code points', async () => {

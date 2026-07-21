@@ -154,6 +154,8 @@ export const confirmRemoteConfigTrust = async (
   const configPath = await deps.findLocalConfigPath(repoDir);
   if (!configPath) return; // no config in the cloned repo → nothing is trusted
 
+  // Not sanitized where it is printed: it always comes from the loader's fixed
+  // filename allowlist, unlike repoUrl and the config body.
   const configName = path.basename(configPath);
 
   // Runs before the skip paths below. Config loading follows symlinks and does no
@@ -215,13 +217,22 @@ export const confirmRemoteConfigTrust = async (
   // the user is warned that the config executes, so it must not drift from what
   // actually gets handed to jiti.
   const isCode = isExecutableConfigPath(configName);
+  // Bound the work before escaping. The config is attacker-controlled, so a padded
+  // multi-MB file would otherwise force a full-file regex pass and a full-size copy
+  // to print at most 8 KB. Cutting the raw text to MAX_DISPLAY_BYTES UTF-16 units is
+  // a safe superset of what can ever be shown: escaping maps each character to at
+  // least itself, so the printed bytes can only come from an equally short prefix.
+  // Past that length the output is certainly truncated, whatever the caps decide.
+  const overWindow = configText.length > MAX_DISPLAY_BYTES;
+  const windowText = overWindow ? configText.slice(0, MAX_DISPLAY_BYTES) : configText;
+
   // Escape control characters first so the caps apply to what is actually printed,
   // then cap on both lines and bytes. The line cap matters on its own: a config
   // padded with thousands of newlines would otherwise scroll the warning above it
   // off the screen, leaving only the innocuous-looking question on display.
   // Byte slicing is done on a Buffer because slicing the string would cut by UTF-16
   // code units and blow past the cap on multi-byte content.
-  const displayText = sanitizeForDisplay(configText);
+  const displayText = sanitizeForDisplay(windowText);
   const lines = displayText.split('\n');
   const lineTruncated = lines.length > MAX_DISPLAY_LINES;
   const lineCapped = lineTruncated ? lines.slice(0, MAX_DISPLAY_LINES).join('\n') : displayText;
@@ -233,15 +244,11 @@ export const confirmRemoteConfigTrust = async (
     .split('\n')
     .map((line) => `${CONFIG_LINE_PREFIX}${line}`)
     .join('\n');
-  const wasTruncated = lineTruncated || byteTruncated;
+  const wasTruncated = overWindow || lineTruncated || byteTruncated;
 
   writeErr();
   writeErr(
-    pc.yellow(
-      pc.bold(
-        `⚠ ${sanitizeForDisplay(repoUrl)} ships a config file that will be trusted: ${sanitizeForDisplay(configName)}`,
-      ),
-    ),
+    pc.yellow(pc.bold(`⚠ ${sanitizeForDisplay(repoUrl)} ships a config file that will be trusted: ${configName}`)),
   );
   if (isCode) {
     writeErr(pc.yellow('  This is executable code — loading it runs arbitrary commands on your machine.'));
@@ -268,7 +275,7 @@ export const confirmRemoteConfigTrust = async (
     {
       value: 'always',
       label: "Yes, and don't ask again for this repository",
-      hint: 'remembered until your OS clears its temp directory',
+      hint: 'until this repo changes its config, or your OS clears its temp dir',
     },
     { value: 'no', label: 'No, do not run' },
   ];
