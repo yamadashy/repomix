@@ -62,7 +62,7 @@ description: "Consulta todas las opciones de la CLI de Repomix para entrada, sal
 |--------|-------------|
 | `--remote <url>` | Clonar y empaquetar un repositorio remoto (URL de GitHub o formato `user/repo`) |
 | `--remote-branch <name>` | Rama, etiqueta o commit específico a usar (por defecto: la rama por defecto del repositorio) |
-| `--remote-trust-config` | Confiar y cargar archivos de configuración de repositorios remotos. Una configuración de confianza puede ejecutar comandos y leer archivos locales, así que úsala solo para repositorios en los que confíes plenamente (deshabilitado por defecto por seguridad) |
+| `--remote-trust-config` | Confiar y cargar archivos de configuración de repositorios remotos. Una configuración de confianza puede ejecutar comandos y leer archivos locales, así que úsala solo para repositorios en los que confíes plenamente (deshabilitado por defecto por seguridad). En una terminal interactiva, se muestra la configuración y se pide confirmación |
 
 ## Opciones de configuración
 
@@ -89,7 +89,7 @@ description: "Consulta todas las opciones de la CLI de Repomix para entrada, sal
 | `--skill-generate [name]` | Generar salida en formato Claude Agent Skills en el directorio `.claude/skills/<name>/` (nombre autogenerado si se omite) |
 | `--skill-project-name <name>` | Sobrescribir el nombre del proyecto usado en las descripciones de Skills generadas |
 | `--skill-output <path>` | Especificar la ruta del directorio de salida de skills directamente (omite la solicitud de ubicación) |
-| `-f, --force` | Omitir todas las solicitudes de confirmación (ej: sobrescritura del directorio de skills) |
+| `-f, --force` | Omitir todas las solicitudes de confirmación (sobrescritura del directorio de skills, confianza en la configuración remota) |
 
 ## Opciones del modo de observación
 

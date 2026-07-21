@@ -167,7 +167,7 @@ export const run = async () => {
       .option('--remote-branch <name>', "Specific branch, tag, or commit to use (default: repository's default branch)")
       .option(
         '--remote-trust-config',
-        'Trust and load config files from remote repositories (disabled by default for security)',
+        'Trust and load config files from remote repositories (disabled by default for security; asks for confirmation on an interactive terminal)',
       )
       // Configuration Options
       .optionsGroup('Configuration Options')

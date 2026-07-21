@@ -103,6 +103,22 @@ export const runRemoteAction = async (
       downloadMethod = 'git';
     }
 
+    const trustRemoteConfig = cliOptions.remoteTrustConfig || process.env.REPOMIX_REMOTE_TRUST_CONFIG === 'true';
+
+    // When trusting a remote repo's config, confirm with the user first (unless
+    // --force / non-interactive / already trusted). Throws if the user declines.
+    // Asked before the skill-location prompt so a decline does not first make the
+    // user answer a question whose answer is then thrown away.
+    if (trustRemoteConfig) {
+      await deps.confirmRemoteConfigTrust({
+        repoDir: tempDirPath,
+        repoUrl,
+        force: cliOptions.force ?? false,
+        stdout: cliOptions.stdout ?? false,
+        hasExplicitConfig: Boolean(cliOptions.config),
+      });
+    }
+
     // For skill generation, prompt for location using current directory (not temp directory)
     let skillName: string | undefined;
     let skillDir: string | undefined;
@@ -133,19 +149,6 @@ export const runRemoteAction = async (
     // Run the default action on the downloaded/cloned repository
     // Pass the pre-computed skill name, directory, project name, and source URL
     const skillSourceUrl = cliOptions.skillGenerate !== undefined ? repoUrl : undefined;
-    const trustRemoteConfig = cliOptions.remoteTrustConfig || process.env.REPOMIX_REMOTE_TRUST_CONFIG === 'true';
-
-    // When trusting a remote repo's config, confirm with the user first (unless
-    // --force / non-interactive / already trusted). Throws if the user declines.
-    if (trustRemoteConfig) {
-      await deps.confirmRemoteConfigTrust({
-        repoDir: tempDirPath,
-        repoUrl,
-        force: cliOptions.force ?? false,
-        stdout: cliOptions.stdout ?? false,
-        hasExplicitConfig: Boolean(cliOptions.config),
-      });
-    }
 
     const optionsWithSkill = {
       ...cliOptions,

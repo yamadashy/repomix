@@ -164,14 +164,14 @@ export const confirmRemoteConfigTrust = async (
   // caller). It is a broad flag, so say what it suppressed rather than silently
   // granting a remote config the right to run.
   if (force) {
-    writeErr(pc.dim(`Trusting remote config without review (--force): ${configName} (${repoUrl})`));
+    writeErr(pc.dim(`Trusting remote config without review (--force): ${configName} (${sanitizeForDisplay(repoUrl)})`));
     return;
   }
 
   // Non-interactive (CI, pipes): keep the historical non-prompting behavior so
   // existing --remote-trust-config automations do not hang. Announce it on stderr.
   if (!deps.isInteractive()) {
-    writeErr(pc.dim(`Trusting remote config non-interactively: ${configName} (${repoUrl})`));
+    writeErr(pc.dim(`Trusting remote config non-interactively: ${configName} (${sanitizeForDisplay(repoUrl)})`));
     return;
   }
 
