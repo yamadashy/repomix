@@ -132,8 +132,8 @@ export const registerGrepRepomixOutputTool = (mcpServer: McpServer) => {
         const content = await fs.readFile(filePath, 'utf8');
 
         // For files attached from an untrusted path, scan for secrets before serving
-        // any content, so search results cannot be used to read sensitive content
-        // through this path.
+        // any content. This flags recognized secret formats; it is a heuristic, not a
+        // guarantee that nothing sensitive is returned.
         if (requiresSecretScan(outputId)) {
           const securityCheckResult = await runSecretLint(filePath, content, 'file', createSecretLintConfig());
           if (securityCheckResult !== null) {

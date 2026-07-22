@@ -20,6 +20,10 @@ describe('gitMetadataEndpoint', () => {
       expect(extractRemoteHost('http://[fd00:ec2::254]/owner/repo')).toBe('fd00:ec2::254');
     });
 
+    it('strips the brackets around an IPv6 literal in scp-like syntax too', () => {
+      expect(extractRemoteHost('git@[fd00:ec2::254]:owner/repo.git')).toBe('fd00:ec2::254');
+    });
+
     it('returns null for an owner/repo shorthand, which names no host', () => {
       expect(extractRemoteHost('yamadashy/repomix')).toBeNull();
     });
@@ -65,6 +69,10 @@ describe('gitMetadataEndpoint', () => {
 
     it('refuses it through scp-like syntax too', () => {
       expect(() => assertNotMetadataEndpoint('git@169.254.169.254:owner/repo.git')).toThrow(RepomixError);
+    });
+
+    it('refuses a bracketed IPv6 metadata endpoint in scp-like syntax', () => {
+      expect(() => assertNotMetadataEndpoint('git@[fd00:ec2::254]:owner/repo.git')).toThrow(RepomixError);
     });
 
     it('allows an ordinary remote', () => {

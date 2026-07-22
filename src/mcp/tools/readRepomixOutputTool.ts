@@ -76,7 +76,8 @@ export const registerReadRepomixOutputTool = (mcpServer: McpServer) => {
         const content = await fs.readFile(filePath, 'utf8');
 
         // For files attached from an untrusted path, scan for secrets before serving
-        // any content, so an attached path cannot be used to read arbitrary files.
+        // any content. This detects recognized secret formats in the content; it does
+        // not restrict which file the path points at.
         if (requiresSecretScan(outputId)) {
           const securityCheckResult = await runSecretLint(filePath, content, 'file', createSecretLintConfig());
           if (securityCheckResult !== null) {

@@ -1044,7 +1044,7 @@ When running as an MCP server, Repomix provides the following tools:
   - Features:
     - Accepts either a directory containing a repomix-output.xml file or a direct path to an XML file
     - Registers the file with the MCP server and returns the same structure as the pack_codebase tool
-    - Provides secure access to existing packed outputs without requiring re-processing
+    - Provides access to existing packed outputs without requiring re-processing
     - Useful for working with previously generated packed repositories
 
 3. **pack_remote_repository**: Fetch, clone, and package a GitHub repository into a consolidated XML file for AI analysis
@@ -1064,7 +1064,7 @@ When running as an MCP server, Repomix provides the following tools:
   - Features:
     - Specifically designed for web-based environments or sandboxed applications
     - Retrieves the content of previously generated outputs using their ID
-    - Provides secure access to packed codebase without requiring file system access
+    - Provides access to packed codebase without requiring file system access
     - Supports partial reading for large files
 
 5. **grep_repomix_output**: Search for patterns in a Repomix output file using grep-like functionality with JavaScript RegExp syntax

@@ -37,8 +37,11 @@ export const extractRemoteHost = (remoteValue: string): string | null => {
     return new URL(remoteValue).hostname.toLowerCase().replace(/^\[|\]$/g, '');
   } catch {
     // Not a scheme URL. scp-like syntax has no scheme: user@host:path
-    const scpMatch = remoteValue.match(/^[^/@]+@([^/:]+):/);
-    return scpMatch ? scpMatch[1].toLowerCase() : null;
+    // The host can be a bracketed IPv6 literal (user@[fd00:ec2::254]:path), so
+    // match a bracketed group before falling back to a plain host, then strip
+    // the brackets to compare against a plain address.
+    const scpMatch = remoteValue.match(/^[^/@]+@(\[[^\]]+\]|[^/:]+):/);
+    return scpMatch ? scpMatch[1].toLowerCase().replace(/^\[|\]$/g, '') : null;
   }
 };
 
