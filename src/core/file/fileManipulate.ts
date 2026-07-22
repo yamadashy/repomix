@@ -42,18 +42,83 @@ class StripCommentsManipulator extends BaseManipulator {
   }
 }
 
+// Matches a shell heredoc opener (`<<EOF`, `<<-EOF`, `<<'EOF'`, `<<"EOF"`), excluding the
+// `<<<` herestring operator via the lookaround guards.
+const HEREDOC_START = /(?<!<)<<(?!<)(-?)\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\2/;
+// Matches a YAML block scalar opener (`key: |`, `- >-`, etc.) — the indicator must be the
+// last non-comment token on the line.
+const YAML_BLOCK_SCALAR_START = /[|>][+-]?\d*\s*(#.*)?$/;
+
 // Shell and YAML use `#` line comments, but a `#` is only a comment at the start of a
 // line or after whitespace — never inside `${x#y}`, `$#`, `a/b#c`, or a quoted string.
 // The generic `perl` profile treats every unquoted `#` as a comment, silently corrupting
 // these files (e.g. `${name##*/}` -> `${name`), so strip them with a boundary-aware scan.
+// Shell heredoc bodies and YAML block-scalar bodies are literal content, not comments —
+// tracked separately per line since they're line/indentation-based, not character-based.
 class HashCommentManipulator extends BaseManipulator {
+  private language: 'shell' | 'yaml';
+
+  constructor(language: 'shell' | 'yaml') {
+    super();
+    this.language = language;
+  }
+
   removeComments(content: string): string {
-    let result = '';
+    const lines = content.split('\n');
+    const output: string[] = [];
     let inSingle = false;
     let inDouble = false;
+    let heredocDelimiter: string | null = null;
+    let heredocStripLeadingTabs = false;
+    let blockScalarIndent: number | null = null;
 
-    for (let i = 0; i < content.length; i++) {
-      const char = content[i];
+    for (const line of lines) {
+      if (heredocDelimiter !== null) {
+        output.push(line);
+        const compareLine = heredocStripLeadingTabs ? line.replace(/^\t+/, '') : line;
+        if (compareLine === heredocDelimiter) heredocDelimiter = null;
+        continue;
+      }
+
+      if (blockScalarIndent !== null) {
+        const indent = line.match(/^[ \t]*/)?.[0].length ?? 0;
+        if (line.trim() !== '' && indent <= blockScalarIndent) {
+          blockScalarIndent = null;
+          // Not a body line — fall through and process it normally below.
+        } else {
+          output.push(line);
+          continue;
+        }
+      }
+
+      const processed = this.stripLineComment(line, inSingle, inDouble);
+      inSingle = processed.inSingle;
+      inDouble = processed.inDouble;
+      output.push(processed.text);
+
+      if (this.language === 'shell' && !inSingle && !inDouble) {
+        const match = line.match(HEREDOC_START);
+        if (match) {
+          heredocStripLeadingTabs = match[1] === '-';
+          heredocDelimiter = match[3];
+        }
+      } else if (this.language === 'yaml' && !inSingle && !inDouble && YAML_BLOCK_SCALAR_START.test(processed.text)) {
+        blockScalarIndent = line.match(/^[ \t]*/)?.[0].length ?? 0;
+      }
+    }
+
+    return rtrimLines(output.join('\n'));
+  }
+
+  // Strips a trailing `#` comment from a single line, carrying quote state across lines
+  // (shell/YAML both allow quoted strings to span multiple lines).
+  private stripLineComment(line: string, inSingleIn: boolean, inDoubleIn: boolean) {
+    let result = '';
+    let inSingle = inSingleIn;
+    let inDouble = inDoubleIn;
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
 
       if (inSingle) {
         result += char;
@@ -61,8 +126,8 @@ class HashCommentManipulator extends BaseManipulator {
         continue;
       }
       if (inDouble) {
-        if (char === '\\' && i + 1 < content.length) {
-          result += char + content[i + 1];
+        if (char === '\\' && i + 1 < line.length) {
+          result += char + line[i + 1];
           i++;
         } else {
           result += char;
@@ -71,8 +136,8 @@ class HashCommentManipulator extends BaseManipulator {
         continue;
       }
 
-      if (char === '\\' && i + 1 < content.length) {
-        result += char + content[i + 1];
+      if (char === '\\' && i + 1 < line.length) {
+        result += char + line[i + 1];
         i++;
         continue;
       }
@@ -88,20 +153,17 @@ class HashCommentManipulator extends BaseManipulator {
       }
 
       if (char === '#') {
-        const prev = content[i - 1];
-        if (i === 0 || prev === ' ' || prev === '\t' || prev === '\n' || prev === '\r') {
-          // Drop the comment through end of line; the newline is preserved by the loop.
-          let j = i;
-          while (j < content.length && content[j] !== '\n') j++;
-          i = j - 1;
-          continue;
+        const prev = line[i - 1];
+        if (i === 0 || prev === ' ' || prev === '\t') {
+          // Rest of the line is a comment — drop it.
+          break;
         }
       }
 
       result += char;
     }
 
-    return rtrimLines(result);
+    return { text: result, inSingle, inDouble };
   }
 }
 
@@ -144,7 +206,7 @@ const manipulators: Record<string, FileManipulator> = {
   '.rs': new StripCommentsManipulator('c'),
   '.sass': new StripCommentsManipulator('sass'),
   '.scss': new StripCommentsManipulator('sass'),
-  '.sh': new HashCommentManipulator(),
+  '.sh': new HashCommentManipulator('shell'),
   '.sol': new StripCommentsManipulator('c'),
   '.sql': new StripCommentsManipulator('sql'),
   '.swift': new StripCommentsManipulator('swift'),
@@ -154,8 +216,8 @@ const manipulators: Record<string, FileManipulator> = {
   '.cts': new StripCommentsManipulator('javascript'),
   '.mtsx': new StripCommentsManipulator('javascript'),
   '.xml': new StripCommentsManipulator('xml'),
-  '.yaml': new HashCommentManipulator(),
-  '.yml': new HashCommentManipulator(),
+  '.yaml': new HashCommentManipulator('yaml'),
+  '.yml': new HashCommentManipulator('yaml'),
 
   '.vue': new CompositeManipulator(
     new StripCommentsManipulator('html'),

@@ -930,6 +930,32 @@ name: value
 plain: keep#this`,
     },
     {
+      name: 'Shell heredoc body is preserved verbatim',
+      ext: '.sh',
+      input: `cat <<'EOF'
+# not a comment, this is heredoc content
+value # also literal
+EOF
+echo done  # real comment`,
+      expected: `cat <<'EOF'
+# not a comment, this is heredoc content
+value # also literal
+EOF
+echo done`,
+    },
+    {
+      name: 'YAML block scalar body is preserved verbatim',
+      ext: '.yaml',
+      input: `message: |
+  # not a comment
+  keep # this too
+summary: value  # real comment`,
+      expected: `message: |
+  # not a comment
+  keep # this too
+summary: value`,
+    },
+    {
       name: 'Vue file comment removal',
       ext: '.vue',
       input: `
