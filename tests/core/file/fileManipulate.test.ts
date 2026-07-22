@@ -900,6 +900,36 @@ r2 := '\\\\'`,
 `,
     },
     {
+      name: 'Shell parameter expansion is not treated as a comment',
+      ext: '.sh',
+      input: `base=\${name##*/}
+ext=\${name#*.}
+count=$#
+echo "value # not a comment"
+grep '# literal' file
+value=1  # real comment`,
+      expected: `base=\${name##*/}
+ext=\${name#*.}
+count=$#
+echo "value # not a comment"
+grep '# literal' file
+value=1`,
+    },
+    {
+      name: 'YAML unquoted hash in value is preserved',
+      ext: '.yaml',
+      input: `repo: https://github.com/a/b#readme
+color: "#ff0000"
+name: value  # trailing comment
+# full line comment
+plain: keep#this`,
+      expected: `repo: https://github.com/a/b#readme
+color: "#ff0000"
+name: value
+
+plain: keep#this`,
+    },
+    {
       name: 'Vue file comment removal',
       ext: '.vue',
       input: `
