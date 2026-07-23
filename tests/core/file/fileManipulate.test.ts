@@ -956,6 +956,22 @@ summary: value  # real comment`,
 summary: value`,
     },
     {
+      name: 'YAML apostrophe in plain scalar does not disable comment stripping',
+      ext: '.yaml',
+      input: `note: it's fine  # trailing comment
+next: value  # another comment`,
+      expected: `note: it's fine
+next: value`,
+    },
+    {
+      name: 'YAML plain scalar ending in pipe is not treated as a block scalar',
+      ext: '.yaml',
+      input: `filter: a |
+  nested: value  # real comment`,
+      expected: `filter: a |
+  nested: value`,
+    },
+    {
       name: 'Vue file comment removal',
       ext: '.vue',
       input: `
