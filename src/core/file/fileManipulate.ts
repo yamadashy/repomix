@@ -45,9 +45,10 @@ class StripCommentsManipulator extends BaseManipulator {
 // Matches a shell heredoc opener (`<<EOF`, `<<-EOF`, `<<'EOF'`, `<<"EOF"`), excluding the
 // `<<<` herestring operator via the lookaround guards.
 const HEREDOC_START = /(?<!<)<<(?!<)(-?)\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\2/;
-// Matches a YAML block scalar opener (`key: |`, `- >-`, etc.) — the indicator must be the
-// last non-comment token on the line.
-const YAML_BLOCK_SCALAR_START = /[|>][+-]?\d*\s*(#.*)?$/;
+// Matches a YAML block scalar opener (`key: |`, `- >-`, etc.) — the `|`/`>` indicator must
+// sit at a value position (right after a `:` or `-` introducer) and be the last non-comment
+// token on the line, so a plain scalar that merely ends in `|`/`>` isn't mistaken for one.
+const YAML_BLOCK_SCALAR_START = /[:-]\s+[|>][+-]?\d*\s*(#.*)?$/;
 
 // Shell and YAML use `#` line comments, but a `#` is only a comment at the start of a
 // line or after whitespace — never inside `${x#y}`, `$#`, `a/b#c`, or a quoted string.
@@ -141,13 +142,15 @@ class HashCommentManipulator extends BaseManipulator {
         i++;
         continue;
       }
-      if (char === "'") {
-        inSingle = true;
-        result += char;
-        continue;
-      }
-      if (char === '"') {
-        inDouble = true;
+      if (char === "'" || char === '"') {
+        // Shell opens a quoted string on any unescaped quote. YAML only starts a quoted
+        // scalar when the quote sits at a value boundary — an apostrophe inside a plain
+        // scalar (`note: it's fine  # x`) is literal and must not swallow the comment.
+        const opensString = this.language === 'shell' || i === 0 || ' \t:-,[{'.includes(line[i - 1]);
+        if (opensString) {
+          if (char === "'") inSingle = true;
+          else inDouble = true;
+        }
         result += char;
         continue;
       }
