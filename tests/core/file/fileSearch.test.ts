@@ -163,6 +163,31 @@ describe('fileSearch', () => {
       expect(result.emptyDirPaths).toEqual([]);
       expect(globby).toHaveBeenCalledTimes(1);
     });
+
+    test('confineToBaseDir drops matches that resolve outside rootDir', async () => {
+      // A glob pattern (absolute, brace-expanded, extglob, …) can make fast-glob
+      // return paths outside rootDir regardless of cwd. With confineToBaseDir=true
+      // (set by the MCP sandbox) searchFiles must drop them so no pattern trick can
+      // surface a file outside the searched directory — the syntax-agnostic backstop
+      // behind the sandbox's pattern guard.
+      const mockConfig = createMockConfig({ output: { includeEmptyDirectories: false } });
+      vi.mocked(globby).mockResolvedValue(['src/a.ts', '/etc/passwd', '../sibling/secret.txt'] as never);
+
+      const result = await searchFiles('/mock/root', mockConfig, undefined, true);
+
+      expect(result.filePaths).toEqual(['src/a.ts']);
+    });
+
+    test('without confineToBaseDir, out-of-root matches are preserved (default CLI/library behavior)', async () => {
+      // confineToBaseDir defaults to false so the documented ../ / absolute
+      // include-pattern behavior is unchanged for normal CLI and library callers.
+      const mockConfig = createMockConfig({ output: { includeEmptyDirectories: false } });
+      vi.mocked(globby).mockResolvedValue(['src/a.ts', '../sibling/secret.txt'] as never);
+
+      const result = await searchFiles('/mock/root', mockConfig);
+
+      expect(result.filePaths).toEqual(['../sibling/secret.txt', 'src/a.ts']);
+    });
   });
 
   describe('getIgnorePatterns', () => {

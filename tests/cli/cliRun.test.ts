@@ -1,11 +1,13 @@
+import type { Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
+import path from 'node:path';
 import { program } from 'commander';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import * as defaultAction from '../../src/cli/actions/defaultAction.js';
 import * as initAction from '../../src/cli/actions/initAction.js';
 import * as remoteAction from '../../src/cli/actions/remoteAction.js';
 import * as versionAction from '../../src/cli/actions/versionAction.js';
-import { run, runCli } from '../../src/cli/cliRun.js';
+import { canonicalizeSandboxRoot, run, runCli } from '../../src/cli/cliRun.js';
 import type { CliOptions } from '../../src/cli/types.js';
 import * as gitRemoteHandle from '../../src/core/git/gitRemoteHandle.js';
 import type { PackResult } from '../../src/core/packager.js';
@@ -566,5 +568,58 @@ describe('cliRun', () => {
         }),
       );
     });
+  });
+});
+
+describe('canonicalizeSandboxRoot', () => {
+  const dirStat = { isDirectory: () => true } as Stats;
+  const fileStat = { isDirectory: () => false } as Stats;
+  const eperm = () => {
+    const e = new Error("EPERM: operation not permitted, realpath 'C:\\Users\\RUNNER~1\\Temp\\ws'");
+    return Object.assign(e, { code: 'EPERM' });
+  };
+
+  test('returns the realpath-resolved root when realpath succeeds (symlink canonicalization)', async () => {
+    const root = await canonicalizeSandboxRoot('/tmp/ws', {
+      realpath: async () => '/private/tmp/ws',
+      stat: async () => dirStat,
+    });
+    expect(root).toBe('/private/tmp/ws');
+  });
+
+  test('falls back to the lexical root when realpath fails but the directory exists (Windows EPERM quirk)', async () => {
+    const requested = path.resolve('/tmp/ws');
+    const root = await canonicalizeSandboxRoot(requested, {
+      realpath: async () => {
+        throw eperm();
+      },
+      stat: async () => dirStat,
+    });
+    // no refusal to start — the lexical (already absolute) root is used
+    expect(root).toBe(path.resolve(requested));
+  });
+
+  test('fails closed when realpath fails and the directory is missing/inaccessible', async () => {
+    await expect(
+      canonicalizeSandboxRoot('/tmp/gone', {
+        realpath: async () => {
+          throw eperm();
+        },
+        stat: async () => {
+          throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+        },
+      }),
+    ).rejects.toThrow('--sandbox workspace directory could not be resolved');
+  });
+
+  test('fails closed when realpath fails and the path is not a directory', async () => {
+    await expect(
+      canonicalizeSandboxRoot('/tmp/file', {
+        realpath: async () => {
+          throw eperm();
+        },
+        stat: async () => fileStat,
+      }),
+    ).rejects.toThrow('--sandbox workspace directory could not be resolved');
   });
 });

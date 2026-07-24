@@ -4,9 +4,11 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { createSecretLintConfig, runSecretLint } from '../../core/security/workers/securityCheckWorker.js';
 import { logger } from '../../shared/logger.js';
+import type { McpServerConfig } from '../mcpServer.js';
 import {
   buildMcpToolErrorResponse,
   buildMcpToolSuccessResponse,
+  buildSandboxErrorResponse,
   convertErrorToJson,
   getOutputFilePath,
   requiresSecretScan,
@@ -79,7 +81,10 @@ interface SearchResult {
 /**
  * Register the tool to search Repomix output files with grep-like functionality
  */
-export const registerGrepRepomixOutputTool = (mcpServer: McpServer) => {
+export const registerGrepRepomixOutputTool = (
+  mcpServer: McpServer,
+  config: McpServerConfig = { sandboxed: false, root: process.cwd() },
+) => {
   mcpServer.registerTool(
     'grep_repomix_output',
     {
@@ -121,7 +126,9 @@ export const registerGrepRepomixOutputTool = (mcpServer: McpServer) => {
           await fs.access(filePath);
         } catch {
           return buildMcpToolErrorResponse({
-            errorMessage: `Error: Output file does not exist at path: ${filePath}. The temporary file may have been cleaned up.`,
+            errorMessage: config.sandboxed
+              ? `Error: Output ${outputId} is no longer available.`
+              : `Error: Output file does not exist at path: ${filePath}. The temporary file may have been cleaned up.`,
             details: {
               outputId,
               reason: 'FILE_ACCESS_ERROR',
@@ -138,7 +145,9 @@ export const registerGrepRepomixOutputTool = (mcpServer: McpServer) => {
           const securityCheckResult = await runSecretLint(filePath, content, 'file', createSecretLintConfig());
           if (securityCheckResult !== null) {
             return buildMcpToolErrorResponse({
-              errorMessage: `Error: Security check failed. The file at ${filePath} may contain sensitive information.`,
+              errorMessage: config.sandboxed
+                ? `Error: Security check failed. Output ${outputId} may contain sensitive information.`
+                : `Error: Security check failed. The file at ${filePath} may contain sensitive information.`,
               details: {
                 outputId,
                 reason: 'SECURITY_CHECK_FAILED',
@@ -162,6 +171,10 @@ export const registerGrepRepomixOutputTool = (mcpServer: McpServer) => {
             ignoreCase,
           });
         } catch (error) {
+          logger.error(`Error in grep_repomix_output search: ${error}`); // full detail → operator (stderr)
+          // Sandbox: a whitelisted, path-free reason — never forward raw error.message
+          // (it can carry an absolute host path), matching the outer catch below.
+          if (config.sandboxed) return buildSandboxErrorResponse(error, outputId);
           return buildMcpToolErrorResponse({
             errorMessage: `Error: ${error instanceof Error ? error.message : String(error)}`,
             details: {
@@ -191,6 +204,7 @@ export const registerGrepRepomixOutputTool = (mcpServer: McpServer) => {
         } satisfies z.infer<typeof grepRepomixOutputOutputSchema>);
       } catch (error) {
         logger.error(`Error in grep_repomix_output: ${error}`);
+        if (config.sandboxed) return buildSandboxErrorResponse(error, outputId);
         return buildMcpToolErrorResponse(convertErrorToJson(error));
       }
     },

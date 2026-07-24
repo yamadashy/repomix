@@ -6,6 +6,60 @@ import { z } from 'zod';
 import { generateTreeString } from '../../core/file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../../core/file/fileTypes.js';
 import { getRepomixTmpDir } from '../../shared/tmpDir.js';
+import { PathScopeError, resolveWithinRoot, toVirtualPath } from '../pathScope.js';
+
+/**
+ * Resolve a file-system tool's path argument for both modes (shared by the read
+ * file/directory tools). Sandbox: confine `input` to the workspace root — throws
+ * PathScopeError on escape — and virtualize it for display. Non-sandbox: the legacy
+ * absolute-path contract, where the caller's path is used and echoed as-is (the
+ * absolute-path requirement stays a guard clause in the tool).
+ */
+export const resolveToolPath = async (
+  config: { sandboxed: boolean; root: string },
+  input: string,
+): Promise<{ absPath: string; displayPath: string }> => {
+  if (!config.sandboxed) return { absPath: input, displayPath: input };
+  const absPath = await resolveWithinRoot(config.root, input);
+  return { absPath, displayPath: toVirtualPath(config.root, absPath) };
+};
+
+/**
+ * Map any caught error to a SAFE, path-free reason for the untrusted agent. This is
+ * the whitelist that makes sandbox errors leak-proof by construction: we NEVER
+ * forward error.message (it can embed the workspace root, the repomix install/worker
+ * path, the node runtime, or the operator's home dir). A PathScopeError is the one
+ * exception — its message is built from the agent's own input + the path rule, so it
+ * is safe and useful. Everything else collapses to a fixed reason derived only from
+ * the error CODE (an enum, never a string): an fs code maps to a specific reason, and
+ * anything without a recognised code (RepomixError, worker/WASM load failure, …) maps
+ * to a generic reason. The full error still reaches the operator via logger.error
+ * (stderr) — the tool catches log it before calling this.
+ */
+export const sandboxErrorReason = (error: unknown): string => {
+  if (error instanceof PathScopeError) return error.message;
+  const code = (error as NodeJS.ErrnoException | undefined)?.code;
+  switch (code) {
+    case 'ENOENT':
+      return 'not found';
+    case 'EACCES':
+    case 'EPERM':
+      return 'permission denied';
+    case 'EISDIR':
+      return 'path is a directory';
+    case 'ENOTDIR':
+      return 'path is not a directory';
+    case 'ELOOP':
+      return 'too many symbolic links';
+    case 'ENAMETOOLONG':
+      return 'path name too long';
+    case 'EMFILE':
+    case 'ENFILE':
+      return 'too many open files';
+    default:
+      return 'operation failed';
+  }
+};
 
 /**
  * Shared MCP input schema for per-file inclusion levels (output.patterns).
@@ -115,16 +169,14 @@ export const formatPackToolResponse = async (
   outputFilePath: string,
   topFilesLen = 5,
   requiresSecretScan = false,
+  scope?: { sandboxed: boolean; root: string },
 ): Promise<CallToolResult> => {
-  // Generate output ID and register the file
   const outputId = generateOutputId();
   registerOutputFile(outputId, outputFilePath, requiresSecretScan);
 
-  // Calculate total lines from the output file
   const outputContent = await fs.readFile(outputFilePath, 'utf8');
   const totalLines = outputContent.split('\n').length;
 
-  // Get top files by character count
   const topFiles = Object.entries(metrics.fileCharCounts)
     .map(([filePath, charCount]) => ({
       path: filePath,
@@ -134,15 +186,20 @@ export const formatPackToolResponse = async (
     .sort((a, b) => b.charCount - a.charCount)
     .slice(0, topFilesLen);
 
-  // Directory Structure
   const directoryStructure = generateTreeString(metrics.safeFilePaths, []);
 
-  // Create JSON string with all the metrics information
+  // In sandbox mode, never expose the host output path or the host directory.
+  const outputFilePathDisplay = scope?.sandboxed ? '' : outputFilePath;
+  const directoryDisplay =
+    context.directory !== undefined && scope?.sandboxed
+      ? toVirtualPath(scope.root, context.directory)
+      : context.directory;
+
   const jsonResult = JSON.stringify(
     {
-      ...(context.directory ? { directory: context.directory } : {}),
+      ...(directoryDisplay ? { directory: directoryDisplay } : {}),
       ...(context.repository ? { repository: context.repository } : {}),
-      outputFilePath,
+      outputFilePath: outputFilePathDisplay,
       outputId,
       metrics: {
         totalFiles: metrics.totalFiles,
@@ -156,12 +213,19 @@ export const formatPackToolResponse = async (
     2,
   );
 
+  // Only the "read the file directly using path" line exposes the host output
+  // path, so it is the sole part omitted in sandbox mode; everything else
+  // (including the path-free XML structure sample) is byte-for-byte identical to
+  // the non-sandboxed output.
+  const directAccessLine = scope?.sandboxed
+    ? ''
+    : `For environments with direct file system access, you can read the file directly using path: ${outputFilePath}\n`;
+
   return buildMcpToolSuccessResponse({
     description: `
 🎉 Successfully packed codebase!\nPlease review the metrics below and consider adjusting compress/includePatterns/ignorePatterns if the token count is too high and you need to reduce it before reading the file content.
 
-For environments with direct file system access, you can read the file directly using path: ${outputFilePath}
-For environments without direct file access (e.g., web browsers or sandboxed apps), use the \`read_repomix_output\` tool with this outputId: ${outputId} to access the packed codebase contents.
+${directAccessLine}For environments without direct file access (e.g., web browsers or sandboxed apps), use the \`read_repomix_output\` tool with this outputId: ${outputId} to access the packed codebase contents.
 
 The output retrieved with \`read_repomix_output\` has the following structure:
 
@@ -199,7 +263,7 @@ You can use grep with \`path="<file-path>"\` to locate specific files within the
     result: jsonResult,
     directoryStructure: directoryStructure,
     outputId: outputId,
-    outputFilePath: outputFilePath,
+    outputFilePath: outputFilePathDisplay,
     totalFiles: metrics.totalFiles,
     totalTokens: metrics.totalTokens,
   });
@@ -287,4 +351,21 @@ export const buildMcpToolErrorResponse = (structuredContent: McpToolStructuredCo
     // structuredContent is intentionally omitted for error responses
     // Error messages have different schema than success responses and may cause validation issues
   };
+};
+
+/**
+ * The single boundary for turning a caught error into a SANDBOX tool response. The
+ * message is built ONLY from a whitelisted reason ({@link sandboxErrorReason}) plus
+ * the agent's OWN input (`subject`, e.g. the relative path or outputId it supplied) —
+ * error.message is never forwarded — so no host path can reach the agent by
+ * construction. Note `subject` may legitimately be an absolute path the agent typed
+ * (e.g. "/etc/passwd" it tried to read); echoing it back is safe and helps the agent
+ * see what it sent, and it is NOT a host path. The no-host-path guarantee is enforced
+ * structurally (never forwarding error.message) and asserted end-to-end by the sandbox
+ * contract test. Non-sandbox callers never use this.
+ */
+export const buildSandboxErrorResponse = (error: unknown, subject?: string): CallToolResult => {
+  const reason = sandboxErrorReason(error);
+  const message = subject ? `Error: ${reason}: ${subject}` : `Error: ${reason}`;
+  return buildMcpToolErrorResponse({ errorMessage: message });
 };

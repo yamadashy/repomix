@@ -196,6 +196,10 @@ export const run = async () => {
       // MCP
       .optionsGroup('MCP')
       .option('--mcp', 'Run as Model Context Protocol server for AI tool integration')
+      .option(
+        '--sandbox [dir]',
+        "With --mcp: confine the MCP server's file tools to a workspace directory (defaults to the working directory; e.g. --sandbox path/to/project). Every path is relative to that root, absolute/host paths are refused, and remote packing, skill generation, and attaching external outputs are disabled.",
+      )
       // Skill Generation
       .optionsGroup('Skill Generation (Experimental)')
       .option(
@@ -290,6 +294,44 @@ const validateWatchOptions = (directories: string[], options: CliOptions): void 
   }
 };
 
+/**
+ * Canonicalize the --sandbox workspace root for the always-on path guard. realpath
+ * resolves symlinks (e.g. macOS /tmp -> /private/tmp) so the guard, output
+ * virtualization, and error scrubbing all agree with the realpaths resolveWithinRoot
+ * returns; a lexical-only root would silently weaken every guard that compares
+ * canonical child paths against it.
+ *
+ * Windows quirk: fs.realpath throws EPERM on some perfectly accessible directories
+ * (notably the 8.3 short-name temp path C:\Users\RUNNER~1\...). resolveWithinRoot
+ * already tolerates this by falling back to the lexical root, so match it here: when
+ * realpath fails but the directory genuinely exists, use the lexical (already
+ * absolute) root instead of refusing to start. A truly missing/inaccessible root
+ * still fails closed. The kernel sandbox grants on the directory OBJECT, not its
+ * name, so a short-name lexical root is confined identically — and because the guard
+ * canonicalizes root and candidates with the same realpath+lexical-fallback, they
+ * stay consistent.
+ */
+export const canonicalizeSandboxRoot = async (
+  requestedRoot: string,
+  deps = { realpath: (p: string) => fs.realpath(p), stat: (p: string) => fs.stat(p) },
+): Promise<string> => {
+  try {
+    return await deps.realpath(requestedRoot);
+  } catch (realpathError) {
+    try {
+      if ((await deps.stat(requestedRoot)).isDirectory()) {
+        return path.resolve(requestedRoot);
+      }
+    } catch {
+      // Directory is genuinely missing/inaccessible — fall through to fail closed.
+    }
+    const message = realpathError instanceof Error ? realpathError.message : String(realpathError);
+    throw new RepomixError(
+      `--sandbox workspace directory could not be resolved (${message}). Ensure it exists and is accessible.`,
+    );
+  }
+};
+
 export const runCli = async (directories: string[], cwd: string, options: CliOptions) => {
   // Detect stdout mode
   // NOTE: For compatibility, currently not detecting pipe mode
@@ -319,9 +361,21 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
   logger.trace('cwd:', cwd);
   logger.trace('options:', options);
 
+  const sandboxed = options.sandbox != null && options.sandbox !== false;
+
+  if (sandboxed && !options.mcp) {
+    logger.warn('--sandbox has no effect without --mcp; it only confines the MCP server.');
+  }
+
   if (options.mcp) {
+    // A string value of --sandbox is the workspace dir to confine to; otherwise use cwd.
+    const requestedRoot = typeof options.sandbox === 'string' ? path.resolve(cwd, options.sandbox) : cwd;
+    // Canonicalize the root so the guard/virtualization/error-scrubbing agree with the
+    // realpaths resolveWithinRoot returns. Runs before any agent connects, so surfacing
+    // the operator's own path in a resolution error is fine.
+    const sandboxRoot = sandboxed ? await canonicalizeSandboxRoot(requestedRoot) : requestedRoot;
     const { runMcpAction } = await import('./actions/mcpAction.js');
-    return await runMcpAction();
+    return await runMcpAction({ sandboxed, cwd: sandboxRoot });
   }
 
   if (options.version) {

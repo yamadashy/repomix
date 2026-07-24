@@ -85,7 +85,7 @@ const defaultJitiImport = async (fileUrl: string): Promise<unknown> => {
 export const loadFileConfig = async (
   rootDir: string,
   argConfigPath: string | null,
-  options: { skipLocalConfig?: boolean } = {},
+  options: { skipLocalConfig?: boolean; skipGlobalConfig?: boolean } = {},
   deps = {
     jitiImport: defaultJitiImport,
   },
@@ -117,9 +117,12 @@ export const loadFileConfig = async (
     );
   }
 
-  // Try to find a global config file using the priority order
+  // Try to find a global config file using the priority order. skipGlobalConfig
+  // (set for untrusted-agent contexts like --sandbox) skips it too: even the
+  // operator's own global config can set output.instructionFilePath to read an
+  // out-of-workspace file into the output shown to the untrusted agent.
   const globalConfigPaths = getGlobalConfigPaths();
-  const globalConfigPath = await findConfigFile(globalConfigPaths, 'global');
+  const globalConfigPath = options.skipGlobalConfig ? null : await findConfigFile(globalConfigPaths, 'global');
 
   if (globalConfigPath) {
     return await loadAndValidateConfig(globalConfigPath, deps);

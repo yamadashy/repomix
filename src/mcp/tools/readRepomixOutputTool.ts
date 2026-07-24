@@ -4,9 +4,11 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { createSecretLintConfig, runSecretLint } from '../../core/security/workers/securityCheckWorker.js';
 import { logger } from '../../shared/logger.js';
+import type { McpServerConfig } from '../mcpServer.js';
 import {
   buildMcpToolErrorResponse,
   buildMcpToolSuccessResponse,
+  buildSandboxErrorResponse,
   convertErrorToJson,
   getOutputFilePath,
   requiresSecretScan,
@@ -35,7 +37,10 @@ const readRepomixOutputOutputSchema = z.object({
 /**
  * Register the tool to read Repomix output files
  */
-export const registerReadRepomixOutputTool = (mcpServer: McpServer) => {
+export const registerReadRepomixOutputTool = (
+  mcpServer: McpServer,
+  config: McpServerConfig = { sandboxed: false, root: process.cwd() },
+) => {
   mcpServer.registerTool(
     'read_repomix_output',
     {
@@ -68,7 +73,9 @@ export const registerReadRepomixOutputTool = (mcpServer: McpServer) => {
           await fs.access(filePath);
         } catch {
           return buildMcpToolErrorResponse({
-            errorMessage: `Error: Output file does not exist at path: ${filePath}. The temporary file may have been cleaned up.`,
+            errorMessage: config.sandboxed
+              ? `Error: Output ${outputId} is no longer available.`
+              : `Error: Output file does not exist at path: ${filePath}. The temporary file may have been cleaned up.`,
           });
         }
 
@@ -82,7 +89,9 @@ export const registerReadRepomixOutputTool = (mcpServer: McpServer) => {
           const securityCheckResult = await runSecretLint(filePath, content, 'file', createSecretLintConfig());
           if (securityCheckResult !== null) {
             return buildMcpToolErrorResponse({
-              errorMessage: `Error: Security check failed. The file at ${filePath} may contain sensitive information.`,
+              errorMessage: config.sandboxed
+                ? `Error: Security check failed. Output ${outputId} may contain sensitive information.`
+                : `Error: Security check failed. The file at ${filePath} may contain sensitive information.`,
             });
           }
         }
@@ -140,6 +149,7 @@ export const registerReadRepomixOutputTool = (mcpServer: McpServer) => {
         } satisfies z.infer<typeof readRepomixOutputOutputSchema>);
       } catch (error) {
         logger.error(`Error reading Repomix output: ${error}`);
+        if (config.sandboxed) return buildSandboxErrorResponse(error, outputId);
         return buildMcpToolErrorResponse(convertErrorToJson(error));
       }
     },
