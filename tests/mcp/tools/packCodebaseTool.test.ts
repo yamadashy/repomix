@@ -202,4 +202,15 @@ describe('PackCodebaseTool', () => {
     const parsedResult = JSON.parse((content as { type: 'text'; text: string }).text);
     expect(parsedResult.errorMessage).toBe('Workspace creation failed');
   });
+
+  test('rejects a directory outside the allowed root when sandboxed', async () => {
+    const server = { registerTool: vi.fn().mockReturnThis() } as unknown as McpServer;
+    registerPackCodebaseTool(server, { sandboxed: true, root: '/allowed/dir' });
+    const handler = (server.registerTool as ReturnType<typeof vi.fn>).mock.calls[0][2];
+
+    const result = await handler({ directory: '../../etc', compress: false, topFilesLength: 10, style: 'xml' });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('relative to workspace root');
+  });
 });

@@ -46,6 +46,8 @@ export interface CliOptions extends OptionValues {
   remoteBranch?: string;
   remoteTrustConfig?: boolean;
   skipLocalConfig?: boolean; // Internal flag: skip loading config files from the working directory (e.g., untrusted remote repos)
+  skipGlobalConfig?: boolean; // Internal flag: also skip the operator's GLOBAL repomix config. Untrusted-agent contexts (--sandbox) set this because a config-driven output.instructionFilePath could read an out-of-workspace file into agent-visible output.
+  confineToBaseDir?: boolean; // Internal flag: drop any discovered file that resolves outside the base directory. Off by default (so documented ../ / absolute include patterns keep working); untrusted-agent contexts (--sandbox) set it as a syntax-agnostic escape backstop.
   skipMigration?: boolean; // Internal flag: never run the Repopack migration (e.g., a throwaway remote clone whose legacy files are attacker-controlled)
   enableFileProcessors?: boolean; // Internal flag: allow input.processors to run external commands. Injected only by the real CLI entry point (auto-on for local runs; gated by --remote-trust-config for remote)
   deferTokenBudgetCheck?: boolean; // Internal flag: skip the token-budget check inside runDefaultAction so the caller can enforce it after delivering output (e.g., remote runs copy out of the temp dir first)
@@ -65,6 +67,7 @@ export interface CliOptions extends OptionValues {
 
   // MCP
   mcp?: boolean;
+  sandbox?: boolean | string;
 
   // Skill Generation
   skillGenerate?: string | boolean;

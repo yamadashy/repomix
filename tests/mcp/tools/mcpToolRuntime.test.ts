@@ -231,6 +231,59 @@ describe('mcpToolRuntime', () => {
       expect(result.metrics.topFiles[2].path).toBe('file3.js');
       expect(result.metrics.totalLines).toBe(5);
     });
+
+    it('sandboxed scope omits host paths from the pack response', async () => {
+      // real fs read of the output file is needed by formatPackToolResponse;
+      // create a tmp output file with known content.
+      const os = await import('node:os');
+      const fsp = await import('node:fs/promises');
+      const path = await import('node:path');
+
+      // node:os/node:path/node:fs/promises are automocked for this whole test file
+      // (see the vi.mock calls above). This test needs genuine temp files and real
+      // path math to verify that host paths are actually scrubbed from the response,
+      // so delegate the mocked functions to their real implementations here.
+      const realOs = await vi.importActual<typeof import('node:os')>('node:os');
+      const realFsp = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
+      const realPath = await vi.importActual<typeof import('node:path')>('node:path');
+      vi.mocked(os.tmpdir).mockImplementation(realOs.tmpdir);
+      vi.mocked(path.join).mockImplementation(realPath.join);
+      vi.mocked(path.resolve).mockImplementation(realPath.resolve);
+      vi.mocked(path.relative).mockImplementation(realPath.relative);
+      vi.mocked(fsp.mkdtemp).mockImplementation(realFsp.mkdtemp);
+      vi.mocked(fsp.writeFile).mockImplementation(realFsp.writeFile);
+      vi.mocked(fsp.readFile).mockImplementation(realFsp.readFile);
+      vi.mocked(fsp.rm).mockImplementation(realFsp.rm); // else the cleanup rm hits the stub and leaks temp dirs
+
+      const root = await fsp.mkdtemp(path.join(os.tmpdir(), 'iso-root-'));
+      const outDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'iso-out-'));
+      const outputFilePath = path.join(outDir, 'repomix-output.xml');
+      await fsp.writeFile(outputFilePath, '<files>\n<file path="src/a.ts">x</file>\n</files>\n');
+
+      const metrics = {
+        totalFiles: 1,
+        totalCharacters: 1,
+        totalTokens: 1,
+        fileCharCounts: { 'src/a.ts': 1 },
+        fileTokenCounts: { 'src/a.ts': 1 },
+        processedFiles: [],
+        safeFilePaths: ['src/a.ts'],
+      };
+
+      const result = await formatPackToolResponse({ directory: root }, metrics, outputFilePath, 5, false, {
+        sandboxed: true,
+        root,
+      });
+
+      const text = JSON.stringify(result);
+      expect(text).not.toContain(root); // no host workspace path
+      expect(text).not.toContain(outDir); // no host output path
+      expect(result.structuredContent?.outputFilePath).toBe('');
+      expect(result.structuredContent?.description).not.toContain('read the file directly using path');
+
+      await fsp.rm(root, { recursive: true, force: true });
+      await fsp.rm(outDir, { recursive: true, force: true });
+    });
   });
 
   describe('buildMcpToolSuccessResponse', () => {

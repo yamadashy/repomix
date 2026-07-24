@@ -67,6 +67,10 @@ export interface PackOptions {
   skillDir?: string;
   skillProjectName?: string;
   skillSourceUrl?: string;
+  // Drop any discovered file that resolves outside its base dir (untrusted-agent
+  // callers like the MCP --sandbox). Off by default so ../ / absolute include
+  // patterns keep working for normal CLI and library callers.
+  confineToBaseDir?: boolean;
 }
 
 export const pack = async (
@@ -100,7 +104,7 @@ export const pack = async (
   const searchResultsByDir = await withMemoryLogging('Search Files', async () =>
     Promise.all(
       rootDirs.map(async (rootDir) => {
-        const result = await deps.searchFiles(rootDir, config, explicitFiles);
+        const result = await deps.searchFiles(rootDir, config, explicitFiles, options.confineToBaseDir);
         return { rootDir, filePaths: result.filePaths, emptyDirPaths: result.emptyDirPaths };
       }),
     ),

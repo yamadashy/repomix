@@ -128,6 +128,7 @@ export const searchFiles = async (
   rootDir: string,
   config: RepomixConfigMerged,
   explicitFiles?: string[],
+  confineToBaseDir = false,
 ): Promise<FileSearchResult> => {
   // Check if the path exists and get its type
   let pathStats: Stats;
@@ -286,12 +287,37 @@ export const searchFiles = async (
       logger.debug(`[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files`);
     }
 
-    logger.debug(`[result] Total files: ${filePaths.length}, empty directories: ${emptyDirPaths.length}`);
-    logger.trace(`Filtered ${filePaths.length} files`);
+    // Optional security backstop (confineToBaseDir; set by untrusted-agent callers
+    // such as the MCP --sandbox): drop any match resolving outside rootDir. Glob
+    // patterns (absolute, brace/extglob-expanded, …) can make fast-glob match paths
+    // outside rootDir regardless of cwd; this is syntax-agnostic, independent of any
+    // caller-side pattern guard. OFF by default so the documented ../ / absolute
+    // include-pattern behavior is unchanged for normal CLI and library callers.
+    let confinedFilePaths = filePaths;
+    let confinedEmptyDirPaths = emptyDirPaths;
+    if (confineToBaseDir) {
+      const rootAbs = path.resolve(rootDir);
+      const withinRoot = (rel: string): boolean => {
+        const abs = path.resolve(rootAbs, rel);
+        return abs === rootAbs || abs.startsWith(rootAbs + path.sep);
+      };
+      confinedFilePaths = filePaths.filter(withinRoot);
+      confinedEmptyDirPaths = emptyDirPaths.filter(withinRoot);
+      if (confinedFilePaths.length !== filePaths.length) {
+        logger.debug(
+          `[confine] dropped ${filePaths.length - confinedFilePaths.length} path(s) resolving outside ${rootAbs}`,
+        );
+      }
+    }
+
+    logger.debug(
+      `[result] Total files: ${confinedFilePaths.length}, empty directories: ${confinedEmptyDirPaths.length}`,
+    );
+    logger.trace(`Filtered ${confinedFilePaths.length} files`);
 
     return {
-      filePaths: sortPaths(filePaths),
-      emptyDirPaths: sortPaths(emptyDirPaths),
+      filePaths: sortPaths(confinedFilePaths),
+      emptyDirPaths: sortPaths(confinedEmptyDirPaths),
     };
   } catch (error: unknown) {
     // Re-throw PermissionError as is

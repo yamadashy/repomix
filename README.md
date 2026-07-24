@@ -681,6 +681,7 @@ Instruction
 
 #### MCP
 - `--mcp`: Run as Model Context Protocol server for AI tool integration
+- `--sandbox [dir]`: (with `--mcp`) confine the MCP server's file tools to a workspace directory (defaults to the working directory; e.g. `--sandbox path/to/project`) — every path is relative to that root, absolute/host paths are refused, and remote packing, skill generation, and attaching external outputs are disabled.
 
 #### Agent Skills Generation
 

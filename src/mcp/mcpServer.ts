@@ -15,54 +15,85 @@ import { registerReadRepomixOutputTool } from './tools/readRepomixOutputTool.js'
 /**
  * Instructions for the Repomix MCP Server that describe its capabilities and usage
  */
+const MCP_SERVER_INSTRUCTIONS_INTRO = 'Repomix MCP Server provides AI-optimized codebase analysis tools. ';
+const MCP_SERVER_INSTRUCTIONS_OUTRO = 'Includes security scanning and supports compression for token efficiency.';
+
 const MCP_SERVER_INSTRUCTIONS =
-  'Repomix MCP Server provides AI-optimized codebase analysis tools. ' +
+  MCP_SERVER_INSTRUCTIONS_INTRO +
   'Use pack_codebase or pack_remote_repository to consolidate code into a single XML file, ' +
   'use generate_skill to create Claude Agent Skills from codebases, ' +
   'use attach_packed_output to work with existing packed outputs, ' +
   'then read_repomix_output and grep_repomix_output to analyze it. ' +
   'Perfect for code reviews, documentation generation, bug investigation, GitHub repository analysis, and understanding large codebases. ' +
-  'Includes security scanning and supports compression for token efficiency.';
+  MCP_SERVER_INSTRUCTIONS_OUTRO;
 
-export const createMcpServer = async () => {
+export interface McpServerConfig {
+  /** When true (--sandbox), confine every tool to `root` and virtualize all paths. */
+  sandboxed: boolean;
+  /** The allowed directory (server cwd). All tool paths must resolve inside it. */
+  root: string;
+}
+
+const defaultMcpServerConfig = (): McpServerConfig => ({ sandboxed: false, root: process.cwd() });
+
+// Shares the intro/outro but names only the sandbox-available tools — the disabled
+// ones (remote pack, skill gen, attach) leave no trace for the agent — plus path rules.
+const SANDBOX_INSTRUCTIONS =
+  MCP_SERVER_INSTRUCTIONS_INTRO +
+  'Use pack_codebase to consolidate code into a single XML file, then read_repomix_output and ' +
+  'grep_repomix_output to analyze it; file_system_read_file and file_system_read_directory explore the tree. ' +
+  'Perfect for code reviews, documentation generation, bug investigation, and understanding large codebases. ' +
+  MCP_SERVER_INSTRUCTIONS_OUTRO +
+  ' SANDBOX MODE: locked to a single workspace = the root. Paths must be relative to workspace root ' +
+  '(e.g. "src/index.ts"; "." = whole workspace) — no absolute / "/" / "~/" / "../" / drive / ".." segment ' +
+  '(refused; retry relative). Results are relative too (root = "."), no host paths. Explore with ' +
+  'file_system_read_directory "." or pack_codebase ".", then feed returned paths to ' +
+  'read_repomix_output / grep_repomix_output / file_system_read_file.';
+
+export const createMcpServer = async (config: McpServerConfig = defaultMcpServerConfig()) => {
   const mcpServer = new McpServer(
     {
       name: 'repomix-mcp-server',
       version: await getVersion(),
     },
     {
-      instructions: MCP_SERVER_INSTRUCTIONS,
+      instructions: config.sandboxed ? SANDBOX_INSTRUCTIONS : MCP_SERVER_INSTRUCTIONS,
     },
   );
 
-  // Register the prompts
-  registerPackRemoteRepositoryPrompt(mcpServer);
+  // Always available (read-only, root-confinable) tools.
+  registerPackCodebaseTool(mcpServer, config);
+  registerReadRepomixOutputTool(mcpServer, config);
+  registerGrepRepomixOutputTool(mcpServer, config);
+  registerFileSystemReadFileTool(mcpServer, config);
+  registerFileSystemReadDirectoryTool(mcpServer, config);
 
-  // Register the tools
-  registerPackCodebaseTool(mcpServer);
-  registerPackRemoteRepositoryTool(mcpServer);
-  registerGenerateSkillTool(mcpServer);
-  registerAttachPackedOutputTool(mcpServer);
-  registerReadRepomixOutputTool(mcpServer);
-  registerGrepRepomixOutputTool(mcpServer);
-  registerFileSystemReadFileTool(mcpServer);
-  registerFileSystemReadDirectoryTool(mcpServer);
+  // Tools unavailable in sandbox mode: remote fetch (needs network),
+  // skill generation (writes), attach (arbitrary-path read of external files).
+  if (!config.sandboxed) {
+    registerPackRemoteRepositoryPrompt(mcpServer);
+    registerPackRemoteRepositoryTool(mcpServer);
+    registerGenerateSkillTool(mcpServer);
+    registerAttachPackedOutputTool(mcpServer);
+  }
 
   return mcpServer;
 };
 
-type Dependencies = {
+type RunMcpServerOptions = {
+  sandboxed?: boolean;
+  root?: string;
   processExit?: (code?: number) => never;
 };
 
-const defaultDependencies: Dependencies = {
-  processExit: process.exit,
-};
-
-export const runMcpServer = async (deps: Dependencies = defaultDependencies) => {
-  const server = await createMcpServer();
+export const runMcpServer = async (options: RunMcpServerOptions = {}) => {
+  const config: McpServerConfig = {
+    sandboxed: options.sandboxed === true,
+    root: options.root ?? process.cwd(),
+  };
+  const server = await createMcpServer(config);
   const transport = new StdioServerTransport();
-  const processExit = deps.processExit ?? process.exit;
+  const processExit = options.processExit ?? process.exit;
 
   const handleExit = async () => {
     try {
