@@ -49,7 +49,7 @@ jobs:
 
       - name: Select related issues with Claude
         id: claude
-        uses: anthropics/claude-code-action@e90deca47693f9457b72f2b53c17d7c445a87342 # v1.0.171
+        uses: anthropics/claude-code-action@3553f84341b92da26052e28acf1aa898f9511f32 # v1.0.177
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }} # read-only in this job
