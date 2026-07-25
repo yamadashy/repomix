@@ -1057,17 +1057,12 @@ r2 := '\\\\'`,
     // Extensions are matched case-insensitively, so files with uppercase or
     // mixed-case extensions still resolve to a manipulator. Without this,
     // removeComments and removeEmptyLines silently no-op on such files.
-    test.each([
-      '.JS',
-      '.Js',
-      '.PY',
-      '.CSS',
-      '.C',
-      '.HTML',
-      '.Vue',
-    ])('resolves a manipulator for uppercase extension %s', (ext) => {
-      expect(getFileManipulator(`test${ext}`)).not.toBeNull();
-    });
+    test.each(['.JS', '.Js', '.PY', '.CSS', '.C', '.HTML', '.Vue'])(
+      'resolves a manipulator for uppercase extension %s',
+      (ext) => {
+        expect(getFileManipulator(`test${ext}`)).not.toBeNull();
+      },
+    );
 
     test('strips comments from a file with an uppercase extension', () => {
       const manipulator = getFileManipulator('Main.JS');

@@ -165,20 +165,19 @@ describe('multi-root pack spec', () => {
     expect(output).toContain('MARKER_FROM_ROOT_B');
   });
 
-  it.each([
-    'xml',
-    'markdown',
-    'plain',
-  ] as const)('packs each duplicate-relative-path multi-root file exactly once in %s style', async (style) => {
-    const config = buildMergedConfig(outputDir, outputPath, style);
-    await runPack([rootA, rootB], config);
+  it.each(['xml', 'markdown', 'plain'] as const)(
+    'packs each duplicate-relative-path multi-root file exactly once in %s style',
+    async (style) => {
+      const config = buildMergedConfig(outputDir, outputPath, style);
+      await runPack([rootA, rootB], config);
 
-    const output = await fs.readFile(outputPath, 'utf-8');
-    expect(countOccurrences(output, 'MARKER_FROM_ROOT_A')).toBe(1);
-    expect(countOccurrences(output, 'MARKER_FROM_ROOT_B')).toBe(1);
-    expect(countOccurrences(output, 'ROOT_A_SRC_MARKER')).toBe(1);
-    expect(countOccurrences(output, 'ROOT_B_SRC_MARKER')).toBe(1);
-  });
+      const output = await fs.readFile(outputPath, 'utf-8');
+      expect(countOccurrences(output, 'MARKER_FROM_ROOT_A')).toBe(1);
+      expect(countOccurrences(output, 'MARKER_FROM_ROOT_B')).toBe(1);
+      expect(countOccurrences(output, 'ROOT_A_SRC_MARKER')).toBe(1);
+      expect(countOccurrences(output, 'ROOT_B_SRC_MARKER')).toBe(1);
+    },
+  );
 
   it('preserves duplicate relative paths in json output with unique keys', async () => {
     const config = buildMergedConfig(outputDir, outputPath, 'json');
