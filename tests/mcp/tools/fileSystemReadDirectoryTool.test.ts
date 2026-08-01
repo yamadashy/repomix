@@ -52,7 +52,11 @@ describe('FileSystemReadDirectoryTool', () => {
   test('should handle non-existent directory', async () => {
     const testPath = '/non/existent/dir';
     vi.mocked(path.isAbsolute).mockReturnValue(true);
-    vi.mocked(fs.stat).mockRejectedValue(new Error('ENOENT'));
+    // Realistic ENOENT (with .code) — a missing dir maps to "not found"; other stat
+    // errors (e.g. EACCES) now bubble to the outer catch instead of being masked.
+    vi.mocked(fs.stat).mockRejectedValue(
+      Object.assign(new Error('ENOENT: no such file or directory'), { code: 'ENOENT' }),
+    );
 
     const result = await toolHandler({ path: testPath });
 

@@ -179,6 +179,50 @@ describe('MCP Server', () => {
       );
       expect(server).toBeDefined();
     });
+
+    test('registers all 8 tools by default (non-sandboxed)', async () => {
+      const server = await createMcpServer();
+      const registerTool = (server as unknown as { registerTool: ReturnType<typeof vi.fn> }).registerTool;
+      const names = registerTool.mock.calls.map((c) => c[0]);
+      expect(names).toEqual(
+        expect.arrayContaining([
+          'pack_codebase',
+          'pack_remote_repository',
+          'generate_skill',
+          'attach_packed_output',
+          'read_repomix_output',
+          'grep_repomix_output',
+          'file_system_read_file',
+          'file_system_read_directory',
+        ]),
+      );
+      expect(names).toHaveLength(8);
+    });
+
+    test('registers only the 5 read-only tools when sandboxed', async () => {
+      const server = await createMcpServer({ sandboxed: true, root: '/allowed/dir' });
+      const registerTool = (server as unknown as { registerTool: ReturnType<typeof vi.fn> }).registerTool;
+      const names = registerTool.mock.calls.map((c) => c[0]);
+      expect(names.sort()).toEqual(
+        [
+          'file_system_read_directory',
+          'file_system_read_file',
+          'grep_repomix_output',
+          'pack_codebase',
+          'read_repomix_output',
+        ].sort(),
+      );
+      expect(names).not.toContain('pack_remote_repository');
+      expect(names).not.toContain('generate_skill');
+      expect(names).not.toContain('attach_packed_output');
+    });
+
+    test('sandboxed instructions tell the agent paths are relative to the workspace root', async () => {
+      await createMcpServer({ sandboxed: true, root: '/allowed/dir' });
+      expect(McpServer).toHaveBeenCalledWith(expect.any(Object), {
+        instructions: expect.stringContaining('relative to workspace root'),
+      });
+    });
   });
 
   describe('runMcpServer', () => {

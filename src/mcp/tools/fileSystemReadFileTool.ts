@@ -5,10 +5,16 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { createSecretLintConfig, runSecretLint } from '../../core/security/workers/securityCheckWorker.js';
 import { logger } from '../../shared/logger.js';
-import { buildMcpToolErrorResponse, buildMcpToolSuccessResponse } from './mcpToolRuntime.js';
+import type { McpServerConfig } from '../mcpServer.js';
+import {
+  buildMcpToolErrorResponse,
+  buildMcpToolSuccessResponse,
+  buildSandboxErrorResponse,
+  resolveToolPath,
+} from './mcpToolRuntime.js';
 
 const fileSystemReadFileInputSchema = z.object({
-  path: z.string().describe('Absolute path to the file to read'),
+  path: z.string(),
 });
 
 const fileSystemReadFileOutputSchema = z.object({
@@ -22,14 +28,29 @@ const fileSystemReadFileOutputSchema = z.object({
 /**
  * Register file system read file tool with security checks
  */
-export const registerFileSystemReadFileTool = (mcpServer: McpServer) => {
+export const registerFileSystemReadFileTool = (
+  mcpServer: McpServer,
+  config: McpServerConfig = { sandboxed: false, root: process.cwd() },
+) => {
+  const description = config.sandboxed
+    ? 'Read a file from the workspace, at a path relative to the workspace root (e.g. "src/index.ts"). Includes built-in security validation to detect and prevent access to files containing sensitive information (API keys, passwords, secrets).'
+    : 'Read a file from the local file system using an absolute path. Includes built-in security validation to detect and prevent access to files containing sensitive information (API keys, passwords, secrets).';
+  const inputSchema = fileSystemReadFileInputSchema.extend({
+    path: z
+      .string()
+      .describe(
+        config.sandboxed
+          ? 'Path to the file to read, relative to the workspace root (e.g. "src/index.ts") — no "/", "~/", drive, or ".." segment.'
+          : 'Absolute path to the file to read',
+      ),
+  });
+
   mcpServer.registerTool(
     'file_system_read_file',
     {
       title: 'Read File',
-      description:
-        'Read a file from the local file system using an absolute path. Includes built-in security validation to detect and prevent access to files containing sensitive information (API keys, passwords, secrets).',
-      inputSchema: fileSystemReadFileInputSchema,
+      description,
+      inputSchema,
       outputSchema: fileSystemReadFileOutputSchema,
       annotations: {
         readOnlyHint: true,
@@ -40,65 +61,65 @@ export const registerFileSystemReadFileTool = (mcpServer: McpServer) => {
     },
     async ({ path: filePath }): Promise<CallToolResult> => {
       try {
-        logger.trace(`Reading file at absolute path: ${filePath}`);
-
-        // Ensure path is absolute
-        if (!path.isAbsolute(filePath)) {
-          return buildMcpToolErrorResponse({
-            errorMessage: `Error: Path must be absolute. Received: ${filePath}`,
-          });
+        // Non-sandbox keeps the legacy absolute-path contract — guard it up front.
+        if (!config.sandboxed && !path.isAbsolute(filePath)) {
+          return buildMcpToolErrorResponse({ errorMessage: `Error: Path must be absolute. Received: ${filePath}` });
         }
+        // Sandbox: plain-relative → confined + virtualized. Non-sandbox: as-is.
+        const { absPath, displayPath } = await resolveToolPath(config, filePath);
+
+        logger.trace(`Reading file at path: ${displayPath}`);
 
         // Check if file exists
         try {
-          await fs.access(filePath);
+          await fs.access(absPath);
         } catch {
           return buildMcpToolErrorResponse({
-            errorMessage: `Error: File not found at path: ${filePath}`,
+            errorMessage: `Error: File not found at path: ${displayPath}`,
           });
         }
 
-        // Check if it's a directory
-        const stats = await fs.stat(filePath);
+        // Check if it's a directory (the same stat also carries the size below)
+        const stats = await fs.stat(absPath);
         if (stats.isDirectory()) {
           return buildMcpToolErrorResponse({
-            errorMessage: `Error: The specified path is a directory, not a file: ${filePath}. Use file_system_read_directory for directories.`,
+            errorMessage: `Error: The specified path is a directory, not a file: ${displayPath}. Use file_system_read_directory for directories.`,
           });
         }
 
-        // Get file stats
-        const fileStats = await fs.stat(filePath);
-
         // Read file content
-        const fileContent = await fs.readFile(filePath, 'utf8');
+        const fileContent = await fs.readFile(absPath, 'utf8');
 
         // Perform security check using the existing worker
-        const config = createSecretLintConfig();
-        const securityCheckResult = await runSecretLint(filePath, fileContent, 'file', config);
+        const secretLintConfig = createSecretLintConfig();
+        const securityCheckResult = await runSecretLint(absPath, fileContent, 'file', secretLintConfig);
 
         // If security check found issues, block the file
         if (securityCheckResult !== null) {
           return buildMcpToolErrorResponse({
-            errorMessage: `Error: Security check failed. The file at ${filePath} may contain sensitive information.`,
+            errorMessage: `Error: Security check failed. The file at ${displayPath} may contain sensitive information.`,
           });
         }
 
         // Calculate file metrics
         const lines = fileContent.split('\n').length;
-        const size = fileStats.size;
+        const size = stats.size;
 
         return buildMcpToolSuccessResponse({
-          path: filePath,
+          path: displayPath,
           content: fileContent,
           size,
           encoding: 'utf8',
           lines,
         } satisfies z.infer<typeof fileSystemReadFileOutputSchema>);
       } catch (error) {
-        logger.error(`Error in file_system_read_file tool: ${error}`);
-        return buildMcpToolErrorResponse({
-          errorMessage: `Error reading file: ${error instanceof Error ? error.message : String(error)}`,
-        });
+        logger.error(`Error in file_system_read_file tool: ${error}`); // full detail → operator (stderr)
+        // Sandbox: a whitelisted, path-free reason + the agent's own input path; the
+        // raw error.message (which can carry the absolute host path) is never
+        // forwarded, so no host path can leak. Non-sandbox: the raw message is fine.
+        if (config.sandboxed) return buildSandboxErrorResponse(error, filePath);
+        const message = error instanceof Error ? error.message : String(error);
+        return buildMcpToolErrorResponse({ errorMessage: `Error reading file: ${message}` });
       }
     },
   );

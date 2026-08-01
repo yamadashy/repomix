@@ -47,9 +47,16 @@ export const buildMergedConfig = async (cwd: string, cliOptions: CliOptions): Pr
     await runMigrationAction(cwd);
   }
 
-  // Load the config file in main process
+  // Load the merged repomix.config.* — but callers that don't trust the config
+  // source suppress it: an untrusted remote repo passes skipLocalConfig (its own
+  // config is attacker-controlled), and the sandboxed MCP server passes BOTH, since
+  // any config it loaded (workspace or the operator's global one) could set
+  // output.instructionFilePath to read an out-of-workspace file into the
+  // agent-visible output, or input.processors to run commands. Both default off, so
+  // ordinary CLI/library runs load config as usual.
   const fileConfig: RepomixConfigFile = await loadFileConfig(cwd, cliOptions.config ?? null, {
     skipLocalConfig: cliOptions.skipLocalConfig,
+    skipGlobalConfig: cliOptions.skipGlobalConfig,
   });
   logger.trace('Loaded file config:', fileConfig);
 
@@ -146,7 +153,13 @@ export const runDefaultAction = async (
 
   try {
     const { skillName, skillDir, skillProjectName, skillSourceUrl } = cliOptions;
-    const packOptions = { skillName, skillDir, skillProjectName, skillSourceUrl };
+    const packOptions = {
+      skillName,
+      skillDir,
+      skillProjectName,
+      skillSourceUrl,
+      confineToBaseDir: cliOptions.confineToBaseDir,
+    };
 
     const targetPaths = stdinFilePaths ? [cwd] : directories.map((directory) => path.resolve(cwd, directory));
 
