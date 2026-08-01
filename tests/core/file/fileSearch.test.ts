@@ -182,6 +182,19 @@ describe('fileSearch', () => {
       expect(result.filePaths).toEqual(['src/a.ts']);
     });
 
+    test('confineToBaseDir keeps children when the root is the filesystem root', async () => {
+      // A root that already ends in the separator ("/" on POSIX, "C:\\" on Windows)
+      // must not build a "//" prefix that rejects every child. --sandbox / is
+      // degenerate but must still return its files rather than silently nothing.
+      const mockConfig = createMockConfig({ output: { includeEmptyDirectories: false } });
+      vi.mocked(globby).mockResolvedValue(['etc/hosts', 'srv/app.ts'] as never);
+      vi.mocked(fs.realpath).mockImplementation((async (p: string) => p) as unknown as typeof fs.realpath);
+
+      const result = await searchFiles('/', mockConfig, undefined, true);
+
+      expect(result.filePaths).toEqual(['etc/hosts', 'srv/app.ts']);
+    });
+
     test('without confineToBaseDir, out-of-root matches are preserved (default CLI/library behavior)', async () => {
       // confineToBaseDir defaults to false so the documented ../ / absolute
       // include-pattern behavior is unchanged for normal CLI and library callers.

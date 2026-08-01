@@ -304,10 +304,14 @@ export const searchFiles = async (
       // each match and drop anything outside the canonical root, or that cannot be
       // resolved at all (fail closed — an unresolvable path is never safe to pack).
       const realRoot = await fs.realpath(rootAbs).catch(() => rootAbs);
+      // A filesystem/drive root already ends in the separator (POSIX "/", Windows
+      // "C:\"), so appending another would make the prefix "//" and reject every
+      // child — build it only when the separator is missing.
+      const realRootPrefix = realRoot.endsWith(path.sep) ? realRoot : `${realRoot}${path.sep}`;
       const withinRealRoot = async (rel: string): Promise<boolean> => {
         try {
           const real = await fs.realpath(path.resolve(rootAbs, rel));
-          return real === realRoot || real.startsWith(realRoot + path.sep);
+          return real === realRoot || real.startsWith(realRootPrefix);
         } catch {
           return false;
         }
