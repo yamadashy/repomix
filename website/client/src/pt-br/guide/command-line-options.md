@@ -81,6 +81,7 @@ description: "Consulte todas as opções da CLI do Repomix para entrada, saída,
 
 ## Opções MCP
 - `--mcp`: Executar como servidor Model Context Protocol para integração de ferramentas de IA
+- `--sandbox [dir]`: (com `--mcp`) Restringe as ferramentas de arquivo do servidor MCP a um diretório de workspace (padrão: diretório de trabalho; ex: `--sandbox path/to/project`). Todo caminho é relativo a essa raiz, caminhos absolutos/do host são recusados, e o empacotamento remoto, a geração de skills e o anexo de saídas externas são desabilitados. Veja [Servidor MCP](/pt-br/guide/mcp-server)
 
 ## Opções de Geração de Agent Skills
 

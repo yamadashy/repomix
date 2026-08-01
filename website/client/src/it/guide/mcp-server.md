@@ -19,6 +19,27 @@ repomix --mcp
 
 Questo avvia Repomix in modalità server MCP, rendendolo disponibile per gli assistenti IA che supportano il Model Context Protocol.
 
+## Modalità Sandbox
+
+Per impostazione predefinita, il server MCP può leggere qualsiasi percorso a cui l'utente host ha accesso. Questo è comodo per un assistente locale affidabile, ma troppo permissivo quando il server è esposto a un client o un agente non affidabile. L'opzione `--sandbox` confina gli strumenti per il file system del server a un'unica directory di lavoro:
+
+```bash
+# Confina alla directory di lavoro corrente
+repomix --mcp --sandbox
+
+# Confina a una directory specifica
+repomix --mcp --sandbox path/to/project
+```
+
+Quando la modalità sandbox è attiva:
+
+- **Ogni percorso è relativo alla radice della directory di lavoro.** I percorsi assoluti, `~`, `..` e i percorsi drive/UNC di Windows vengono rifiutati, e i percorsi che si risolvono al di fuori della radice (anche tramite symlink) vengono scartati. Anche i risultati e i messaggi di errore sono relativi, quindi i percorsi dell'host non vengono esposti. Questo vale per gli argomenti `directory` e `path` nel riferimento degli strumenti qui sotto: in modalità sandbox, passali relativi alla radice della directory di lavoro, non come i percorsi assoluti che quelle tabelle descrivono altrimenti.
+- **Vengono registrati solo strumenti di sola lettura e confinati alla radice:** `pack_codebase`, `read_repomix_output`, `grep_repomix_output`, `file_system_read_file` e `file_system_read_directory`. L'impacchettamento remoto, la generazione di skill e l'allegato di output esterni sono disabilitati, poiché raggiungono la rete, scrivono file o fanno riferimento a percorsi arbitrari.
+
+Si tratta di un confinamento a livello applicativo della superficie degli strumenti (difesa in profondità), non di una sandbox a livello di sistema operativo. Quando ospiti il server per client non affidabili, eseguilo comunque con i normali meccanismi di isolamento della tua piattaforma (container, utenti dedicati).
+
+`--sandbox` influisce solo sul server MCP; non ha alcun effetto senza `--mcp`.
+
 ## Configurazione dei Server MCP
 
 Per usare Repomix come server MCP con assistenti IA come Claude, devi configurare le impostazioni MCP:

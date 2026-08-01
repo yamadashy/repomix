@@ -942,6 +942,20 @@ Repomix supports the [Model Context Protocol (MCP)](https://modelcontextprotocol
 repomix --mcp
 ```
 
+#### Sandbox Mode
+
+By default the MCP server can read any path the host user can. That is convenient for a trusted local assistant, but too broad when the server is exposed to an untrusted client or agent. The `--sandbox` flag confines the server's file tools to a single workspace directory:
+
+```bash
+# Confine to the current working directory
+repomix --mcp --sandbox
+
+# Confine to a specific directory
+repomix --mcp --sandbox path/to/project
+```
+
+When sandbox mode is on, every path is relative to the workspace root (absolute, `~`, `..`, and Windows drive/UNC paths are refused, as are paths that resolve outside the root through symlinks), and only the read-only, root-confined tools are registered; remote packing, skill generation, and attaching external outputs are disabled. This is an application-level confinement of the tool surface, not an OS-level sandbox. See the [MCP Server guide](https://repomix.com/guide/mcp-server) for details.
+
 #### Configuring MCP Servers
 
 To use Repomix as an MCP server with AI assistants like Claude, you need to configure the MCP settings:

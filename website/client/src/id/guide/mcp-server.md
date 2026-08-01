@@ -20,6 +20,27 @@ repomix --mcp
 
 Ini memulai Repomix dalam mode server MCP, membuatnya tersedia untuk asisten AI yang mendukung Model Context Protocol.
 
+## Mode Sandbox
+
+Secara default, server MCP dapat membaca path apa pun yang dapat diakses oleh pengguna host. Hal ini nyaman untuk asisten lokal yang tepercaya, tetapi terlalu luas ketika server diekspos ke klien atau agent yang tidak tepercaya. Flag `--sandbox` membatasi tools file server ke satu direktori workspace:
+
+```bash
+# Batasi ke direktori kerja saat ini
+repomix --mcp --sandbox
+
+# Batasi ke direktori tertentu
+repomix --mcp --sandbox path/to/project
+```
+
+Ketika mode sandbox aktif:
+
+- **Setiap path bersifat relatif terhadap root workspace.** Path absolut, `~`, `..`, dan path drive/UNC Windows ditolak, dan path yang mengarah ke luar root (termasuk melalui symlink) akan dijatuhkan. Hasil dan pesan error juga bersifat relatif, sehingga path host tidak terekspos. Ini berlaku untuk argumen `directory` dan `path` pada referensi tools di bawah: dalam mode sandbox, berikan keduanya secara relatif terhadap root workspace, bukan sebagai path absolut seperti yang biasanya dijelaskan pada tabel-tabel tersebut.
+- **Hanya tools read-only yang dibatasi ke root yang didaftarkan:** `pack_codebase`, `read_repomix_output`, `grep_repomix_output`, `file_system_read_file`, dan `file_system_read_directory`. Pengemasan remote, pembuatan skill, dan pelampiran output eksternal dinonaktifkan, karena tools tersebut mengakses jaringan, menulis file, atau merujuk ke path sembarang.
+
+Ini adalah pembatasan permukaan tools di level aplikasi (defense in depth), bukan sandbox di level OS. Saat meng-host server untuk klien yang tidak tepercaya, tetap jalankan di bawah isolasi standar platform Anda (container, pengguna khusus).
+
+`--sandbox` hanya memengaruhi server MCP; tidak berpengaruh tanpa `--mcp`.
+
 ## Konfigurasi Server MCP
 
 Untuk menggunakan Repomix sebagai server MCP dengan asisten AI seperti Claude, Anda perlu mengkonfigurasi pengaturan MCP:

@@ -81,6 +81,7 @@ description: 入力、出力、ファイル選択、リモートリポジトリ�
 
 ## MCPオプション
 - `--mcp`: AI ツール統合用のModel Context Protocolサーバーとして実行
+- `--sandbox [dir]`: （`--mcp`と併用）MCPサーバーのファイルツールをワークスペースディレクトリに制限（デフォルトは作業ディレクトリ、例：`--sandbox path/to/project`）。すべてのパスはそのルートからの相対パスになり、絶対パス/ホストのパスは拒否され、リモートパッケージ化、スキル生成、外部出力のアタッチは無効化されます。詳細は[MCPサーバー](/ja/guide/mcp-server)を参照
 
 ## Agent Skills生成オプション
 

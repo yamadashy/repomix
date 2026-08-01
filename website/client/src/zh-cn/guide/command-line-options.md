@@ -81,6 +81,7 @@ description: 查阅 Repomix CLI 的所有选项，涵盖输入、输出、文件
 
 ## MCP 选项
 - `--mcp`: 作为AI工具集成的Model Context Protocol服务器运行
+- `--sandbox [dir]`: （配合 `--mcp` 使用）将 MCP 服务器的文件工具限制在一个工作区目录内（默认为当前工作目录；例如 `--sandbox path/to/project`）。所有路径都相对于该根目录解析，绝对路径/主机路径会被拒绝，同时远程打包、Skill 生成以及附加外部输出功能均被禁用。详见 [MCP 服务器](/zh-cn/guide/mcp-server)
 
 ## Agent Skills 生成选项
 

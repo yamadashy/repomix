@@ -81,6 +81,7 @@ description: "입력, 출력, 파일 선택, 원격 저장소, 설정, 보안, �
 
 ## MCP 옵션
 - `--mcp`: AI 도구 통합을 위한 Model Context Protocol 서버로 실행
+- `--sandbox [dir]`: (`--mcp`와 함께 사용) MCP 서버의 파일 도구를 작업 공간 디렉토리로 제한합니다 (기본값: 작업 디렉토리; 예: `--sandbox path/to/project`). 모든 경로는 해당 루트를 기준으로 하며, 절대 경로/호스트 경로는 거부되고, 원격 패키징, 스킬 생성, 외부 출력 첨부가 비활성화됩니다. 자세한 내용은 [MCP 서버](/ko/guide/mcp-server) 문서를 참조하세요.
 
 ## Agent Skills 생성 옵션
 

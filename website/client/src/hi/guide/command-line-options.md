@@ -81,6 +81,7 @@ description: Input, output, file selection, remote repositories, configuration, 
 
 ## MCP विकल्प
 - `--mcp`: AI टूल एकीकरण के लिए Model Context Protocol सर्वर के रूप में चलाएं
+- `--sandbox [dir]`: (`--mcp` के साथ) MCP सर्वर के फ़ाइल टूल्स को एक वर्कस्पेस डायरेक्टरी तक सीमित करें (डिफ़ॉल्ट रूप से वर्किंग डायरेक्टरी; जैसे `--sandbox path/to/project`)। हर पथ उस रूट के सापेक्ष होता है, पूर्ण/होस्ट पथों को अस्वीकार कर दिया जाता है, और रिमोट पैकिंग, स्किल जनरेशन, और बाहरी आउटपुट संलग्न करना अक्षम कर दिया जाता है। देखें [MCP सर्वर](/hi/guide/mcp-server)।
 
 ## Agent Skills जनरेशन विकल्प
 
