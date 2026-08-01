@@ -172,8 +172,14 @@ export const registerPackCodebaseTool = (
           //    output.instructionFilePath to read an out-of-workspace file into the
           //    agent-visible output, or input.processors to run commands;
           //  - confine the file search to the root, a syntax-agnostic backstop behind
-          //    the include/ignore pattern guard.
-          ...(config.sandboxed ? { skipLocalConfig: true, skipGlobalConfig: true, confineToBaseDir: true } : {}),
+          //    the include/ignore pattern guard;
+          //  - disable git-based change sorting, which otherwise spawns `git -C
+          //    <workspace> log` inside the untrusted tree — running git there honors
+          //    the workspace's own .git/config (e.g. core.fsmonitor), reopening a
+          //    subprocess-execution surface the rest of this lockdown closes.
+          ...(config.sandboxed
+            ? { skipLocalConfig: true, skipGlobalConfig: true, confineToBaseDir: true, gitSortByChanges: false }
+            : {}),
         } as CliOptions;
 
         // cliOptions.quiet makes runCli set the SHARED logger to SILENT and never
