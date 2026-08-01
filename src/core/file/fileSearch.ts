@@ -297,15 +297,28 @@ export const searchFiles = async (
     let confinedEmptyDirPaths = emptyDirPaths;
     if (confineToBaseDir) {
       const rootAbs = path.resolve(rootDir);
-      const withinRoot = (rel: string): boolean => {
-        const abs = path.resolve(rootAbs, rel);
-        return abs === rootAbs || abs.startsWith(rootAbs + path.sep);
+      // Compare realpaths, not the lexical path: a lexically in-root match can still
+      // point outside when an intermediate component is a symlink — a glob whose
+      // static base names a symlinked dir (e.g. "gateway/x" with gateway -> /etc) is
+      // read through by fast-glob even with followSymbolicLinks:false. Canonicalize
+      // each match and drop anything outside the canonical root, or that cannot be
+      // resolved at all (fail closed — an unresolvable path is never safe to pack).
+      const realRoot = await fs.realpath(rootAbs).catch(() => rootAbs);
+      const withinRealRoot = async (rel: string): Promise<boolean> => {
+        try {
+          const real = await fs.realpath(path.resolve(rootAbs, rel));
+          return real === realRoot || real.startsWith(realRoot + path.sep);
+        } catch {
+          return false;
+        }
       };
-      confinedFilePaths = filePaths.filter(withinRoot);
-      confinedEmptyDirPaths = emptyDirPaths.filter(withinRoot);
+      const fileKeep = await Promise.all(filePaths.map(withinRealRoot));
+      const emptyKeep = await Promise.all(emptyDirPaths.map(withinRealRoot));
+      confinedFilePaths = filePaths.filter((_, i) => fileKeep[i]);
+      confinedEmptyDirPaths = emptyDirPaths.filter((_, i) => emptyKeep[i]);
       if (confinedFilePaths.length !== filePaths.length) {
         logger.debug(
-          `[confine] dropped ${filePaths.length - confinedFilePaths.length} path(s) resolving outside ${rootAbs}`,
+          `[confine] dropped ${filePaths.length - confinedFilePaths.length} path(s) resolving outside ${realRoot}`,
         );
       }
     }

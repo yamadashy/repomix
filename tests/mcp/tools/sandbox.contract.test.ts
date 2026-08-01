@@ -139,6 +139,51 @@ describe('sandbox contract', () => {
     });
   });
 
+  // A symlink is lexically clean (no "..", not absolute), so it passes the string
+  // checks; only realpath reveals that it points outside root. These drive REAL
+  // on-disk symlinks through the handlers to prove the real fs.realpath wiring
+  // rejects them — the pathScope unit tests stub realpath and cannot cover this.
+  describe('confinement: real symlink escapes are caught via realpath', () => {
+    let outside = '';
+    beforeEach(async () => {
+      outside = await fsp.realpath(await fsp.mkdtemp(path.join(os.tmpdir(), 'sbx-outside-')));
+      await fsp.writeFile(path.join(outside, 'secret.txt'), 'TOP SECRET');
+    });
+    afterEach(async () => {
+      await fsp.rm(outside, { recursive: true, force: true });
+    });
+
+    test('read_file through an in-root symlink to an outside file is rejected and leaks nothing', async () => {
+      if (process.platform === 'win32') return; // symlink creation needs privilege on Windows
+      await fsp.symlink(path.join(outside, 'secret.txt'), path.join(root, 'link.txt'), 'file');
+      const r = await readFile({ path: 'link.txt' });
+      expect(rejectedAsEscape(r), 'a symlink escaping root must be rejected').toBe(true);
+      expect(textOf(r)).not.toContain('TOP SECRET');
+      expect(JSON.stringify(r)).not.toContain(outside); // the resolved external target must not leak either
+      assertNoHostPath(r);
+    });
+
+    test('read_file through a symlinked directory used as a gateway is rejected', async () => {
+      if (process.platform === 'win32') return;
+      // realpath must resolve an INTERMEDIATE component, not just the leaf.
+      await fsp.symlink(outside, path.join(root, 'gateway'), 'dir');
+      const r = await readFile({ path: 'gateway/secret.txt' });
+      expect(rejectedAsEscape(r)).toBe(true);
+      expect(textOf(r)).not.toContain('TOP SECRET');
+      expect(JSON.stringify(r)).not.toContain(outside);
+      assertNoHostPath(r);
+    });
+
+    test('read_directory through an in-root symlink to an outside directory is rejected', async () => {
+      if (process.platform === 'win32') return;
+      await fsp.symlink(outside, path.join(root, 'linkdir'), 'dir');
+      const r = await readDir({ path: 'linkdir' });
+      expect(rejectedAsEscape(r), 'a symlinked directory escaping root must be rejected').toBe(true);
+      expect(JSON.stringify(r)).not.toContain(outside);
+      assertNoHostPath(r);
+    });
+  });
+
   describe('confinement: valid look-alike filenames are NOT over-rejected', () => {
     test.each(ALLOWED_TRICKY)('read_file reads %j (tilde/dots that are not escapes)', async (name) => {
       await fsp.writeFile(path.join(root, name), `body:${name}`);
@@ -185,6 +230,19 @@ describe('sandbox contract', () => {
     test.each(ALLOWED_PATTERNS)('pack ACCEPTS relative pattern %j (reaches runCli)', async (pattern) => {
       await pack({ directory: '.', includePatterns: pattern, compress: false, topFilesLength: 10, style: 'xml' });
       expect(runCli, `${pattern} should pass the guard`).toHaveBeenCalled();
+    });
+    test('a sandboxed pack locks down runCli: skips config, confines the search, disables git sort', async () => {
+      // The lockdown is what keeps a sandboxed pack from reading the workspace's own
+      // repomix.config / .git/config or matching outside root. gitSortByChanges:false
+      // in particular stops `git -C <workspace> log` from spawning gpg.program.
+      await pack({ directory: '.', compress: false, topFilesLength: 10, style: 'xml' });
+      const cliOptions = vi.mocked(runCli).mock.calls[0]?.[2];
+      expect(cliOptions).toMatchObject({
+        skipLocalConfig: true,
+        skipGlobalConfig: true,
+        confineToBaseDir: true,
+        gitSortByChanges: false,
+      });
     });
     test('pack on a mistyped in-root directory → actionable "directory not found", not "operation failed"', async () => {
       // "scr" (typo for "src") resolves in-root but does not exist; the pre-check

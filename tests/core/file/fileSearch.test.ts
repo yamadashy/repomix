@@ -172,6 +172,10 @@ describe('fileSearch', () => {
       // behind the sandbox's pattern guard.
       const mockConfig = createMockConfig({ output: { includeEmptyDirectories: false } });
       vi.mocked(globby).mockResolvedValue(['src/a.ts', '/etc/passwd', '../sibling/secret.txt'] as never);
+      // Identity realpath (no symlinks in this fixture): the confine check compares
+      // canonical paths, so a mock that returns its input models a symlink-free tree.
+      // The symlink-escape case is covered by a real-filesystem test elsewhere.
+      vi.mocked(fs.realpath).mockImplementation((async (p: string) => p) as unknown as typeof fs.realpath);
 
       const result = await searchFiles('/mock/root', mockConfig, undefined, true);
 
