@@ -34,7 +34,7 @@ repomix --mcp --sandbox path/to/project
 Quando la modalità sandbox è attiva:
 
 - **Ogni percorso è relativo alla radice della directory di lavoro.** I percorsi assoluti, `~`, `..` e i percorsi drive/UNC di Windows vengono rifiutati, e i percorsi che si risolvono al di fuori della radice (anche tramite symlink) vengono scartati. Anche i risultati e i messaggi di errore sono relativi, quindi i percorsi dell'host non vengono esposti.
-- **Vengono registrati solo strumenti di sola lettura e confinati alla radice:** `pack_codebase`, `read_repomix_output`, `grep_repomix_output`, `file_system_read_file` e `file_system_read_directory`. L'impacchettamento remoto, la generazione di skill e l'allegare output esterni sono disabilitati, poiché raggiungono la rete, scrivono file o fanno riferimento a percorsi arbitrari.
+- **Vengono registrati solo strumenti di sola lettura e confinati alla radice:** `pack_codebase`, `read_repomix_output`, `grep_repomix_output`, `file_system_read_file` e `file_system_read_directory`. L'impacchettamento remoto, la generazione di skill e l'allegato di output esterni sono disabilitati, poiché raggiungono la rete, scrivono file o fanno riferimento a percorsi arbitrari.
 
 Si tratta di un confinamento a livello applicativo della superficie degli strumenti (difesa in profondità), non di una sandbox a livello di sistema operativo. Quando ospiti il server per client non affidabili, eseguilo comunque con i normali meccanismi di isolamento della tua piattaforma (container, utenti dedicati).
 
