@@ -20,6 +20,27 @@ repomix --mcp
 
 Bu komut Repomix'i MCP sunucusu modunda başlatır ve Model Context Protocol'ü destekleyen AI asistanları tarafından kullanılabilir hale getirir.
 
+## Sandbox Modu
+
+Varsayılan olarak MCP sunucusu, kendisini çalıştıran kullanıcının erişebildiği her yolu okuyabilir. Bu, güvenilen yerel bir asistan için uygundur, ancak sunucu güvenilmeyen bir istemciye veya ajana açıldığında çok geniş kapsamlıdır. `--sandbox` bayrağı, sunucunun dosya araçlarını tek bir çalışma alanı dizinine sınırlar:
+
+```bash
+# Geçerli çalışma dizinine sınırla
+repomix --mcp --sandbox
+
+# Belirli bir dizine sınırla
+repomix --mcp --sandbox path/to/project
+```
+
+Sandbox modu açıkken:
+
+- **Her yol, çalışma alanı köküne görelidir.** Mutlak yollar, `~`, `..` ve Windows sürücü/UNC yolları reddedilir; kökün dışına çözümlenen yollar (sembolik bağlantılar üzerinden olanlar dahil) atlanır. Sonuçlar ve hata mesajları da göreli olduğundan ana makine yolları açığa çıkmaz.
+- **Yalnızca salt okunur ve köke sınırlı araçlar kaydedilir:** `pack_codebase`, `read_repomix_output`, `grep_repomix_output`, `file_system_read_file` ve `file_system_read_directory`. Uzak paketleme, beceri oluşturma ve harici çıktıları ekleme devre dışı bırakılır; çünkü bunlar ağa erişir, dosya yazar veya keyfi yollara başvurur.
+
+Bu, işletim sistemi düzeyinde bir sandbox değil, araç yüzeyinin uygulama düzeyinde bir sınırlandırmasıdır (katmanlı savunma). Sunucuyu güvenilmeyen istemciler için barındırırken yine de platformunuzun olağan izolasyon yöntemlerini (konteynerler, ayrılmış kullanıcılar) kullanarak çalıştırın.
+
+`--sandbox`, yalnızca MCP sunucusunu etkiler; `--mcp` olmadan hiçbir etkisi yoktur.
+
 ## MCP Sunucularını Yapılandırma
 
 Repomix'i Claude gibi AI asistanlarıyla MCP sunucusu olarak kullanmak için MCP ayarlarını yapılandırmanız gerekir:

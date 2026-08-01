@@ -81,6 +81,7 @@ description: Referensi lengkap opsi CLI Repomix untuk input, output, pemilihan f
 
 ## Opsi MCP
 - `--mcp`: Jalankan sebagai server Model Context Protocol untuk integrasi alat AI
+- `--sandbox [dir]`: (dengan `--mcp`) Membatasi tools file server MCP ke sebuah direktori workspace (default direktori kerja; mis. `--sandbox path/to/project`). Setiap path bersifat relatif terhadap root tersebut, path absolut/host ditolak, dan pengemasan remote, pembuatan skill, serta pelampiran output eksternal dinonaktifkan. Lihat [Server MCP](/id/guide/mcp-server)
 
 ## Opsi Pembuatan Agent Skills
 

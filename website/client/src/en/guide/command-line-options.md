@@ -81,6 +81,7 @@ description: Reference every Repomix CLI option for input, output, file selectio
 
 ## MCP Options
 - `--mcp`: Run as Model Context Protocol server for AI tool integration
+- `--sandbox [dir]`: (with `--mcp`) Confine the MCP server's file tools to a workspace directory (defaults to the working directory; e.g. `--sandbox path/to/project`). Every path is relative to that root, absolute/host paths are refused, and remote packing, skill generation, and attaching external outputs are disabled. See [MCP Server](/guide/mcp-server).
 
 ## Agent Skills Generation Options
 

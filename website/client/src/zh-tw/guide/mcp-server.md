@@ -20,6 +20,27 @@ repomix --mcp
 
 這會以 MCP 伺服器模式啟動 Repomix，使其可供支援 Model Context Protocol 的 AI 助手使用。
 
+## 沙箱模式
+
+依預設，MCP 伺服器可以讀取主機使用者所能存取的任何路徑。這對受信任的本地助手而言很方便，但當伺服器暴露給不受信任的用戶端或 agent 時，範圍就顯得過於寬鬆。`--sandbox` 旗標會將伺服器的文件工具限制在單一工作區目錄內：
+
+```bash
+# 限制在目前工作目錄
+repomix --mcp --sandbox
+
+# 限制在特定目錄
+repomix --mcp --sandbox path/to/project
+```
+
+當沙箱模式啟用時：
+
+- **每個路徑都相對於工作區根目錄解析。** 絕對路徑、`~`、`..` 以及 Windows 磁碟機／UNC 路徑都會被拒絕，解析後落在根目錄之外的路徑（包括透過符號連結的情況）也會被捨棄。傳回結果與錯誤訊息同樣採用相對路徑，因此不會暴露主機路徑。
+- **僅會註冊唯讀且限定在根目錄內的工具：** `pack_codebase`、`read_repomix_output`、`grep_repomix_output`、`file_system_read_file` 和 `file_system_read_directory`。遠端打包、Skills 生成以及附加外部輸出等功能皆會被停用，因為它們會存取網路、寫入文件或參照任意路徑。
+
+這是在應用程式層級對工具介面所做的限制（縱深防禦），並非作業系統層級的沙箱。若要為不受信任的用戶端託管此伺服器，仍應在您所在平台慣用的隔離機制下運行（容器、專用使用者等）。
+
+`--sandbox` 僅影響 MCP 伺服器；若未搭配 `--mcp` 使用則不會生效。
+
 ## 配置 MCP 伺服器
 
 要將 Repomix 作為 MCP 伺服器與 Claude 等 AI 助手一起使用，您需要配置 MCP 設置：

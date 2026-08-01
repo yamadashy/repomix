@@ -81,6 +81,7 @@ description: "Girdi, çıktı, dosya seçimi, uzak depolar, yapılandırma, güv
 
 ## MCP Seçenekleri
 - `--mcp`: AI araç entegrasyonu için Model Context Protocol sunucusu olarak çalıştır
+- `--sandbox [dir]`: (`--mcp` ile birlikte) MCP sunucusunun dosya araçlarını bir çalışma alanı dizinine sınırla (varsayılan olarak çalışma dizini; örn. `--sandbox path/to/project`). Her yol bu köke görelidir, mutlak/ana makine yolları reddedilir ve uzak paketleme, beceri oluşturma ile harici çıktıları ekleme devre dışı bırakılır. Bkz. [MCP Sunucusu](/tr/guide/mcp-server).
 
 ## Ajan Becerileri Oluşturma Seçenekleri
 

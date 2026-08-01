@@ -81,6 +81,7 @@ description: Tham khảo mọi tùy chọn Repomix CLI cho input, output, chọn
 
 ## Tùy chọn MCP
 - `--mcp`: Chạy như máy chủ Model Context Protocol để tích hợp công cụ AI
+- `--sandbox [dir]`: (cùng với `--mcp`) Giới hạn các công cụ tệp của máy chủ MCP trong một thư mục workspace (mặc định là thư mục làm việc hiện tại; ví dụ: `--sandbox path/to/project`). Mọi đường dẫn đều tương đối với gốc đó, đường dẫn tuyệt đối/host bị từ chối, và tính năng đóng gói từ xa, tạo skill, và đính kèm đầu ra bên ngoài đều bị vô hiệu hóa. Xem [Máy chủ MCP](/vi/guide/mcp-server)
 
 ## Tùy chọn Tạo Agent Skills
 
