@@ -172,10 +172,27 @@ describe('fileSearch', () => {
       // behind the sandbox's pattern guard.
       const mockConfig = createMockConfig({ output: { includeEmptyDirectories: false } });
       vi.mocked(globby).mockResolvedValue(['src/a.ts', '/etc/passwd', '../sibling/secret.txt'] as never);
+      // Identity realpath (no symlinks in this fixture): the confine check compares
+      // canonical paths, so a mock that returns its input models a symlink-free tree.
+      // The symlink-escape case is covered by a real-filesystem test elsewhere.
+      vi.mocked(fs.realpath).mockImplementation((async (p: string) => p) as unknown as typeof fs.realpath);
 
       const result = await searchFiles('/mock/root', mockConfig, undefined, true);
 
       expect(result.filePaths).toEqual(['src/a.ts']);
+    });
+
+    test('confineToBaseDir keeps children when the root is the filesystem root', async () => {
+      // A root that already ends in the separator ("/" on POSIX, "C:\\" on Windows)
+      // must not build a "//" prefix that rejects every child. --sandbox / is
+      // degenerate but must still return its files rather than silently nothing.
+      const mockConfig = createMockConfig({ output: { includeEmptyDirectories: false } });
+      vi.mocked(globby).mockResolvedValue(['etc/hosts', 'srv/app.ts'] as never);
+      vi.mocked(fs.realpath).mockImplementation((async (p: string) => p) as unknown as typeof fs.realpath);
+
+      const result = await searchFiles('/', mockConfig, undefined, true);
+
+      expect(result.filePaths).toEqual(['etc/hosts', 'srv/app.ts']);
     });
 
     test('without confineToBaseDir, out-of-root matches are preserved (default CLI/library behavior)', async () => {
