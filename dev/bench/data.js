@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785559807929,
+  "lastUpdate": 1785596999664,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -10215,6 +10215,51 @@ window.BENCHMARK_DATA = {
             "range": "±25",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1221ms, Q3: 1246ms\nAll times: 1189, 1192, 1203, 1205, 1208, 1221, 1226, 1230, 1232, 1232, 1234, 1236, 1241, 1242, 1242, 1246, 1250, 1254, 1263, 1264ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3e3dcb5b838fc141ca0620e94615b3a1281ec79b",
+          "message": "Merge pull request #1753 from zenitechcs/feat/mcp-sandbox\n\nfeat(mcp): Add --sandbox to confine the MCP server to a directory",
+          "timestamp": "2026-08-02T00:07:57+09:00",
+          "tree_id": "a2c52d1bb16a5763bd5323a55f03111126ecb3e9",
+          "url": "https://github.com/yamadashy/repomix/commit/3e3dcb5b838fc141ca0620e94615b3a1281ec79b"
+        },
+        "date": 1785596998948,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 552,
+            "range": "±21",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 543ms, Q3: 564ms\nAll times: 517, 532, 533, 536, 539, 539, 540, 543, 545, 545, 546, 550, 550, 550, 551, 552, 552, 555, 557, 558, 561, 563, 564, 575, 582, 588, 606, 618, 620, 655ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 880,
+            "range": "±21",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 868ms, Q3: 889ms\nAll times: 860, 862, 862, 866, 867, 868, 874, 876, 876, 877, 880, 885, 886, 889, 889, 889, 899, 927, 994, 1030ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1145,
+            "range": "±77",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1133ms, Q3: 1210ms\nAll times: 1120, 1126, 1128, 1130, 1131, 1133, 1137, 1140, 1141, 1143, 1145, 1148, 1192, 1194, 1202, 1210, 1229, 1241, 1282, 1318ms"
           }
         ]
       }
