@@ -34,7 +34,7 @@ repomix --mcp --sandbox path/to/project
 
 Quando o modo sandbox está ativado:
 
-- **Todo caminho é relativo à raiz do workspace.** Caminhos absolutos, `~`, `..` e caminhos de drive/UNC do Windows são recusados, e caminhos que resolvem para fora da raiz (inclusive através de symlinks) são descartados. Resultados e mensagens de erro também são relativos, para que caminhos do host não sejam expostos.
+- **Todo caminho é relativo à raiz do workspace.** Caminhos absolutos, `~`, `..` e caminhos de drive/UNC do Windows são recusados, e caminhos que resolvem para fora da raiz (inclusive através de symlinks) são descartados. Resultados e mensagens de erro também são relativos, para que caminhos do host não sejam expostos. Isso se aplica aos argumentos `directory` e `path` na referência de ferramentas abaixo: no modo sandbox, informe-os relativos à raiz do workspace, e não como os caminhos absolutos que essas tabelas descrevem em outros contextos.
 - **Apenas ferramentas somente leitura e restritas à raiz são registradas:** `pack_codebase`, `read_repomix_output`, `grep_repomix_output`, `file_system_read_file` e `file_system_read_directory`. O empacotamento remoto, a geração de skills e o anexo de saídas externas são desabilitados, já que essas operações acessam a rede, gravam arquivos ou referenciam caminhos arbitrários.
 
 Essa é uma restrição da superfície de ferramentas no nível da aplicação (defesa em profundidade), não um sandbox no nível do sistema operacional. Ao hospedar o servidor para clientes não confiáveis, continue executando-o sob o isolamento usual da sua plataforma (containers, usuários dedicados).

@@ -34,7 +34,7 @@ repomix --mcp --sandbox path/to/project
 
 Wenn der Sandbox-Modus aktiviert ist:
 
-- **Jeder Pfad ist relativ zur Wurzel des Workspace.** Absolute Pfade, `~`, `..` sowie Windows-Laufwerks-/UNC-Pfade werden abgelehnt, und Pfade, die außerhalb der Wurzel aufgelöst werden (auch über Symlinks), werden verworfen. Ergebnisse und Fehlermeldungen sind ebenfalls relativ, sodass Host-Pfade nicht offengelegt werden.
+- **Jeder Pfad ist relativ zur Wurzel des Workspace.** Absolute Pfade, `~`, `..` sowie Windows-Laufwerks-/UNC-Pfade werden abgelehnt, und Pfade, die außerhalb der Wurzel aufgelöst werden (auch über Symlinks), werden verworfen. Ergebnisse und Fehlermeldungen sind ebenfalls relativ, sodass Host-Pfade nicht offengelegt werden. Dies gilt für die Argumente `directory` und `path` in der Tool-Referenz weiter unten: Im Sandbox-Modus werden sie relativ zur Wurzel des Workspace angegeben, nicht als absolute Pfade, wie sie diese Tabellen sonst beschreiben.
 - **Es werden nur schreibgeschützte, auf die Wurzel beschränkte Tools registriert:** `pack_codebase`, `read_repomix_output`, `grep_repomix_output`, `file_system_read_file` und `file_system_read_directory`. Remote-Packing, Skill-Generierung und das Anhängen externer Ausgaben sind deaktiviert, da sie auf das Netzwerk zugreifen, Dateien schreiben oder beliebige Pfade referenzieren.
 
 Dies ist eine Beschränkung der Tool-Oberfläche auf Anwendungsebene (Defense in Depth), keine Sandbox auf Betriebssystemebene. Wenn Sie den Server für nicht vertrauenswürdige Clients bereitstellen, sollten Sie ihn weiterhin unter der üblichen Isolation Ihrer Plattform ausführen (Container, dedizierte Benutzer).

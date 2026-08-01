@@ -34,7 +34,7 @@ repomix --mcp --sandbox path/to/project
 
 Sandbox modu açıkken:
 
-- **Her yol, çalışma alanı köküne görelidir.** Mutlak yollar, `~`, `..` ve Windows sürücü/UNC yolları reddedilir; kökün dışına çözümlenen yollar (sembolik bağlantılar üzerinden olanlar dahil) atlanır. Sonuçlar ve hata mesajları da göreli olduğundan ana makine yolları açığa çıkmaz.
+- **Her yol, çalışma alanı köküne görelidir.** Mutlak yollar, `~`, `..` ve Windows sürücü/UNC yolları reddedilir; kökün dışına çözümlenen yollar (sembolik bağlantılar üzerinden olanlar dahil) atlanır. Sonuçlar ve hata mesajları da göreli olduğundan ana makine yolları açığa çıkmaz. Bu durum, aşağıdaki araç referansındaki `directory` ve `path` argümanları için de geçerlidir: sandbox modunda bu değerleri, tabloların normalde tanımladığı mutlak yollar yerine çalışma alanı köküne göreli olarak verin.
 - **Yalnızca salt okunur ve köke sınırlı araçlar kaydedilir:** `pack_codebase`, `read_repomix_output`, `grep_repomix_output`, `file_system_read_file` ve `file_system_read_directory`. Uzak paketleme, beceri oluşturma ve harici çıktıları ekleme devre dışı bırakılır; çünkü bunlar ağa erişir, dosya yazar veya keyfi yollara başvurur.
 
 Bu, işletim sistemi düzeyinde bir sandbox değil, araç yüzeyinin uygulama düzeyinde bir sınırlandırmasıdır (katmanlı savunma). Sunucuyu güvenilmeyen istemciler için barındırırken yine de platformunuzun olağan izolasyon yöntemlerini (konteynerler, ayrılmış kullanıcılar) kullanarak çalıştırın.

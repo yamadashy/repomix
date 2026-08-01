@@ -34,7 +34,7 @@ repomix --mcp --sandbox path/to/project
 
 Cuando el modo sandbox está activado:
 
-- **Cada ruta es relativa a la raíz del espacio de trabajo.** Las rutas absolutas, `~`, `..` y las rutas de unidad/UNC de Windows se rechazan, y las rutas que se resuelven fuera de la raíz (incluso a través de enlaces simbólicos) se descartan. Los resultados y los mensajes de error también son relativos, de modo que las rutas del host no quedan expuestas.
+- **Cada ruta es relativa a la raíz del espacio de trabajo.** Las rutas absolutas, `~`, `..` y las rutas de unidad/UNC de Windows se rechazan, y las rutas que se resuelven fuera de la raíz (incluso a través de enlaces simbólicos) se descartan. Los resultados y los mensajes de error también son relativos, de modo que las rutas del host no quedan expuestas. Esto se aplica a los argumentos `directory` y `path` de la referencia de herramientas a continuación: en modo sandbox, pásalos como rutas relativas a la raíz del espacio de trabajo, no como las rutas absolutas que esas tablas describen en los demás casos.
 - **Solo se registran herramientas de solo lectura confinadas a la raíz:** `pack_codebase`, `read_repomix_output`, `grep_repomix_output`, `file_system_read_file` y `file_system_read_directory`. El empaquetado remoto, la generación de skills y la adjunción de salidas externas están deshabilitados, ya que acceden a la red, escriben archivos o hacen referencia a rutas arbitrarias.
 
 Esto es un confinamiento a nivel de aplicación de la superficie de herramientas (defensa en profundidad), no un sandbox a nivel de sistema operativo. Si alojas el servidor para clientes no confiables, sigue ejecutándolo bajo el aislamiento habitual de tu plataforma (contenedores, usuarios dedicados).

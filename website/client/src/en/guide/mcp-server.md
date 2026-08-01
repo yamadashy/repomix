@@ -34,7 +34,7 @@ repomix --mcp --sandbox path/to/project
 
 When sandbox mode is on:
 
-- **Every path is relative to the workspace root.** Absolute paths, `~`, `..`, and Windows drive/UNC paths are refused, and paths that resolve outside the root (including through symlinks) are dropped. Results and error messages are relative too, so host paths are not exposed.
+- **Every path is relative to the workspace root.** Absolute paths, `~`, `..`, and Windows drive/UNC paths are refused, and paths that resolve outside the root (including through symlinks) are dropped. Results and error messages are relative too, so host paths are not exposed. This applies to the `directory` and `path` arguments in the tool reference below: in sandbox mode, pass them relative to the workspace root, not as the absolute paths those tables otherwise describe.
 - **Only read-only, root-confined tools are registered:** `pack_codebase`, `read_repomix_output`, `grep_repomix_output`, `file_system_read_file`, and `file_system_read_directory`. Remote packing, skill generation, and attaching external outputs are disabled, since they reach the network, write files, or reference arbitrary paths.
 
 This is an application-level confinement of the tool surface (defense in depth), not an OS-level sandbox. When hosting the server for untrusted clients, still run it under your platform's usual isolation (containers, dedicated users).

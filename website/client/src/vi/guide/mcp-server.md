@@ -34,7 +34,7 @@ repomix --mcp --sandbox path/to/project
 
 Khi chế độ sandbox được bật:
 
-- **Mọi đường dẫn đều tương đối với gốc workspace.** Đường dẫn tuyệt đối, `~`, `..`, và đường dẫn ổ đĩa/UNC của Windows đều bị từ chối, và các đường dẫn phân giải ra bên ngoài gốc (kể cả thông qua symlink) đều bị loại bỏ. Kết quả và thông báo lỗi cũng tương đối, vì vậy đường dẫn trên máy host không bị lộ ra.
+- **Mọi đường dẫn đều tương đối với gốc workspace.** Đường dẫn tuyệt đối, `~`, `..`, và đường dẫn ổ đĩa/UNC của Windows đều bị từ chối, và các đường dẫn phân giải ra bên ngoài gốc (kể cả thông qua symlink) đều bị loại bỏ. Kết quả và thông báo lỗi cũng tương đối, vì vậy đường dẫn trên máy host không bị lộ ra. Điều này áp dụng cho các tham số `directory` và `path` trong phần công cụ tham chiếu bên dưới: ở chế độ sandbox, hãy truyền chúng dưới dạng tương đối với gốc workspace, thay vì đường dẫn tuyệt đối như các bảng đó thường mô tả.
 - **Chỉ các công cụ chỉ-đọc, bị giới hạn trong thư mục gốc mới được đăng ký:** `pack_codebase`, `read_repomix_output`, `grep_repomix_output`, `file_system_read_file`, và `file_system_read_directory`. Đóng gói từ xa, tạo skill, và đính kèm đầu ra bên ngoài đều bị vô hiệu hóa, vì chúng cần truy cập mạng, ghi tệp, hoặc tham chiếu đến các đường dẫn tùy ý.
 
 Đây là một biện pháp giới hạn ở cấp độ ứng dụng đối với bề mặt công cụ (phòng thủ theo chiều sâu), không phải một sandbox ở cấp độ hệ điều hành. Khi host máy chủ cho các client không đáng tin cậy, bạn vẫn nên chạy nó dưới cơ chế cách ly thông thường của nền tảng (container, người dùng riêng biệt).
