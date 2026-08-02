@@ -54,6 +54,26 @@ describe('remoteAction functions', () => {
       });
     });
 
+    test('should accept explicit URLs whose repo name starts with a dot (e.g. .github)', () => {
+      expect(parseRemoteValue('https://github.com/microsoft/.github')).toEqual({
+        repoUrl: 'https://github.com/microsoft/.github.git',
+        remoteBranch: undefined,
+      });
+      expect(parseRemoteValue('git@github.com:microsoft/.github.git')).toEqual({
+        repoUrl: 'git@github.com:microsoft/.github.git',
+        remoteBranch: undefined,
+      });
+      expect(parseRemoteValue('https://gitlab.com/group/.foo')).toEqual({
+        repoUrl: 'https://gitlab.com/group/.foo.git',
+        remoteBranch: undefined,
+      });
+    });
+
+    test('should still reject shorthand whose repo name starts with a dot', () => {
+      expect(() => parseRemoteValue('user/.repo')).toThrowError();
+      expect(() => parseRemoteValue('.user/repo')).toThrowError();
+    });
+
     test('should handle Azure DevOps SSH URLs', () => {
       const azureDevOpsUrl = 'git@ssh.dev.azure.com:v3/organization/project/repo';
       const parsed = parseRemoteValue(azureDevOpsUrl);
