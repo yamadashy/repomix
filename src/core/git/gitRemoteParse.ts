@@ -2,7 +2,7 @@ import gitUrlParse, { type GitUrl } from 'git-url-parse';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { assertNotMetadataEndpoint } from './gitMetadataEndpoint.js';
-import { isValidShorthand } from './gitRemoteUrl.js';
+import { isExplicitRemoteUrl, isValidShorthand } from './gitRemoteUrl.js';
 
 interface IGitUrl extends GitUrl {
   commit: string | undefined;
@@ -93,7 +93,10 @@ const parseRemoteValueInternal = (
     const ownerSlashRepo =
       parsedFields.full_name.split('/').length > 1 ? parsedFields.full_name.split('/').slice(-2).join('/') : '';
 
-    if (ownerSlashRepo !== '' && !isValidShorthand(ownerSlashRepo)) {
+    // Only re-check the shorthand shape for ambiguous (non-URL) inputs. An explicit
+    // URL is already validated by git-url-parse and may lead/trail a name segment with
+    // `.`/`-`/`_` (e.g. the org-profile repo `owner/.github`), which the regex rejects.
+    if (ownerSlashRepo !== '' && !isExplicitRemoteUrl(remoteValue) && !isValidShorthand(ownerSlashRepo)) {
       throw new RepomixError('Invalid owner/repo in repo URL');
     }
 
