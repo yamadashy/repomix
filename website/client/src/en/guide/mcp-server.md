@@ -35,7 +35,7 @@ repomix --mcp --sandbox path/to/project
 When sandbox mode is on:
 
 - **Every path is relative to the workspace root.** Absolute paths, `~`, `..`, and Windows drive/UNC paths are refused, and paths that resolve outside the root (including through symlinks) are dropped. Results and error messages are relative too, so host paths are not exposed. This applies to the `directory` and `path` arguments in the tool reference below: in sandbox mode, pass them relative to the workspace root, not as the absolute paths those tables otherwise describe.
-- **Only read-only, root-confined tools are registered:** `pack_codebase`, `read_repomix_output`, `grep_repomix_output`, `file_system_read_file`, and `file_system_read_directory`. Remote packing, skill generation, and attaching external outputs are disabled, since they reach the network, write files, or reference arbitrary paths.
+- **Only read-only, root-confined tools are registered:** `pack_codebase`, `read_repomix_output`, `grep_repomix_output`, `file_system_read_file`, and `file_system_read_directory`. Remote packing, skill generation, and attaching external outputs are disabled, since they reach the network, write files, or reference arbitrary paths. The two `file_system_*` tools are themselves available only in sandbox mode, where the workspace root bounds what they can reach.
 
 This is an application-level confinement of the tool surface (defense in depth), not an OS-level sandbox. When hosting the server for untrusted clients, still run it under your platform's usual isolation (containers, dedicated users).
 
@@ -251,48 +251,35 @@ This tool searches for patterns in a Repomix output file using grep-like functio
 
 ### file_system_read_file and file_system_read_directory
 
-Repomix's MCP server provides two file system tools that allow AI assistants to safely interact with the local file system:
+These two file system tools are available only in [sandbox mode](#sandbox-mode) (`--sandbox`), where the workspace root bounds what they can reach. Without `--sandbox` they are not registered, so the default server exposes no raw file reads.
 
 1. `file_system_read_file`
-  - Reads file contents from the local file system using absolute paths
-  - Includes built-in security validation to detect and prevent access to files containing sensitive information
-  - Implements security validation using [Secretlint](https://github.com/secretlint/secretlint)
-  - Prevents access to files containing sensitive information (API keys, passwords, secrets)
-  - Validates absolute paths to prevent directory traversal attacks
-  - Returns formatted content with clear error messages for invalid paths or security issues
+  - Reads file contents at a path relative to the workspace root (e.g. `src/index.ts`)
+  - Refuses content matching known secret formats ([Secretlint](https://github.com/secretlint/secretlint)) as an additional heuristic safeguard — the access boundary is the workspace root, not the scan
+  - Returns clear error messages for invalid paths, without exposing host paths
 
 2. `file_system_read_directory`
-  - Lists the contents of a directory using an absolute path
-  - Returns a formatted list showing files and subdirectories with clear indicators
-  - Shows both files and directories with clear indicators (`[FILE]` or `[DIR]`)
-  - Provides safe directory traversal with proper error handling
-  - Validates paths and ensures they are absolute
+  - Lists the contents of a directory at a path relative to the workspace root (e.g. `.` or `src`)
+  - Shows files and directories with clear indicators (`[FILE]` or `[DIR]`)
   - Useful for exploring project structure and understanding codebase organization
-
-Both tools incorporate robust security measures:
-- Absolute path validation to prevent directory traversal attacks
-- Permission checks to ensure proper access rights
-- Integration with Secretlint for sensitive information detection
-- Clear error messaging for better debugging and security awareness
 
 **Example:**
 ```typescript
 // Reading a file
 const fileContent = await tools.file_system_read_file({
-  path: '/absolute/path/to/file.txt'
+  path: 'src/index.ts'
 });
 
 // Listing directory contents
 const dirContent = await tools.file_system_read_directory({
-  path: '/absolute/path/to/directory'
+  path: 'src'
 });
 ```
 
 These tools are particularly useful when AI assistants need to:
-- Analyze specific files in the codebase
+- Analyze specific files in the workspace
 - Navigate directory structures
 - Verify file existence and accessibility
-- Ensure secure file system operations
 
 ## Benefits of Using Repomix as an MCP Server
 

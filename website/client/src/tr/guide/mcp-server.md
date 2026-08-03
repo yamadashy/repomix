@@ -35,7 +35,7 @@ repomix --mcp --sandbox path/to/project
 Sandbox modu açıkken:
 
 - **Her yol, çalışma alanı köküne görelidir.** Mutlak yollar, `~`, `..` ve Windows sürücü/UNC yolları reddedilir; kökün dışına çözümlenen yollar (sembolik bağlantılar üzerinden olanlar dahil) atlanır. Sonuçlar ve hata mesajları da göreli olduğundan ana makine yolları açığa çıkmaz. Bu durum, aşağıdaki araç referansındaki `directory` ve `path` argümanları için de geçerlidir: sandbox modunda bu değerleri, tabloların normalde tanımladığı mutlak yollar yerine çalışma alanı köküne göreli olarak verin.
-- **Yalnızca salt okunur ve köke sınırlı araçlar kaydedilir:** `pack_codebase`, `read_repomix_output`, `grep_repomix_output`, `file_system_read_file` ve `file_system_read_directory`. Uzak paketleme, beceri oluşturma ve harici çıktıları ekleme devre dışı bırakılır; çünkü bunlar ağa erişir, dosya yazar veya keyfi yollara başvurur.
+- **Yalnızca salt okunur ve köke sınırlı araçlar kaydedilir:** `pack_codebase`, `read_repomix_output`, `grep_repomix_output`, `file_system_read_file` ve `file_system_read_directory`. Uzak paketleme, beceri oluşturma ve harici çıktıları ekleme devre dışı bırakılır; çünkü bunlar ağa erişir, dosya yazar veya keyfi yollara başvurur. İki `file_system_*` aracının kendisi de yalnızca sandbox modunda kullanılabilir; buna erişebilecekleri alanı çalışma alanı kökü sınırlar.
 
 Bu, işletim sistemi düzeyinde bir sandbox değil, araç yüzeyinin uygulama düzeyinde bir sınırlandırmasıdır (katmanlı savunma). Sunucuyu güvenilmeyen istemciler için barındırırken yine de platformunuzun olağan izolasyon yöntemlerini (konteynerler, ayrılmış kullanıcılar) kullanarak çalıştırın.
 
@@ -251,48 +251,35 @@ Bu araç, JavaScript RegExp sözdizimini kullanan grep benzeri işlevsellikle bi
 
 ### file_system_read_file ve file_system_read_directory
 
-Repomix'in MCP sunucusu, AI asistanlarının yerel dosya sistemiyle güvenli bir şekilde etkileşime girmesini sağlayan iki dosya sistemi aracı sunar:
+Bu iki dosya sistemi aracı yalnızca [sandbox modunda](#sandbox-modu) (`--sandbox`) kullanılabilir; buna erişebilecekleri alanı çalışma alanı kökü sınırlar. `--sandbox` olmadan kaydedilmezler, dolayısıyla varsayılan sunucu ham dosya okumaları sunmaz.
 
 1. `file_system_read_file`
-  - Mutlak yollar kullanarak yerel dosya sisteminden dosya içeriğini okur
-  - Hassas bilgiler içeren dosyalara erişimi tespit edip önlemek için yerleşik güvenlik doğrulaması içerir
-  - [Secretlint](https://github.com/secretlint/secretlint) kullanarak güvenlik doğrulaması uygular
-  - Hassas bilgiler içeren dosyalara erişimi engeller (API anahtarları, parolalar, gizli bilgiler)
-  - Dizin geçiş saldırılarını önlemek için mutlak yolları doğrular
-  - Geçersiz yollar veya güvenlik sorunları için açık hata mesajlarıyla biçimlendirilmiş içerik döndürür
+  - Çalışma alanı köküne göreli bir yoldaki dosya içeriğini okur (örn. `src/index.ts`)
+  - Ek bir sezgisel önlem olarak bilinen gizli bilgi biçimleriyle ([Secretlint](https://github.com/secretlint/secretlint)) eşleşen içeriği reddeder; erişim sınırı tarama değil, çalışma alanı köküdür
+  - Geçersiz yollar için ana makine yollarını açığa çıkarmadan açık hata mesajları döndürür
 
 2. `file_system_read_directory`
-  - Mutlak yol kullanarak bir dizinin içeriğini listeler
-  - Dosya ve alt dizinleri açık göstergelerle gösteren biçimlendirilmiş bir liste döndürür
+  - Çalışma alanı köküne göreli bir yoldaki dizinin içeriğini listeler (örn. `.` veya `src`)
   - Hem dosyaları hem dizinleri açık göstergelerle (`[FILE]` veya `[DIR]`) gösterir
-  - Uygun hata yönetimiyle güvenli dizin gezintisi sağlar
-  - Yolları doğrular ve mutlak olduklarından emin olur
   - Proje yapısını keşfetmek ve kod tabanı organizasyonunu anlamak için kullanışlıdır
-
-Her iki araç da güçlü güvenlik önlemleri içerir:
-- Dizin geçiş saldırılarını önlemek için mutlak yol doğrulaması
-- Uygun erişim haklarını sağlamak için izin kontrolleri
-- Hassas bilgi tespiti için Secretlint entegrasyonu
-- Daha iyi hata ayıklama ve güvenlik farkındalığı için açık hata mesajları
 
 **Örnek:**
 ```typescript
 // Dosya okuma
 const fileContent = await tools.file_system_read_file({
-  path: '/absolute/path/to/file.txt'
+  path: 'src/index.ts'
 });
 
 // Dizin içeriğini listeleme
 const dirContent = await tools.file_system_read_directory({
-  path: '/absolute/path/to/directory'
+  path: 'src'
 });
 ```
 
 Bu araçlar, AI asistanlarının şunları yapması gerektiğinde özellikle kullanışlıdır:
-- Kod tabanındaki belirli dosyaları analiz etmek
+- Çalışma alanındaki belirli dosyaları analiz etmek
 - Dizin yapılarında gezinmek
 - Dosya varlığını ve erişilebilirliğini doğrulamak
-- Güvenli dosya sistemi işlemlerini sağlamak
 
 ## Repomix'i MCP Sunucusu Olarak Kullanmanın Avantajları
 

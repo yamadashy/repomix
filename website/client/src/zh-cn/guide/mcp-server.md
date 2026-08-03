@@ -35,7 +35,7 @@ repomix --mcp --sandbox path/to/project
 启用沙箱模式后：
 
 - **所有路径都相对于工作区根目录解析。** 绝对路径、`~`、`..` 以及 Windows 驱动器/UNC 路径都会被拒绝，解析后落在根目录之外的路径（包括通过符号链接的情况）也会被丢弃。返回结果和错误消息中的路径同样是相对路径，因此不会暴露主机路径。这也适用于下方工具参考中的 `directory` 和 `path` 参数：在沙箱模式下，应将它们指定为相对于工作区根目录的路径，而不是这些表格中通常描述的绝对路径。
-- **仅注册只读且限定在根目录内的工具：** `pack_codebase`、`read_repomix_output`、`grep_repomix_output`、`file_system_read_file` 和 `file_system_read_directory`。远程打包、Skill 生成以及附加外部输出等功能均被禁用，因为它们会访问网络、写入文件或引用任意路径。
+- **仅注册只读且限定在根目录内的工具：** `pack_codebase`、`read_repomix_output`、`grep_repomix_output`、`file_system_read_file` 和 `file_system_read_directory`。远程打包、Skill 生成以及附加外部输出等功能均被禁用，因为它们会访问网络、写入文件或引用任意路径。这两个 `file_system_*` 工具本身也仅在沙箱模式下可用，其可访问范围由工作区根目录限定。
 
 这是在应用层面对工具能力范围的限制（纵深防御），而非操作系统级别的沙箱。当为不受信任的客户端托管服务器时，仍应在你所在平台的常规隔离机制下运行它（容器、专用用户等）。
 
@@ -251,48 +251,35 @@ claude mcp add repomix -- npx -y repomix --mcp
 
 ### file_system_read_file 和 file_system_read_directory
 
-Repomix 的 MCP 服务器提供了两个文件系统工具，允许 AI 助手安全地与本地文件系统交互：
+这两个文件系统工具仅在[沙箱模式](#沙箱模式)（`--sandbox`）下可用，其可访问范围由工作区根目录限定。如果不使用 `--sandbox`，它们不会被注册，因此默认服务器不会暴露任何原始文件读取能力。
 
 1. `file_system_read_file`
-  - 使用绝对路径从本地文件系统读取文件内容
-  - 包含内置安全验证以检测和防止访问包含敏感信息的文件
-  - 使用 [Secretlint](https://github.com/secretlint/secretlint) 实现安全验证
-  - 防止访问包含敏感信息的文件（API 密钥、密码、机密）
-  - 验证绝对路径以防止目录遍历攻击
-  - 对无效路径和安全问题返回清晰的错误消息
+  - 读取相对于工作区根目录的路径下的文件内容（例如 `src/index.ts`）
+  - 作为一项额外的启发式防护措施，拒绝匹配已知敏感信息格式（[Secretlint](https://github.com/secretlint/secretlint)）的内容；访问边界是工作区根目录，而非该扫描
+  - 对无效路径返回清晰的错误消息，且不会暴露主机路径
 
 2. `file_system_read_directory`
-  - 使用绝对路径列出目录的内容
-  - 返回显示文件和子目录的格式化列表，带有清晰的指示符
+  - 列出相对于工作区根目录的路径下的目录内容（例如 `.` 或 `src`）
   - 使用清晰的指示符（`[FILE]` 或 `[DIR]`）显示文件和目录
-  - 提供安全的目录遍历和适当的错误处理
-  - 验证路径并确保使用绝对路径
   - 对探索项目结构和理解代码库组织很有用
-
-这两个工具都包含了强大的安全措施：
-- 绝对路径验证以防止目录遍历攻击
-- 权限检查以确保适当的访问权限
-- 与 Secretlint 集成以检测敏感信息
-- 清晰的错误消息以便于调试和安全意识
 
 **示例：**
 ```typescript
 // 读取文件
 const fileContent = await tools.file_system_read_file({
-  path: '/absolute/path/to/file.txt'
+  path: 'src/index.ts'
 });
 
 // 列出目录内容
 const dirContent = await tools.file_system_read_directory({
-  path: '/absolute/path/to/directory'
+  path: 'src'
 });
 ```
 
 这些工具在 AI 助手需要执行以下操作时特别有用：
-- 分析代码库中的特定文件
+- 分析工作区中的特定文件
 - 导航目录结构
 - 验证文件存在性和可访问性
-- 确保安全的文件系统操作
 
 ## 将 Repomix 作为 MCP 服务器使用的好处
 
