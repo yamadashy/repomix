@@ -74,6 +74,33 @@ describe('remoteAction functions', () => {
       expect(() => parseRemoteValue('.user/repo')).toThrowError();
     });
 
+    test('should accept explicit URLs whose owner/repo name leads or trails with . - _', () => {
+      expect(parseRemoteValue('https://github.com/owner/repo.')).toEqual({
+        repoUrl: 'https://github.com/owner/repo..git',
+        remoteBranch: undefined,
+      });
+      expect(parseRemoteValue('https://github.com/owner/repo-')).toEqual({
+        repoUrl: 'https://github.com/owner/repo-.git',
+        remoteBranch: undefined,
+      });
+      expect(parseRemoteValue('https://github.com/owner/repo_')).toEqual({
+        repoUrl: 'https://github.com/owner/repo_.git',
+        remoteBranch: undefined,
+      });
+      expect(parseRemoteValue('https://github.com/-owner/repo')).toEqual({
+        repoUrl: 'https://github.com/-owner/repo.git',
+        remoteBranch: undefined,
+      });
+      expect(parseRemoteValue('https://github.com/_owner/repo')).toEqual({
+        repoUrl: 'https://github.com/_owner/repo.git',
+        remoteBranch: undefined,
+      });
+    });
+
+    test('should reject explicit URLs with a doubled slash (empty path segment)', () => {
+      expect(() => parseRemoteValue('https://github.com/user//repo')).toThrowError();
+    });
+
     test('should handle Azure DevOps SSH URLs', () => {
       const azureDevOpsUrl = 'git@ssh.dev.azure.com:v3/organization/project/repo';
       const parsed = parseRemoteValue(azureDevOpsUrl);
