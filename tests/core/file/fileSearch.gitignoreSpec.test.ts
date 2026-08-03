@@ -199,4 +199,17 @@ describe('fileSearch gitignore spec', () => {
     expect(filePaths).toContain('.config/public.data');
     expect(filePaths).not.toContain('.config/secret.data');
   });
+
+  it('replays .gitignore manually when globby trips over escaped Windows device-name rules', async () => {
+    await writeFixture(tmpDir, {
+      '.gitignore': '\\.\\NUL\nignored.draft\n',
+      'src/index.ts': 'export {};\n',
+      'ignored.draft': 'noisy\n',
+    });
+
+    const { filePaths } = await searchFiles(tmpDir, createMockConfig());
+
+    expect(filePaths).toContain('src/index.ts');
+    expect(filePaths).not.toContain('ignored.draft');
+  });
 });

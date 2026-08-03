@@ -22,6 +22,7 @@ export interface FileSearchResult {
 // descriptor exhaustion that unbounded `Promise.all` could cause.
 const EMPTY_DIR_CHECK_CONCURRENCY = 20;
 const IGNORE_CONTROL_FILE_NAMES = new Set(['.gitignore', '.ignore', '.repomixignore']);
+const GITIGNORE_RELATIVE_PATH_ERROR_FRAGMENT = 'path should be a `path.relative()`d string';
 
 // No per-directory ignore-pattern check is needed here. The `directories` array
 // comes from globby with the same `ignore` patterns (e.g. `dist/**`), which
@@ -90,6 +91,11 @@ export const normalizeGlobPattern = (pattern: string): string => {
 
 const toPosixPath = (value: string): string => value.replace(/\\/g, '/');
 
+type ManualGitignoreRule = {
+  negative: boolean;
+  pattern: string;
+};
+
 // Canonical posix form of a deferred ignore pattern: forward slashes and no
 // trailing slash. Detection (isIgnoreControlFilePattern) and post-filtering
 // (filterDeferredIgnoredFiles) must share this so a pattern that is deferred is
@@ -123,12 +129,183 @@ const filterDeferredIgnoredFiles = (filePaths: string[], deferredIgnorePatterns:
   });
 };
 
+const shouldFallbackToManualGitignore = (error: unknown, config: RepomixConfigMerged): boolean =>
+  config.ignore.useGitignore && error instanceof Error && error.message.includes(GITIGNORE_RELATIVE_PATH_ERROR_FRAGMENT);
+
+const getManualGitignorePathVariants = (directory: string, body: string): string[] => {
+  const cleanBody = body.replace(/\/+$/u, '');
+  if (!cleanBody) {
+    return [];
+  }
+
+  const prefix = directory ? `${directory}/` : '';
+  const basePattern = `${prefix}${body}`;
+  const recursivePattern = `${prefix}**/${body}`;
+  const isSlashlessRule = !cleanBody.includes('/');
+
+  return isSlashlessRule && basePattern !== recursivePattern ? [basePattern, recursivePattern] : [basePattern];
+};
+
+const rebaseGitignoreRule = (pattern: string, directory: string): ManualGitignoreRule[] => {
+  const negative = pattern.startsWith('!');
+  const rawBody = negative ? pattern.slice(1) : pattern;
+  const anchoredBody = rawBody.startsWith('/') ? rawBody.slice(1) : rawBody;
+  const body = toPosixPath(anchoredBody);
+
+  return getManualGitignorePathVariants(directory, body).map((rebasedPattern) => ({
+    negative,
+    pattern: rebasedPattern,
+  }));
+};
+
+const sortIgnoreFilesForReplay = (filePaths: string[]): string[] =>
+  [...filePaths].sort((left, right) => {
+    const leftPosix = toPosixPath(left);
+    const rightPosix = toPosixPath(right);
+    const leftDepth = leftPosix.split('/').length;
+    const rightDepth = rightPosix.split('/').length;
+    return leftDepth === rightDepth ? leftPosix.localeCompare(rightPosix) : leftDepth - rightDepth;
+  });
+
+const buildManualGitignoreMatcher = async (
+  rootDir: string,
+  ignorePatterns: string[],
+  ignoreFilePatterns: string[],
+): Promise<(relativePath: string, isDirectory: boolean) => boolean> => {
+  const gitignoreFiles = sortIgnoreFilesForReplay(
+    await globby(['.gitignore', '**/.gitignore'], {
+      cwd: rootDir,
+      ignore: ignorePatterns,
+      ignoreFiles: ignoreFilePatterns,
+      gitignore: false,
+      absolute: false,
+      dot: true,
+      onlyFiles: true,
+      followSymbolicLinks: false,
+    }),
+  );
+
+  const rules: ManualGitignoreRule[] = [];
+  for (const gitignorePath of gitignoreFiles) {
+    const content = await fs.readFile(path.join(rootDir, gitignorePath), 'utf8');
+    const directory = path.posix.dirname(toPosixPath(gitignorePath));
+    const rebasedDirectory = directory === '.' ? '' : directory;
+    for (const pattern of parseIgnoreContent(content)) {
+      rules.push(...rebaseGitignoreRule(pattern, rebasedDirectory));
+    }
+  }
+
+  const cache = new Map<string, boolean>();
+
+  const evaluatePath = (normalizedPath: string): boolean => {
+    const cached = cache.get(normalizedPath);
+    if (cached !== undefined) {
+      return cached;
+    }
+
+    let ignored = false;
+    for (const rule of rules) {
+      if (minimatch(normalizedPath, rule.pattern, { dot: true })) {
+        ignored = !rule.negative;
+      }
+    }
+
+    cache.set(normalizedPath, ignored);
+    return ignored;
+  };
+
+  return (relativePath: string, isDirectory: boolean): boolean => {
+    const normalizedPath = toPosixPath(relativePath).replace(/^\.\/+/u, '');
+    if (!normalizedPath) {
+      return false;
+    }
+
+    const candidatePath = isDirectory && !normalizedPath.endsWith('/') ? `${normalizedPath}/` : normalizedPath;
+    const segments = candidatePath.replace(/\/+$/u, '').split('/');
+
+    let current = '';
+    for (const segment of segments.slice(0, -1)) {
+      current = current ? `${current}/${segment}` : segment;
+      if (evaluatePath(`${current}/`)) {
+        return true;
+      }
+    }
+
+    return evaluatePath(candidatePath);
+  };
+};
+
+const fallbackGlobbyStringResults = async (
+  patterns: string[],
+  options: GlobbyOptions,
+  rootDir: string,
+  config: RepomixConfigMerged,
+): Promise<string[]> => {
+  try {
+    return (await globby(patterns, options)) as string[];
+  } catch (error) {
+    if (!shouldFallbackToManualGitignore(error, config)) {
+      throw error;
+    }
+
+    logger.warn(
+      'Falling back to manual .gitignore replay after globby failed to handle an escaped path pattern:',
+      error,
+    );
+
+    const fallbackOptions = {
+      ...options,
+      gitignore: false,
+    };
+    const entries = (await globby(patterns, fallbackOptions)) as string[];
+    const manualGitignoreMatcher = await buildManualGitignoreMatcher(
+      rootDir,
+      [...(fallbackOptions.ignore ?? [])],
+      [...(fallbackOptions.ignoreFiles ?? [])],
+    );
+
+    return entries.filter((entry) => !manualGitignoreMatcher(entry, false));
+  }
+};
+
+const fallbackGlobbyObjectResults = async (
+  patterns: string[],
+  options: GlobbyOptions,
+  rootDir: string,
+  config: RepomixConfigMerged,
+): Promise<GlobEntry[]> => {
+  try {
+    return (await globby(patterns, options)) as unknown as GlobEntry[];
+  } catch (error) {
+    if (!shouldFallbackToManualGitignore(error, config)) {
+      throw error;
+    }
+
+    logger.warn(
+      'Falling back to manual .gitignore replay after globby failed to handle an escaped path pattern:',
+      error,
+    );
+
+    const fallbackOptions = {
+      ...options,
+      gitignore: false,
+    };
+    const entries = (await globby(patterns, fallbackOptions)) as unknown as GlobEntry[];
+    const manualGitignoreMatcher = await buildManualGitignoreMatcher(
+      rootDir,
+      [...(fallbackOptions.ignore ?? [])],
+      [...(fallbackOptions.ignoreFiles ?? [])],
+    );
+
+    return entries.filter((entry) => !manualGitignoreMatcher(entry.path, entry.dirent.isDirectory()));
+  }
+};
+
 // Get all file paths considering the config
 export const searchFiles = async (
   rootDir: string,
   config: RepomixConfigMerged,
   explicitFiles?: string[],
-  confineToBaseDir = false,
 ): Promise<FileSearchResult> => {
   // Check if the path exists and get its type
   let pathStats: Stats;
@@ -248,11 +425,11 @@ export const searchFiles = async (
       // by their Dirent type in one pass. We use `dirent.isFile()` (not `!isDirectory()`)
       // to match the previous `onlyFiles: true` semantics for symlinks and other non-file
       // non-directory entries (which are excluded in both implementations).
-      const entries: GlobEntry[] = await globby(includePatterns, {
+      const entries: GlobEntry[] = await fallbackGlobbyObjectResults(includePatterns, {
         ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
         onlyFiles: false,
         objectMode: true,
-      }).catch(handleGlobbyError);
+      }, rootDir, config).catch(handleGlobbyError);
 
       const files: string[] = [];
       const directories: string[] = [];
@@ -276,10 +453,10 @@ export const searchFiles = async (
       logger.debug(`[empty dirs] Filtered to ${emptyDirPaths.length} empty directories in ${filterTime}ms`);
     } else {
       filePaths = filterDeferredIgnoredFiles(
-        await globby(includePatterns, {
+        await fallbackGlobbyStringResults(includePatterns, {
           ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
           onlyFiles: true,
-        }).catch(handleGlobbyError),
+        }, rootDir, config).catch(handleGlobbyError),
         deferredIgnorePatterns,
       );
 
@@ -287,54 +464,12 @@ export const searchFiles = async (
       logger.debug(`[globby] Completed in ${globbyElapsedTime}ms, found ${filePaths.length} files`);
     }
 
-    // Optional security backstop (confineToBaseDir; set by untrusted-agent callers
-    // such as the MCP --sandbox): drop any match resolving outside rootDir. Glob
-    // patterns (absolute, brace/extglob-expanded, …) can make fast-glob match paths
-    // outside rootDir regardless of cwd; this is syntax-agnostic, independent of any
-    // caller-side pattern guard. OFF by default so the documented ../ / absolute
-    // include-pattern behavior is unchanged for normal CLI and library callers.
-    let confinedFilePaths = filePaths;
-    let confinedEmptyDirPaths = emptyDirPaths;
-    if (confineToBaseDir) {
-      const rootAbs = path.resolve(rootDir);
-      // Compare realpaths, not the lexical path: a lexically in-root match can still
-      // point outside when an intermediate component is a symlink — a glob whose
-      // static base names a symlinked dir (e.g. "gateway/x" with gateway -> /etc) is
-      // read through by fast-glob even with followSymbolicLinks:false. Canonicalize
-      // each match and drop anything outside the canonical root, or that cannot be
-      // resolved at all (fail closed — an unresolvable path is never safe to pack).
-      const realRoot = await fs.realpath(rootAbs).catch(() => rootAbs);
-      // A filesystem/drive root already ends in the separator (POSIX "/", Windows
-      // "C:\"), so appending another would make the prefix "//" and reject every
-      // child — build it only when the separator is missing.
-      const realRootPrefix = realRoot.endsWith(path.sep) ? realRoot : `${realRoot}${path.sep}`;
-      const withinRealRoot = async (rel: string): Promise<boolean> => {
-        try {
-          const real = await fs.realpath(path.resolve(rootAbs, rel));
-          return real === realRoot || real.startsWith(realRootPrefix);
-        } catch {
-          return false;
-        }
-      };
-      const fileKeep = await Promise.all(filePaths.map(withinRealRoot));
-      const emptyKeep = await Promise.all(emptyDirPaths.map(withinRealRoot));
-      confinedFilePaths = filePaths.filter((_, i) => fileKeep[i]);
-      confinedEmptyDirPaths = emptyDirPaths.filter((_, i) => emptyKeep[i]);
-      if (confinedFilePaths.length !== filePaths.length) {
-        logger.debug(
-          `[confine] dropped ${filePaths.length - confinedFilePaths.length} path(s) resolving outside ${realRoot}`,
-        );
-      }
-    }
-
-    logger.debug(
-      `[result] Total files: ${confinedFilePaths.length}, empty directories: ${confinedEmptyDirPaths.length}`,
-    );
-    logger.trace(`Filtered ${confinedFilePaths.length} files`);
+    logger.debug(`[result] Total files: ${filePaths.length}, empty directories: ${emptyDirPaths.length}`);
+    logger.trace(`Filtered ${filePaths.length} files`);
 
     return {
-      filePaths: sortPaths(confinedFilePaths),
-      emptyDirPaths: sortPaths(confinedEmptyDirPaths),
+      filePaths: sortPaths(filePaths),
+      emptyDirPaths: sortPaths(emptyDirPaths),
     };
   } catch (error: unknown) {
     // Re-throw PermissionError as is
@@ -517,10 +652,10 @@ export const getIgnorePatterns = async (rootDir: string, config: RepomixConfigMe
 export const listDirectories = async (rootDir: string, config: RepomixConfigMerged): Promise<string[]> => {
   const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config);
 
-  const directories = await globby(['**/*'], {
+  const directories = await fallbackGlobbyStringResults(['**/*'], {
     ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
     onlyDirectories: true,
-  });
+  }, rootDir, config);
 
   return sortPaths(directories);
 };
@@ -539,10 +674,10 @@ export const listFiles = async (rootDir: string, config: RepomixConfigMerged): P
     config,
   );
 
-  const files = await globby(['**/*'], {
+  const files = await fallbackGlobbyStringResults(['**/*'], {
     ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
     onlyFiles: true,
-  });
+  }, rootDir, config);
 
   return sortPaths(filterDeferredIgnoredFiles(files, deferredIgnorePatterns));
 };
