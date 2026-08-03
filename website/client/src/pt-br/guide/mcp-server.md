@@ -206,7 +206,7 @@ Esta ferramenta lê o conteúdo de um arquivo de saída gerado pelo Repomix. Sup
 **Funcionalidades:**
 - Projetado especificamente para ambientes baseados na web ou aplicações em sandbox
 - Recupera o conteúdo de saídas geradas anteriormente usando seu ID
-- Fornece acesso seguro à base de código empacotada sem requerer acesso ao sistema de arquivos
+- Fornece acesso à base de código empacotada sem requerer acesso ao sistema de arquivos
 - Suporta leitura parcial para arquivos grandes
 
 **Exemplo:**
@@ -251,7 +251,7 @@ Esta ferramenta busca padrões em um arquivo de saída do Repomix usando funcion
 
 ### file_system_read_file e file_system_read_directory
 
-Essas duas ferramentas de sistema de arquivos só estão disponíveis no [modo sandbox](#modo-sandbox) (`--sandbox`), onde a raiz do workspace delimita o que elas podem alcançar. Sem `--sandbox`, elas não são registradas, então o servidor padrão não expõe leituras de arquivos brutas.
+Essas duas ferramentas de sistema de arquivos só estão disponíveis no [modo sandbox](#modo-sandbox) (`--sandbox`), onde a raiz do workspace delimita o que elas podem alcançar. Sem `--sandbox`, elas não são registradas.
 
 1. `file_system_read_file`
   - Lê o conteúdo de um arquivo em um caminho relativo à raiz do workspace (ex.: `src/index.ts`)

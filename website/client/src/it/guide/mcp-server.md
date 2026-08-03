@@ -204,7 +204,7 @@ Questo strumento legge il contenuto di un file di output generato da Repomix. Su
 **Funzionalità:**
 - Progettato specificamente per ambienti basati sul web o applicazioni sandbox
 - Recupera il contenuto degli output generati precedentemente usando il loro ID
-- Fornisce accesso sicuro alla codebase impacchettata senza richiedere accesso al file system
+- Fornisce accesso alla codebase impacchettata senza richiedere accesso al file system
 - Supporta la lettura parziale per file grandi
 
 **Esempio:**
@@ -249,7 +249,7 @@ Questo strumento cerca pattern in un file di output Repomix usando funzionalità
 
 ### file_system_read_file e file_system_read_directory
 
-Questi due strumenti per il file system sono disponibili solo in [modalità sandbox](#modalità-sandbox) (`--sandbox`), dove la radice della directory di lavoro delimita ciò che possono raggiungere. Senza `--sandbox` non vengono registrati, quindi il server predefinito non espone letture di file grezze.
+Questi due strumenti per il file system sono disponibili solo in [modalità sandbox](#modalità-sandbox) (`--sandbox`), dove la radice della directory di lavoro delimita ciò che possono raggiungere. Senza `--sandbox` non vengono registrati.
 
 1. `file_system_read_file`
   - Legge il contenuto di un file a un percorso relativo alla radice della directory di lavoro (ad es. `src/index.ts`)

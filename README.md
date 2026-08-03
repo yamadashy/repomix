@@ -1100,7 +1100,7 @@ When running as an MCP server, Repomix provides the following tools:
   - Parameters:
     - `path`: Path to the file to read, relative to the workspace root (e.g. `src/index.ts`)
   - Notes:
-    - Not registered without `--sandbox`; outside sandbox mode no tool exposes raw file reads
+    - Not registered without `--sandbox`
     - Content matching known secret formats ([Secretlint](https://github.com/secretlint/secretlint)) is refused as an additional heuristic safeguard — the access boundary is the workspace root, not the scan
 
 7. **file_system_read_directory**: List the contents of a directory inside the sandbox workspace. Only available in [sandbox mode](#sandbox-mode) (`--sandbox`).

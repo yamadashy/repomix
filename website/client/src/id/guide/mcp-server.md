@@ -206,7 +206,7 @@ Tool ini membaca konten file output yang dihasilkan oleh Repomix. Mendukung pemb
 **Fitur:**
 - Dirancang khusus untuk lingkungan berbasis web atau aplikasi sandbox
 - Mengambil konten output yang dihasilkan sebelumnya menggunakan ID mereka
-- Menyediakan akses aman ke codebase yang dikemas tanpa memerlukan akses filesystem
+- Menyediakan akses ke codebase yang dikemas tanpa memerlukan akses filesystem
 - Mendukung pembacaan parsial untuk file besar
 
 **Contoh:**
@@ -251,7 +251,7 @@ Tool ini mencari pola dalam file output Repomix menggunakan fungsionalitas mirip
 
 ### file_system_read_file dan file_system_read_directory
 
-Kedua tools filesystem ini hanya tersedia dalam [mode sandbox](#mode-sandbox) (`--sandbox`), di mana root workspace membatasi apa yang dapat mereka jangkau. Tanpa `--sandbox`, tools ini tidak didaftarkan, sehingga server default tidak mengekspos pembacaan file mentah.
+Kedua tools filesystem ini hanya tersedia dalam [mode sandbox](#mode-sandbox) (`--sandbox`), di mana root workspace membatasi apa yang dapat mereka jangkau. Tanpa `--sandbox`, tools ini tidak didaftarkan.
 
 1. `file_system_read_file`
   - Membaca konten file pada path yang relatif terhadap root workspace (misalnya `src/index.ts`)

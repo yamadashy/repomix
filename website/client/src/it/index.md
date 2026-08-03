@@ -15,7 +15,7 @@ features:
     details: Rispetta automaticamente i tuoi file .gitignore.
   - icon: 🛡️
     title: Focalizzato sulla Sicurezza
-    details: Integra Secretlint per controlli di sicurezza robusti per rilevare e prevenire l'inclusione di informazioni sensibili.
+    details: Integra Secretlint per rilevare i file che corrispondono a formati di credenziali noti ed escluderli dall'output.
   - icon: 📊
     title: Conteggio Token
     details: Fornisce il conteggio dei token per ogni file e per l'intero repository, utile per i limiti di contesto degli LLM.

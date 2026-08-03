@@ -17,7 +17,7 @@ features:
 
   - icon: 🛡️
     title: Güvenlik Odaklı
-    details: Hassas bilgilerin dahil edilmesini tespit edip önlemek için Secretlint ile güçlü güvenlik kontrolleri uygular.
+    details: Bilinen kimlik bilgisi biçimleriyle eşleşen dosyaları tespit etmek ve çıktıdan hariç tutmak için Secretlint kullanır.
 
   - icon: 📊
     title: Token Sayımı

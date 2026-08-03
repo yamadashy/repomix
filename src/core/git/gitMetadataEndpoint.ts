@@ -30,23 +30,84 @@ const LINK_LOCAL_IPV4_RE = /^169\.254\.\d{1,3}\.\d{1,3}$/;
  * (`https://host/owner/repo`) and scp-like syntax (`git@host:owner/repo`), and
  * returns null when neither applies, such as for an `owner/repo` shorthand.
  */
+// inet_aton-style resolvers (used by ssh and libc) accept hex (0xa9fea9fe), octal
+// (0251.0376.0251.0376), decimal (2852038142), and short dotted forms for an IPv4
+// address. Canonicalize any such alias to a dotted quad so it compares equal to the
+// blocked ranges; return null for anything that is not a pure numeric IPv4 form.
+const ipv4AliasToDotted = (host: string): string | null => {
+  const parts = host.split('.');
+  if (parts.length > 4) {
+    return null;
+  }
+  const values: number[] = [];
+  for (const part of parts) {
+    if (/^0x[0-9a-f]+$/.test(part)) {
+      values.push(Number.parseInt(part.slice(2), 16));
+    } else if (/^0[0-7]*$/.test(part)) {
+      values.push(Number.parseInt(part, 8));
+    } else if (/^[1-9][0-9]*$/.test(part)) {
+      values.push(Number.parseInt(part, 10));
+    } else {
+      return null;
+    }
+  }
+  // In inet_aton the last component fills the remaining bytes; earlier ones are octets.
+  const tailBytes = 4 - (values.length - 1);
+  const tail = values[values.length - 1];
+  if (tail >= 2 ** (8 * tailBytes) || values.slice(0, -1).some((value) => value > 0xff)) {
+    return null;
+  }
+  const bytes = values.slice(0, -1);
+  for (let i = tailBytes - 1; i >= 0; i--) {
+    bytes.push((tail >> (8 * i)) & 0xff);
+  }
+  return bytes.join('.');
+};
+
+// A raw scp-like host can spell an IPv6 address any way it likes
+// (0:0:0:0:0:ffff:a9fe:a9fe); round-trip through the WHATWG parser to get the one
+// canonical spelling before comparing. Non-IPv6 input is returned unchanged.
+const canonicalizeIpv6 = (host: string): string => {
+  try {
+    return new URL(`http://[${host}]/`).hostname.replace(/^\[|\]$/g, '');
+  } catch {
+    return host;
+  }
+};
+
 // Strip the brackets URL parsing keeps around an IPv6 literal and a single
-// trailing dot (the FQDN form of a name, e.g. metadata.google.internal.), so the
-// result compares equal to a plain address or a blocked hostname.
-const normalizeHost = (host: string): string =>
-  host
+// trailing dot (the FQDN form of a name, e.g. metadata.google.internal.), unwrap an
+// IPv4-mapped IPv6 literal (::ffff:169.254.169.254 / ::ffff:a9fe:a9fe target the
+// embedded IPv4), and canonicalize numeric IPv4 aliases, so the result compares
+// equal to a plain address or a blocked hostname.
+const normalizeHost = (host: string): string => {
+  let bare = host
     .toLowerCase()
     .replace(/^\[|\]$/g, '')
     .replace(/\.$/, '');
+  if (bare.includes(':')) {
+    bare = canonicalizeIpv6(bare);
+  }
+  const mapped = bare.match(/^::ffff:(?:(\d{1,3}(?:\.\d{1,3}){3})|([0-9a-f]{1,4}):([0-9a-f]{1,4}))$/);
+  const unmapped = mapped
+    ? (mapped[1] ??
+      [Number.parseInt(mapped[2], 16), Number.parseInt(mapped[3], 16)]
+        .flatMap((group) => [(group >> 8) & 0xff, group & 0xff])
+        .join('.'))
+    : bare;
+  return ipv4AliasToDotted(unmapped) ?? unmapped;
+};
 
 export const extractRemoteHost = (remoteValue: string): string | null => {
   try {
     return normalizeHost(new URL(remoteValue).hostname);
   } catch {
     // Not a scheme URL. scp-like syntax has no scheme: user@host:path
-    // The host can be a bracketed IPv6 literal (user@[fd00:ec2::254]:path), so
-    // match a bracketed group before falling back to a plain host.
-    const scpMatch = remoteValue.match(/^[^/@]+@(\[[^\]]+\]|[^/:]+):/);
+    // ssh treats everything before the LAST @ as the user, so the host is matched
+    // after a greedy user part. It can be a bracketed IPv6 literal
+    // (user@[fd00:ec2::254]:path), so match a bracketed group before falling back
+    // to a plain host.
+    const scpMatch = remoteValue.match(/^[^/]+@(\[[^\]]+\]|[^/:@]+):/);
     return scpMatch ? normalizeHost(scpMatch[1]) : null;
   }
 };

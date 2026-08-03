@@ -206,7 +206,7 @@ Dieses Tool liest den Inhalt einer von Repomix generierten Ausgabedatei. Es unte
 **Funktionen:**
 - Speziell für webbasierte Umgebungen oder Sandbox-Anwendungen entwickelt
 - Ruft den Inhalt zuvor generierter Ausgaben über ihre ID ab
-- Bietet sicheren Zugriff auf verpackte Codebase ohne Dateisystemzugriff
+- Bietet Zugriff auf verpackte Codebase ohne Dateisystemzugriff
 - Unterstützt partielles Lesen für große Dateien
 
 **Beispiel:**
@@ -251,7 +251,7 @@ Dieses Tool durchsucht Muster in einer Repomix-Ausgabedatei mit grep-ähnlicher 
 
 ### file_system_read_file und file_system_read_directory
 
-Diese beiden Dateisystem-Tools sind nur im [Sandbox-Modus](#sandbox-modus) (`--sandbox`) verfügbar, wo die Wurzel des Workspace begrenzt, was sie erreichen können. Ohne `--sandbox` werden sie nicht registriert, sodass der Standardserver keine rohen Dateizugriffe offenlegt.
+Diese beiden Dateisystem-Tools sind nur im [Sandbox-Modus](#sandbox-modus) (`--sandbox`) verfügbar, wo die Wurzel des Workspace begrenzt, was sie erreichen können. Ohne `--sandbox` werden sie nicht registriert.
 
 1. `file_system_read_file`
   - Liest Dateiinhalte an einem Pfad relativ zur Wurzel des Workspace (z. B. `src/index.ts`)

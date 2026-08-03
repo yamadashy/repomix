@@ -206,7 +206,7 @@ Công cụ này đọc nội dung của một file đầu ra được tạo bở
 **Tính năng:**
 - Được thiết kế đặc biệt cho các môi trường dựa trên web hoặc ứng dụng sandbox
 - Truy xuất nội dung của các đầu ra được tạo trước đó bằng ID của chúng
-- Cung cấp truy cập an toàn đến codebase được đóng gói mà không cần truy cập hệ thống file
+- Cung cấp quyền truy cập đến codebase được đóng gói mà không cần truy cập hệ thống file
 - Hỗ trợ đọc một phần cho các file lớn
 
 **Ví dụ:**
@@ -251,7 +251,7 @@ Công cụ này tìm kiếm các pattern trong một file đầu ra Repomix sử
 
 ### file_system_read_file và file_system_read_directory
 
-Hai công cụ hệ thống file này chỉ khả dụng ở [chế độ sandbox](#chế-độ-sandbox) (`--sandbox`), nơi gốc workspace giới hạn phạm vi mà chúng có thể truy cập. Nếu không có `--sandbox`, chúng sẽ không được đăng ký, vì vậy máy chủ mặc định không phơi bày bất kỳ thao tác đọc file thô nào.
+Hai công cụ hệ thống file này chỉ khả dụng ở [chế độ sandbox](#chế-độ-sandbox) (`--sandbox`), nơi gốc workspace giới hạn phạm vi mà chúng có thể truy cập. Nếu không có `--sandbox`, chúng sẽ không được đăng ký.
 
 1. `file_system_read_file`
   - Đọc nội dung file tại một đường dẫn tương đối với gốc workspace (ví dụ `src/index.ts`)

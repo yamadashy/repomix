@@ -17,7 +17,7 @@ features:
 
   - icon: 🛡️
     title: Security-Focused
-    details: Incorporates Secretlint for robust security checks to detect and prevent inclusion of sensitive information.
+    details: Incorporates Secretlint to detect files matching known credential formats and leave them out of the output.
 
   - icon: 📊
     title: Token Counting

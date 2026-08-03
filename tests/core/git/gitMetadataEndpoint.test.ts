@@ -39,6 +39,33 @@ describe('gitMetadataEndpoint', () => {
     it('drops a trailing dot in scp-like syntax too', () => {
       expect(extractRemoteHost('git@metadata.google.internal.:owner/repo.git')).toBe('metadata.google.internal');
     });
+
+    it('unwraps an IPv4-mapped IPv6 literal to the IPv4 it actually targets', () => {
+      expect(extractRemoteHost('http://[::ffff:169.254.169.254]/x')).toBe('169.254.169.254');
+      expect(extractRemoteHost('git@[::ffff:a9fe:a9fe]:owner/repo.git')).toBe('169.254.169.254');
+    });
+
+    it('canonicalizes an uncompressed IPv6 spelling before comparing', () => {
+      expect(extractRemoteHost('git@[0:0:0:0:0:ffff:a9fe:a9fe]:owner/repo.git')).toBe('169.254.169.254');
+      expect(extractRemoteHost('git@[fd00:0ec2:0:0:0:0:0:0254]:owner/repo.git')).toBe('fd00:ec2::254');
+    });
+
+    it('treats everything before the last @ as the user, the way ssh does', () => {
+      expect(extractRemoteHost('git@x@169.254.169.254:owner/repo.git')).toBe('169.254.169.254');
+    });
+
+    it('canonicalizes inet_aton IPv4 aliases (hex, octal, decimal, short dotted)', () => {
+      expect(extractRemoteHost('git@0xa9fea9fe:owner/repo.git')).toBe('169.254.169.254');
+      expect(extractRemoteHost('git@0251.0376.0251.0376:owner/repo.git')).toBe('169.254.169.254');
+      expect(extractRemoteHost('git@2852039166:owner/repo.git')).toBe('169.254.169.254');
+      expect(extractRemoteHost('git@169.254.43518:owner/repo.git')).toBe('169.254.169.254');
+      expect(extractRemoteHost('ssh://git@0xa9fea9fe/owner/repo')).toBe('169.254.169.254');
+    });
+
+    it('leaves ordinary hostnames untouched by the numeric-alias handling', () => {
+      expect(extractRemoteHost('git@github.com:owner/repo.git')).toBe('github.com');
+      expect(extractRemoteHost('git@0x.example.com:owner/repo.git')).toBe('0x.example.com');
+    });
   });
 
   describe('isMetadataEndpoint', () => {
@@ -85,6 +112,12 @@ describe('gitMetadataEndpoint', () => {
 
     it('refuses the FQDN (trailing dot) form of a named metadata endpoint', () => {
       expect(() => assertNotMetadataEndpoint('https://metadata.google.internal./x')).toThrow(RepomixError);
+    });
+
+    it('refuses IPv4-mapped IPv6 and numeric-alias spellings of a metadata address', () => {
+      expect(() => assertNotMetadataEndpoint('http://[::ffff:169.254.169.254]/x')).toThrow(RepomixError);
+      expect(() => assertNotMetadataEndpoint('git@0xa9fea9fe:owner/repo.git')).toThrow(RepomixError);
+      expect(() => assertNotMetadataEndpoint('git@x@169.254.169.254:owner/repo.git')).toThrow(RepomixError);
     });
 
     it('allows an ordinary remote', () => {

@@ -206,7 +206,7 @@ claude mcp add repomix -- npx -y repomix --mcp
 **功能：**
 - 专为基于 Web 的环境或沙箱应用程序设计
 - 使用其 ID 检索先前生成的输出内容
-- 无需文件系统访问权限即可安全访问打包的代码库
+- 无需文件系统访问权限即可访问打包的代码库
 - 支持大文件的部分读取
 
 **示例：**
@@ -251,7 +251,7 @@ claude mcp add repomix -- npx -y repomix --mcp
 
 ### file_system_read_file 和 file_system_read_directory
 
-这两个文件系统工具仅在[沙箱模式](#沙箱模式)（`--sandbox`）下可用，其可访问范围由工作区根目录限定。如果不使用 `--sandbox`，它们不会被注册，因此默认服务器不会暴露任何原始文件读取能力。
+这两个文件系统工具仅在[沙箱模式](#沙箱模式)（`--sandbox`）下可用，其可访问范围由工作区根目录限定。如果不使用 `--sandbox`，它们不会被注册。
 
 1. `file_system_read_file`
   - 读取相对于工作区根目录的路径下的文件内容（例如 `src/index.ts`）

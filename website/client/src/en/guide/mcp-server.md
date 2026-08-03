@@ -206,7 +206,7 @@ This tool reads the contents of a Repomix-generated output file. Supports partia
 **Features:**
 - Specifically designed for web-based environments or sandboxed applications
 - Retrieves the content of previously generated outputs using their ID
-- Provides secure access to packed codebase without requiring file system access
+- Provides access to packed codebase without requiring file system access
 - Supports partial reading for large files
 
 **Example:**
@@ -251,7 +251,7 @@ This tool searches for patterns in a Repomix output file using grep-like functio
 
 ### file_system_read_file and file_system_read_directory
 
-These two file system tools are available only in [sandbox mode](#sandbox-mode) (`--sandbox`), where the workspace root bounds what they can reach. Without `--sandbox` they are not registered, so the default server exposes no raw file reads.
+These two file system tools are available only in [sandbox mode](#sandbox-mode) (`--sandbox`), where the workspace root bounds what they can reach. Without `--sandbox` they are not registered.
 
 1. `file_system_read_file`
   - Reads file contents at a path relative to the workspace root (e.g. `src/index.ts`)

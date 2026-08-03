@@ -206,7 +206,7 @@ Bu araç, Repomix tarafından oluşturulan çıktı dosyasının içeriğini oku
 **Özellikler:**
 - Web tabanlı ortamlar veya korumalı uygulamalar için özel olarak tasarlanmıştır
 - Daha önce oluşturulan çıktıların içeriğini kimliklerini kullanarak getirir
-- Dosya sistemi erişimi gerektirmeden paketlenmiş kod tabanına güvenli erişim sağlar
+- Dosya sistemi erişimi gerektirmeden paketlenmiş kod tabanına erişim sağlar
 - Büyük dosyalar için kısmi okumayı destekler
 
 **Örnek:**
@@ -251,7 +251,7 @@ Bu araç, JavaScript RegExp sözdizimini kullanan grep benzeri işlevsellikle bi
 
 ### file_system_read_file ve file_system_read_directory
 
-Bu iki dosya sistemi aracı yalnızca [sandbox modunda](#sandbox-modu) (`--sandbox`) kullanılabilir; buna erişebilecekleri alanı çalışma alanı kökü sınırlar. `--sandbox` olmadan kaydedilmezler, dolayısıyla varsayılan sunucu ham dosya okumaları sunmaz.
+Bu iki dosya sistemi aracı yalnızca [sandbox modunda](#sandbox-modu) (`--sandbox`) kullanılabilir; buna erişebilecekleri alanı çalışma alanı kökü sınırlar. `--sandbox` olmadan kaydedilmezler.
 
 1. `file_system_read_file`
   - Çalışma alanı köküne göreli bir yoldaki dosya içeriğini okur (örn. `src/index.ts`)

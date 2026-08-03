@@ -204,7 +204,7 @@ Cet outil lit le contenu d'un fichier de sortie généré par Repomix. Il prend 
 **Fonctionnalités :**
 - Conçu spécifiquement pour les environnements basés sur le web ou les applications en bac à sable
 - Récupère le contenu des sorties générées précédemment en utilisant leur ID
-- Fournit un accès sécurisé à la base de code packagée sans nécessiter d'accès au système de fichiers
+- Fournit un accès à la base de code packagée sans nécessiter d'accès au système de fichiers
 - Prend en charge la lecture partielle pour les gros fichiers
 
 **Exemple:**
@@ -249,7 +249,7 @@ Cet outil recherche des motifs dans un fichier de sortie Repomix en utilisant un
 
 ### file_system_read_file et file_system_read_directory
 
-Ces deux outils système de fichiers ne sont disponibles qu'en [mode bac à sable](#mode-bac-à-sable) (`--sandbox`), où la racine du répertoire de travail délimite ce qu'ils peuvent atteindre. Sans `--sandbox`, ils ne sont pas enregistrés, de sorte que le serveur par défaut n'expose aucune lecture de fichier brute.
+Ces deux outils système de fichiers ne sont disponibles qu'en [mode bac à sable](#mode-bac-à-sable) (`--sandbox`), où la racine du répertoire de travail délimite ce qu'ils peuvent atteindre. Sans `--sandbox`, ils ne sont pas enregistrés.
 
 1. `file_system_read_file`
   - Lit le contenu d'un fichier à un chemin relatif à la racine du répertoire de travail (par ex. `src/index.ts`)
