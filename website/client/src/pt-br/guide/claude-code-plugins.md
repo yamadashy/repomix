@@ -55,7 +55,7 @@ Plugin base que fornece analise de base de codigo alimentada por IA atraves da i
 **Recursos:**
 - Empacotar repositorios locais e remotos
 - Pesquisar saidas empacotadas
-- Ler arquivos com verificacao de seguranca integrada ([Secretlint](https://github.com/secretlint/secretlint))
+- Ler arquivos de saida gerados
 - Compressao automatica Tree-sitter (reducao de aproximadamente 70% de tokens)
 
 ### 2. repomix-commands (Plugin de Comandos Slash)

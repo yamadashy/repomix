@@ -84,7 +84,7 @@ This tool attaches an existing Repomix packed output file for AI analysis. It al
 **Features:**
 - Accepts either a directory containing a repomix-output.xml file or a direct path to an XML file
 - Registers the file with the MCP server and returns the same structure as the pack_codebase tool
-- Provides secure access to existing packed outputs without requiring re-processing
+- Provides access to existing packed outputs without requiring re-processing
 - Useful for working with previously generated packed repositories
 
 **Example:**
@@ -129,7 +129,7 @@ This tool reads the contents of a Repomix-generated output file. Supports partia
 **Features:**
 - Specifically designed for web-based environments or sandboxed applications
 - Retrieves the content of previously generated outputs using their ID
-- Provides secure access to packed codebase without requiring file system access
+- Provides access to packed codebase without requiring file system access
 - Supports partial reading for large files
 
 **Example:**

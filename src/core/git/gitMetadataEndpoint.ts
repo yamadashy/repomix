@@ -30,18 +30,24 @@ const LINK_LOCAL_IPV4_RE = /^169\.254\.\d{1,3}\.\d{1,3}$/;
  * (`https://host/owner/repo`) and scp-like syntax (`git@host:owner/repo`), and
  * returns null when neither applies, such as for an `owner/repo` shorthand.
  */
+// Strip the brackets URL parsing keeps around an IPv6 literal and a single
+// trailing dot (the FQDN form of a name, e.g. metadata.google.internal.), so the
+// result compares equal to a plain address or a blocked hostname.
+const normalizeHost = (host: string): string =>
+  host
+    .toLowerCase()
+    .replace(/^\[|\]$/g, '')
+    .replace(/\.$/, '');
+
 export const extractRemoteHost = (remoteValue: string): string | null => {
   try {
-    // Strip the brackets URL parsing keeps around an IPv6 literal, so the result
-    // can be compared with a plain address.
-    return new URL(remoteValue).hostname.toLowerCase().replace(/^\[|\]$/g, '');
+    return normalizeHost(new URL(remoteValue).hostname);
   } catch {
     // Not a scheme URL. scp-like syntax has no scheme: user@host:path
     // The host can be a bracketed IPv6 literal (user@[fd00:ec2::254]:path), so
-    // match a bracketed group before falling back to a plain host, then strip
-    // the brackets to compare against a plain address.
+    // match a bracketed group before falling back to a plain host.
     const scpMatch = remoteValue.match(/^[^/@]+@(\[[^\]]+\]|[^/:]+):/);
-    return scpMatch ? scpMatch[1].toLowerCase().replace(/^\[|\]$/g, '') : null;
+    return scpMatch ? normalizeHost(scpMatch[1]) : null;
   }
 };
 

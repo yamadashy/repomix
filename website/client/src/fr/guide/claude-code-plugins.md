@@ -55,7 +55,7 @@ Plugin de base qui fournit une analyse de code alimentée par l'IA via l'intégr
 **Fonctionnalités :**
 - Empaqueter des dépôts locaux et distants
 - Rechercher dans les sorties empaquetées
-- Lire des fichiers avec analyse de sécurité intégrée ([Secretlint](https://github.com/secretlint/secretlint))
+- Lire les fichiers de sortie générés
 - Compression Tree-sitter automatique (réduction d'environ 70% des tokens)
 
 ### 2. repomix-commands (Plugin Commandes Slash)

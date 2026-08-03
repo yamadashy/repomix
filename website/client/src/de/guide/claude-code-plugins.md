@@ -55,7 +55,7 @@ Basis-Plugin, das KI-gestützte Codebase-Analyse durch MCP-Server-Integration be
 **Funktionen:**
 - Lokale und entfernte Repositories verpacken
 - Verpackte Ausgaben durchsuchen
-- Dateien mit integriertem Sicherheitsscan lesen ([Secretlint](https://github.com/secretlint/secretlint))
+- Generierte Ausgabedateien lesen
 - Automatische Tree-sitter-Kompression (ca. 70% Token-Reduktion)
 
 ### 2. repomix-commands (Slash-Befehls-Plugin)

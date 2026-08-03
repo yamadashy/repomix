@@ -31,6 +31,14 @@ describe('gitMetadataEndpoint', () => {
     it('lowercases the host so case cannot dodge a comparison', () => {
       expect(extractRemoteHost('https://GitHub.COM/owner/repo')).toBe('github.com');
     });
+
+    it('drops a trailing dot so the FQDN form of a name still compares equal', () => {
+      expect(extractRemoteHost('https://metadata.google.internal./x')).toBe('metadata.google.internal');
+    });
+
+    it('drops a trailing dot in scp-like syntax too', () => {
+      expect(extractRemoteHost('git@metadata.google.internal.:owner/repo.git')).toBe('metadata.google.internal');
+    });
   });
 
   describe('isMetadataEndpoint', () => {
@@ -73,6 +81,10 @@ describe('gitMetadataEndpoint', () => {
 
     it('refuses a bracketed IPv6 metadata endpoint in scp-like syntax', () => {
       expect(() => assertNotMetadataEndpoint('git@[fd00:ec2::254]:owner/repo.git')).toThrow(RepomixError);
+    });
+
+    it('refuses the FQDN (trailing dot) form of a named metadata endpoint', () => {
+      expect(() => assertNotMetadataEndpoint('https://metadata.google.internal./x')).toThrow(RepomixError);
     });
 
     it('allows an ordinary remote', () => {

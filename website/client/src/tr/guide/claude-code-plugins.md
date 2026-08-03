@@ -55,7 +55,7 @@ MCP sunucu entegrasyonu aracılığıyla AI destekli kod tabanı analizini sağl
 **Özellikler:**
 - Yerel ve uzak depoları paketleme
 - Paketlenmiş çıktılarda arama
-- Yerleşik güvenlik taramasıyla dosya okuma ([Secretlint](https://github.com/secretlint/secretlint))
+- Oluşturulan çıktı dosyalarını okuma
 - Otomatik Tree-sitter sıkıştırması (~%70 token azaltması)
 
 ### 2. repomix-commands (Eğik Çizgi Komutları Eklentisi)

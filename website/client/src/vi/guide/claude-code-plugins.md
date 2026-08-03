@@ -55,7 +55,7 @@ Plugin cơ sở cung cấp phân tích codebase được hỗ trợ bởi AI th�
 **Tính năng:**
 - Đóng gói repository cục bộ và từ xa
 - Tìm kiếm đầu ra đã đóng gói
-- Đọc file với quét bảo mật tích hợp ([Secretlint](https://github.com/secretlint/secretlint))
+- Đọc file đầu ra đã tạo
 - Nén Tree-sitter tự động (giảm khoảng 70% token)
 
 ### 2. repomix-commands (Plugin Lệnh Slash)
