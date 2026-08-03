@@ -26,6 +26,14 @@ describe('remoteAction functions', () => {
       expect(parseRemoteValue('http://10.0.0.5/team/repo.git').repoUrl).toBe('http://10.0.0.5/team/repo.git');
     });
 
+    test('refuses a userless scp-like metadata host one way or another', () => {
+      // host:path with no user@ is not matched by the scp host extractor; today the
+      // form is rejected as an invalid remote before any host check. This test pins
+      // that it keeps throwing — if userless scp-like support is ever added, the
+      // normalized-URL metadata check must catch it instead.
+      expect(() => parseRemoteValue('169.254.169.254:owner/repo')).toThrow();
+    });
+
     test('should convert GitHub shorthand to full URL', () => {
       expect(parseRemoteValue('user/repo')).toEqual({
         repoUrl: 'https://github.com/user/repo.git',
