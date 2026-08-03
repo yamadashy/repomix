@@ -124,6 +124,43 @@ describe('includeFullDirectoryStructure flag', () => {
     expect(ctx.treeString).not.toContain('repo/');
   });
 
+  test('keeps non-included files in the full tree when a realistic filePathsByRoot is provided', async () => {
+    // pack() always passes filePathsByRoot for the default target-relative style, and it
+    // only holds the included files. Full-tree mode must still surface the rest of the repo.
+    const config = createMockConfig();
+    const processedFiles: ProcessedFile[] = [{ path: 'src/a/index.ts', content: 'export const a = 1;\n' }];
+    const allFilePaths = processedFiles.map((f) => f.path);
+
+    const deps = {
+      listDirectories: async () => ['src', 'src/a', 'src/b', 'docs', 'docs/guide'],
+      listFiles: async () => ['README.md', 'src/a/index.ts', 'src/b/other.ts', 'docs/guide/intro.md'],
+      searchFiles: async () => ({ filePaths: allFilePaths, emptyDirPaths: [] }),
+    };
+
+    const filePathsByRoot = [{ rootLabel: 'repo', files: allFilePaths }];
+
+    const ctx = await buildOutputGeneratorContext(
+      ['/repo'],
+      config,
+      allFilePaths,
+      processedFiles,
+      undefined,
+      undefined,
+      filePathsByRoot,
+      undefined,
+      deps,
+    );
+
+    // The included file and directories still show up...
+    expect(ctx.treeString).toContain('index.ts');
+    expect(ctx.treeString).toContain('src/');
+    expect(ctx.treeString).toContain('docs/');
+    // ...and so do the files that were not part of the include patterns.
+    expect(ctx.treeString).toContain('README.md');
+    expect(ctx.treeString).toContain('other.ts');
+    expect(ctx.treeString).toContain('intro.md');
+  });
+
   test('does not render full tree when include is empty even if flag is enabled', async () => {
     const config = createMockConfig({ include: [] });
     const processedFiles: ProcessedFile[] = [{ path: 'src/a/index.ts', content: 'export const a = 1;\n' }];
