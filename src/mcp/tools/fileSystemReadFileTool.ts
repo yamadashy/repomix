@@ -33,8 +33,8 @@ export const registerFileSystemReadFileTool = (
   config: McpServerConfig = { sandboxed: false, root: process.cwd() },
 ) => {
   const description = config.sandboxed
-    ? 'Read a file from the workspace, at a path relative to the workspace root (e.g. "src/index.ts"). Includes built-in security validation to detect and prevent access to files containing sensitive information (API keys, passwords, secrets).'
-    : 'Read a file from the local file system using an absolute path. Includes built-in security validation to detect and prevent access to files containing sensitive information (API keys, passwords, secrets).';
+    ? 'Read a file from the workspace, at a path relative to the workspace root (e.g. "src/index.ts"). Content matching known secret formats (API keys, passwords) is refused; that scan is a heuristic safeguard — access is bounded by the workspace root, not by the scan.'
+    : 'Read a file from the local file system using an absolute path. Content matching known secret formats (API keys, passwords) is refused; that scan is a heuristic safeguard, not an access boundary.';
   const inputSchema = fileSystemReadFileInputSchema.extend({
     path: z
       .string()

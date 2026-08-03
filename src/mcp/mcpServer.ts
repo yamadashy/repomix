@@ -16,7 +16,7 @@ import { registerReadRepomixOutputTool } from './tools/readRepomixOutputTool.js'
  * Instructions for the Repomix MCP Server that describe its capabilities and usage
  */
 const MCP_SERVER_INSTRUCTIONS_INTRO = 'Repomix MCP Server provides AI-optimized codebase analysis tools. ';
-const MCP_SERVER_INSTRUCTIONS_OUTRO = 'Includes security scanning and supports compression for token efficiency.';
+const MCP_SERVER_INSTRUCTIONS_OUTRO = 'Scans for known secret formats and supports compression for token efficiency.';
 
 const MCP_SERVER_INSTRUCTIONS =
   MCP_SERVER_INSTRUCTIONS_INTRO +
@@ -65,8 +65,14 @@ export const createMcpServer = async (config: McpServerConfig = defaultMcpServer
   registerPackCodebaseTool(mcpServer, config);
   registerReadRepomixOutputTool(mcpServer, config);
   registerGrepRepomixOutputTool(mcpServer, config);
-  registerFileSystemReadFileTool(mcpServer, config);
-  registerFileSystemReadDirectoryTool(mcpServer, config);
+
+  // The raw file tools are sandbox-only. Outside sandbox mode they read any path
+  // the process can, and the secret scan they run is a content heuristic, not an
+  // access boundary — an honest boundary for them exists only under --sandbox.
+  if (config.sandboxed) {
+    registerFileSystemReadFileTool(mcpServer, config);
+    registerFileSystemReadDirectoryTool(mcpServer, config);
+  }
 
   // Tools unavailable in sandbox mode: remote fetch (needs network),
   // skill generation (writes), attach (arbitrary-path read of external files).

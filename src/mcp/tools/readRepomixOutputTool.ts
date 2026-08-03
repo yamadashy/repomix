@@ -82,9 +82,9 @@ export const registerReadRepomixOutputTool = (
         // Read the file content
         const content = await fs.readFile(filePath, 'utf8');
 
-        // For files attached from an untrusted path, run the same secret scan as
-        // file_system_read_file before serving any content, so this path cannot be
-        // used to bypass it.
+        // For files attached from an untrusted path, scan for secrets before serving
+        // any content. This detects recognized secret formats in the content; it does
+        // not restrict which file the path points at.
         if (requiresSecretScan(outputId)) {
           const securityCheckResult = await runSecretLint(filePath, content, 'file', createSecretLintConfig());
           if (securityCheckResult !== null) {
