@@ -54,6 +54,11 @@ describe('gitMetadataEndpoint', () => {
       expect(extractRemoteHost('git@x@169.254.169.254:owner/repo.git')).toBe('169.254.169.254');
     });
 
+    it('splits host from path at the first colon, the way git does', () => {
+      // A crafted path segment after the first colon must not displace the host.
+      expect(extractRemoteHost('git@169.254.169.254:repo@github.com:x')).toBe('169.254.169.254');
+    });
+
     it('canonicalizes inet_aton IPv4 aliases (hex, octal, decimal, short dotted)', () => {
       expect(extractRemoteHost('git@0xa9fea9fe:owner/repo.git')).toBe('169.254.169.254');
       expect(extractRemoteHost('git@0251.0376.0251.0376:owner/repo.git')).toBe('169.254.169.254');

@@ -103,11 +103,12 @@ export const extractRemoteHost = (remoteValue: string): string | null => {
     return normalizeHost(new URL(remoteValue).hostname);
   } catch {
     // Not a scheme URL. scp-like syntax has no scheme: user@host:path
-    // ssh treats everything before the LAST @ as the user, so the host is matched
-    // after a greedy user part. It can be a bracketed IPv6 literal
-    // (user@[fd00:ec2::254]:path), so match a bracketed group before falling back
-    // to a plain host.
-    const scpMatch = remoteValue.match(/^[^/]+@(\[[^\]]+\]|[^/:@]+):/);
+    // git splits host from path at the FIRST colon (so neither user nor host may
+    // contain one), and ssh treats everything before the LAST @ as the user, so
+    // the host is matched after a greedy colon-free user part. It can be a
+    // bracketed IPv6 literal (user@[fd00:ec2::254]:path), so match a bracketed
+    // group before falling back to a plain host.
+    const scpMatch = remoteValue.match(/^[^/:]+@(\[[^\]]+\]|[^/:@]+):/);
     return scpMatch ? normalizeHost(scpMatch[1]) : null;
   }
 };
