@@ -54,6 +54,53 @@ describe('remoteAction functions', () => {
       });
     });
 
+    test('should accept explicit URLs whose repo name starts with a dot (e.g. .github)', () => {
+      expect(parseRemoteValue('https://github.com/microsoft/.github')).toEqual({
+        repoUrl: 'https://github.com/microsoft/.github.git',
+        remoteBranch: undefined,
+      });
+      expect(parseRemoteValue('git@github.com:microsoft/.github.git')).toEqual({
+        repoUrl: 'git@github.com:microsoft/.github.git',
+        remoteBranch: undefined,
+      });
+      expect(parseRemoteValue('https://gitlab.com/group/.foo')).toEqual({
+        repoUrl: 'https://gitlab.com/group/.foo.git',
+        remoteBranch: undefined,
+      });
+    });
+
+    test('should still reject shorthand whose repo name starts with a dot', () => {
+      expect(() => parseRemoteValue('user/.repo')).toThrowError();
+      expect(() => parseRemoteValue('.user/repo')).toThrowError();
+    });
+
+    test('should accept explicit URLs whose owner/repo name leads or trails with . - _', () => {
+      expect(parseRemoteValue('https://github.com/owner/repo.')).toEqual({
+        repoUrl: 'https://github.com/owner/repo..git',
+        remoteBranch: undefined,
+      });
+      expect(parseRemoteValue('https://github.com/owner/repo-')).toEqual({
+        repoUrl: 'https://github.com/owner/repo-.git',
+        remoteBranch: undefined,
+      });
+      expect(parseRemoteValue('https://github.com/owner/repo_')).toEqual({
+        repoUrl: 'https://github.com/owner/repo_.git',
+        remoteBranch: undefined,
+      });
+      expect(parseRemoteValue('https://github.com/-owner/repo')).toEqual({
+        repoUrl: 'https://github.com/-owner/repo.git',
+        remoteBranch: undefined,
+      });
+      expect(parseRemoteValue('https://github.com/_owner/repo')).toEqual({
+        repoUrl: 'https://github.com/_owner/repo.git',
+        remoteBranch: undefined,
+      });
+    });
+
+    test('should reject explicit URLs with a doubled slash (empty path segment)', () => {
+      expect(() => parseRemoteValue('https://github.com/user//repo')).toThrowError();
+    });
+
     test('should handle Azure DevOps SSH URLs', () => {
       const azureDevOpsUrl = 'git@ssh.dev.azure.com:v3/organization/project/repo';
       const parsed = parseRemoteValue(azureDevOpsUrl);
