@@ -14,60 +14,69 @@ import { createMockConfig, writeFixture } from '../../testing/testUtils.js';
 // comes out of the ignore package's path validation and reproduces on Windows
 // only, which is why these tests matter most on the windows-latest CI leg.
 
-describe('fileSearch gitignore backslash patterns (#1765)', () => {
-  let tmpDir: string;
+// Each case runs with and without a `.git` directory in the fixture: globby
+// only activates its parent-.gitignore / git-root discovery branch when a git
+// root exists (the `repomix --remote` clone always has one), and that branch
+// filters through different code than the plain-directory branch.
+describe.each([{ withGit: false }, { withGit: true }])(
+  'fileSearch gitignore backslash patterns (#1765, withGit=$withGit)',
+  ({ withGit }) => {
+    let tmpDir: string;
 
-  beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-gitignore-backslash-'));
-  });
-
-  afterEach(async () => {
-    await fs.rm(tmpDir, { recursive: true, force: true });
-  });
-
-  it('survives a root .gitignore containing `\\.\\NUL` and still applies the other rules', async () => {
-    await writeFixture(tmpDir, {
-      '.gitignore': '\\.\\NUL\n*.draft\n',
-      'keep.ts': 'export {};\n',
-      'noisy.draft': 'noisy\n',
+    beforeEach(async () => {
+      tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-gitignore-backslash-'));
+      if (withGit) {
+        await fs.mkdir(path.join(tmpDir, '.git'));
+      }
     });
 
-    const { filePaths } = await searchFiles(tmpDir, createMockConfig());
-
-    expect(filePaths).toContain('keep.ts');
-    expect(filePaths).not.toContain('noisy.draft');
-  });
-
-  it('survives a nested .gitignore containing `\\*.pid.lock`', async () => {
-    await writeFixture(tmpDir, {
-      'packages/app/.gitignore': '\\*.pid.lock\n*.draft\n',
-      'packages/app/keep.ts': 'export {};\n',
-      'packages/app/noisy.draft': 'noisy\n',
+    afterEach(async () => {
+      await fs.rm(tmpDir, { recursive: true, force: true });
     });
 
-    const { filePaths } = await searchFiles(tmpDir, createMockConfig());
+    it('survives a root .gitignore containing `\\.\\NUL` and still applies the other rules', async () => {
+      await writeFixture(tmpDir, {
+        '.gitignore': '\\.\\NUL\n*.draft\n',
+        'keep.ts': 'export {};\n',
+        'noisy.draft': 'noisy\n',
+      });
 
-    expect(filePaths).toContain('packages/app/keep.ts');
-    expect(filePaths).not.toContain('packages/app/noisy.draft');
-  });
+      const { filePaths } = await searchFiles(tmpDir, createMockConfig());
 
-  // Diagnostic: hit globby directly, without repomix's error wrapping, so a CI
-  // failure prints the original stack trace and pinpoints where inside
-  // globby/ignore the backslash pattern is rejected. Expected to fail on
-  // Windows until the fix lands; will be folded into the tests above then.
-  it('diagnostic: raw globby with gitignore:true tolerates `\\.\\NUL`', async () => {
-    await writeFixture(tmpDir, {
-      '.gitignore': '\\.\\NUL\n',
-      'keep.ts': 'export {};\n',
+      expect(filePaths).toContain('keep.ts');
+      expect(filePaths).not.toContain('noisy.draft');
     });
 
-    const filePaths = await globby(['**/*'], {
-      cwd: tmpDir,
-      gitignore: true,
-      dot: true,
-      onlyFiles: true,
+    it('survives a nested .gitignore containing `\\*.pid.lock`', async () => {
+      await writeFixture(tmpDir, {
+        'packages/app/.gitignore': '\\*.pid.lock\n*.draft\n',
+        'packages/app/keep.ts': 'export {};\n',
+        'packages/app/noisy.draft': 'noisy\n',
+      });
+
+      const { filePaths } = await searchFiles(tmpDir, createMockConfig());
+
+      expect(filePaths).toContain('packages/app/keep.ts');
+      expect(filePaths).not.toContain('packages/app/noisy.draft');
     });
 
-    expect(filePaths).toContain('keep.ts');
-  });
-});
+    // Diagnostic: hit globby directly, without repomix's error wrapping, so a
+    // CI failure prints the original stack trace and pinpoints where inside
+    // globby/ignore the backslash pattern would be rejected.
+    it('diagnostic: raw globby with gitignore:true tolerates `\\.\\NUL`', async () => {
+      await writeFixture(tmpDir, {
+        '.gitignore': '\\.\\NUL\n',
+        'keep.ts': 'export {};\n',
+      });
+
+      const filePaths = await globby(['**/*'], {
+        cwd: tmpDir,
+        gitignore: true,
+        dot: true,
+        onlyFiles: true,
+      });
+
+      expect(filePaths).toContain('keep.ts');
+    });
+  },
+);
