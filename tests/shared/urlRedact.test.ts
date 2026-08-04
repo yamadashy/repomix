@@ -102,6 +102,26 @@ describe('urlRedact', () => {
       );
     });
 
+    test('should redact a query value that starts with a URL sub-delimiter', () => {
+      // ',' and '(' are legal unencoded in a query value, so treating them as
+      // terminators would leave almost the whole credential in the clear.
+      expect(redactUrl('https://example.com/r?token=,secret')).toBe('https://example.com/r?token=***');
+      expect(redactUrl('https://example.com/r?token=(secret)plus')).toBe('https://example.com/r?token=***');
+    });
+
+    test('should stay linear on adversarial input', () => {
+      // The userinfo patterns backtrack across every '@' in a token. Unbounded,
+      // this input is quadratic and can stall the event loop of an MCP server
+      // whose `remote` argument comes from an untrusted client.
+      const adversarial = `u:${'a@'.repeat(32_000)}host`;
+
+      const start = process.hrtime.bigint();
+      redactUrl(adversarial);
+      const elapsedMs = Number(process.hrtime.bigint() - start) / 1e6;
+
+      expect(elapsedMs).toBeLessThan(100);
+    });
+
     test('should not swallow the diagnostic text that surrounds a redacted query value', () => {
       // The quote and the trailing status are part of git's message, not the token.
       expect(redactUrl("fatal: unable to access 'https://example.com/r?token=s3cr3t': HTTP 401")).toBe(

@@ -28,6 +28,14 @@ const CREDENTIAL_QUERY_KEYS = [
   'token',
 ];
 
+// Upper bounds on the credential-bearing spans. A real userinfo or host is far
+// shorter than these, but the quantifiers must be bounded: the patterns below
+// backtrack across every '@' in a token, and an unbounded search combined with
+// the lookahead is quadratic in the token length, which an untrusted caller (an
+// MCP client passing `remote`) could use to stall the event loop.
+const MAX_USERINFO = 256;
+const MAX_HOST = 256;
+
 // `scheme://userinfo@host`. The userinfo runs to the last '@' before the path
 // begins. All of it is replaced, not just the password half: the credential is
 // often the username alone (`https://<token>@github.com/...`).
@@ -37,7 +45,7 @@ const CREDENTIAL_QUERY_KEYS = [
 // secret, and stopping early would leave it in the clear. The cost is that a
 // path-less URL with an '@' inside its query gets over-redacted, which is a far
 // better failure than printing a credential.
-const SCHEME_USERINFO_PATTERN = /([a-z][a-z0-9+.-]*:\/\/)[^/\s]*@/gi;
+const SCHEME_USERINFO_PATTERN = new RegExp(`([a-z][a-z0-9+.-]{0,31}://)[^/\\s]{0,${MAX_USERINFO}}@`, 'gi');
 
 // scp-style `user:password@host:path`, which carries no scheme. Redacted only
 // when the userinfo contains a ':', so ordinary SSH remotes stay readable:
@@ -46,15 +54,21 @@ const SCHEME_USERINFO_PATTERN = /([a-z][a-z0-9+.-]*:\/\/)[^/\s]*@/gi;
 // '@' in the token keeps a password that itself contains '@' from surviving, and
 // the trailing lookahead requires the `host:path` that every scp-style remote
 // has, so unrelated text like `failed at 12:30@example.com` is left alone.
-const SCP_USERINFO_PATTERN = /(^|\s)[^/@\s:]+:[^/\s]*@(?=[^\s:]+:)/g;
-
-// The value stops at characters that cannot appear unencoded in a query value
-// but routinely surround a URL in log output (quotes, brackets, list
-// separators), so redaction does not swallow the rest of the diagnostic line.
-const CREDENTIAL_QUERY_PATTERN = new RegExp(
-  `([?&])(${CREDENTIAL_QUERY_KEYS.join('|')})=[^&#\\s'"\`()\\[\\]{}<>,;]*`,
-  'gi',
+const SCP_USERINFO_PATTERN = new RegExp(
+  `(^|\\s)[^/@\\s:]{1,${MAX_USERINFO}}:[^/\\s]{0,${MAX_USERINFO}}@(?=[^\\s:]{1,${MAX_HOST}}:)`,
+  'g',
 );
+
+// The value runs to the end of the parameter. Sub-delimiters such as ',' and '('
+// are legal unencoded in a query value, so stopping at them would leave most of a
+// credential in the clear — the trailing punctuation that log output wraps a URL
+// in is restored afterwards instead.
+const CREDENTIAL_QUERY_PATTERN = new RegExp(`([?&])(${CREDENTIAL_QUERY_KEYS.join('|')})=([^&#\\s]*)`, 'gi');
+
+// Punctuation that ends a quoted or parenthesised URL in a log line. It is put
+// back after the placeholder so redaction does not eat the rest of the message;
+// a credential that genuinely ends with one of these loses only that character.
+const TRAILING_PUNCTUATION_PATTERN = /['"`)\]}>,;:.]+$/;
 
 /**
  * Replaces credentials embedded in a URL with a placeholder.
@@ -64,7 +78,11 @@ export const redactUrl = (value: string): string =>
   value
     .replace(SCHEME_USERINFO_PATTERN, `$1${REDACTED}@`)
     .replace(SCP_USERINFO_PATTERN, `$1${REDACTED}@`)
-    .replace(CREDENTIAL_QUERY_PATTERN, `$1$2=${REDACTED}`);
+    .replace(
+      CREDENTIAL_QUERY_PATTERN,
+      (_match, separator, key, paramValue) =>
+        `${separator}${key}=${REDACTED}${TRAILING_PUNCTUATION_PATTERN.exec(paramValue)?.[0] ?? ''}`,
+    );
 
 /**
  * Extracts an error's message with any embedded credentials redacted.
