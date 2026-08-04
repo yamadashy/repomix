@@ -133,21 +133,26 @@ describe('urlRedact', () => {
       // These shapes were quadratic in earlier revisions: the userinfo match
       // backtracks once per '@', and an MCP client controls `remote` with no
       // length limit, so super-linear growth here stalls the event loop.
+      // Take the fastest of several runs: a scheduling pause or a GC can only
+      // ever make a sample slower, so the minimum is the stable estimator and
+      // keeps this from flaking on a loaded CI machine.
       const measure = (n: number): number => {
         const input = build(n);
-        const start = process.hrtime.bigint();
-        redactUrl(input);
-        return Number(process.hrtime.bigint() - start) / 1e6;
+        let fastest = Number.POSITIVE_INFINITY;
+        for (let i = 0; i < 5; i++) {
+          const start = process.hrtime.bigint();
+          redactUrl(input);
+          fastest = Math.min(fastest, Number(process.hrtime.bigint() - start) / 1e6);
+        }
+        return fastest;
       };
 
-      measure(20_000); // warm up the JIT so the first timing is not an outlier
       const small = measure(20_000);
       const large = measure(80_000);
 
-      // 4x the input. Linear predicts ~4x; quadratic predicts ~16x. The generous
-      // ceiling keeps this from flaking on a loaded CI machine while still
-      // failing loudly on a return to quadratic behaviour.
-      expect(large).toBeLessThan(Math.max(small, 1) * 8);
+      // 4x the input. Linear predicts ~4x; quadratic predicts ~16x, so a ceiling
+      // of 8x separates them with room to spare.
+      expect(large).toBeLessThan(Math.max(small, 0.5) * 8);
     });
 
     test('should redact every URL when text embeds more than one', () => {
