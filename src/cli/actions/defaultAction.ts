@@ -17,6 +17,7 @@ import { RepomixError, rethrowValidationErrorIfSchemaError } from '../../shared/
 import { logger } from '../../shared/logger.js';
 import { splitPatterns } from '../../shared/patternUtils.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
+import { redactOptionsForLog } from '../../shared/urlRedact.js';
 import { reportResults } from '../cliReport.js';
 import { Spinner } from '../cliSpinner.js';
 import { validateTokenBudget } from '../cliTokenBudget.js';
@@ -81,7 +82,7 @@ export const runDefaultAction = async (
   cliOptions: CliOptions,
   progressCallback?: RepomixProgressCallback,
 ): Promise<DefaultActionRunnerResult> => {
-  logger.trace('Loaded CLI options:', cliOptions);
+  logger.trace('Loaded CLI options:', redactOptionsForLog(cliOptions));
 
   // Build the merged config (migration + file config + CLI options)
   const config = await buildMergedConfig(cwd, cliOptions);
