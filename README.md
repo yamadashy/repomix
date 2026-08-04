@@ -1,3 +1,5 @@
+[![MCP Toplist](https://mcptoplist.com/badge/glama%2Fyamadashy%2Frepomix.svg)](https://mcptoplist.com/server/glama%2Fyamadashy%2Frepomix)
+
 <div align="center" markdown="1">
    <sup>Special thanks to:</sup>
    <br>
