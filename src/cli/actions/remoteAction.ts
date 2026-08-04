@@ -149,7 +149,10 @@ export const runRemoteAction = async (
 
     // Run the default action on the downloaded/cloned repository
     // Pass the pre-computed skill name, directory, project name, and source URL
-    const skillSourceUrl = cliOptions.skillGenerate !== undefined ? repoUrl : undefined;
+    // Redacted at the source: this URL is only ever rendered as a link in the
+    // generated SKILL.md, never used to reach the network. Leaving it raw would
+    // persist a credentialed remote into a file the user is likely to commit.
+    const skillSourceUrl = cliOptions.skillGenerate !== undefined ? redactUrl(repoUrl) : undefined;
 
     const optionsWithSkill = {
       ...cliOptions,

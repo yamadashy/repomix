@@ -4,6 +4,7 @@ import pc from 'picocolors';
 import { findLocalConfigPath, isExecutableConfigPath } from '../../config/configLoad.js';
 import { OperationCancelledError, RepomixError } from '../../shared/errorHandle.js';
 import { writeStderrLine as writeErr } from '../../shared/stderrWrite.js';
+import { redactUrl } from '../../shared/urlRedact.js';
 import { isRemoteConfigTrusted, markRemoteConfigTrusted, sha256 } from './remoteConfigTrustStore.js';
 
 // Cap how much of the config we echo so a huge file cannot bury the interesting
@@ -168,14 +169,20 @@ export const confirmRemoteConfigTrust = async (
   // caller). It is a broad flag, so say what it suppressed rather than silently
   // granting a remote config the right to run.
   if (force) {
-    writeErr(pc.dim(`Trusting remote config without review (--force): ${configName} (${sanitizeForDisplay(repoUrl)})`));
+    writeErr(
+      pc.dim(
+        `Trusting remote config without review (--force): ${configName} (${sanitizeForDisplay(redactUrl(repoUrl))})`,
+      ),
+    );
     return;
   }
 
   // Non-interactive (CI, pipes): keep the historical non-prompting behavior so
   // existing --remote-trust-config automations do not hang. Announce it on stderr.
   if (!deps.isInteractive()) {
-    writeErr(pc.dim(`Trusting remote config non-interactively: ${configName} (${sanitizeForDisplay(repoUrl)})`));
+    writeErr(
+      pc.dim(`Trusting remote config non-interactively: ${configName} (${sanitizeForDisplay(redactUrl(repoUrl))})`),
+    );
     return;
   }
 
@@ -248,7 +255,9 @@ export const confirmRemoteConfigTrust = async (
 
   writeErr();
   writeErr(
-    pc.yellow(pc.bold(`⚠ ${sanitizeForDisplay(repoUrl)} ships a config file that will be trusted: ${configName}`)),
+    pc.yellow(
+      pc.bold(`⚠ ${sanitizeForDisplay(redactUrl(repoUrl))} ships a config file that will be trusted: ${configName}`),
+    ),
   );
   if (isCode) {
     writeErr(pc.yellow('  This is executable code — loading it runs arbitrary commands on your machine.'));
@@ -284,7 +293,7 @@ export const confirmRemoteConfigTrust = async (
   const choice = await clack.select({
     // Restate the risk and the source here: this line renders last and stays on
     // screen with the options, so it survives a config that scrolled the banner away.
-    message: `Trust and run this config from ${sanitizeForDisplay(repoUrl)}? It can run arbitrary commands on your machine.`,
+    message: `Trust and run this config from ${sanitizeForDisplay(redactUrl(repoUrl))}? It can run arbitrary commands on your machine.`,
     options: trustOptions,
     // Default to the safe choice so a stray Enter never grants trust.
     initialValue: 'no' satisfies RemoteTrustChoice,

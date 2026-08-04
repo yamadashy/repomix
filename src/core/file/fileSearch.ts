@@ -8,6 +8,7 @@ import { defaultIgnoreList } from '../../config/defaultIgnore.js';
 import { mapWithConcurrency } from '../../shared/asyncMap.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
+import { redactUrl } from '../../shared/urlRedact.js';
 import { sortPaths } from './filePathSort.js';
 
 import { checkDirectoryPermissions, PermissionError } from './permissionCheck.js';
@@ -138,7 +139,7 @@ export const searchFiles = async (
     if (error instanceof Error && 'code' in error) {
       const errorCode = (error as NodeJS.ErrnoException).code;
       if (errorCode === 'ENOENT') {
-        throw new RepomixError(`Target path does not exist: ${rootDir}`);
+        throw new RepomixError(`Target path does not exist: ${redactUrl(rootDir)}`);
       }
       if (errorCode === 'EPERM' || errorCode === 'EACCES') {
         throw new PermissionError(

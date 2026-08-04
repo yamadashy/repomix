@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { runCli } from '../../cli/cliRun.js';
 import type { CliOptions } from '../../cli/types.js';
 import { defaultFilePathMap } from '../../config/configSchema.js';
+import { redactUrl } from '../../shared/urlRedact.js';
 import {
   buildMcpToolErrorResponse,
   convertErrorToJson,
@@ -118,7 +119,15 @@ export const registerPackRemoteRepositoryTool = (mcpServer: McpServer) => {
         // Extract metrics information from the pack result
         const { packResult } = result;
 
-        return await formatPackToolResponse({ repository: remote }, packResult, outputFilePath, topFilesLength);
+        // The echoed repository is descriptive metadata only, so it is redacted:
+        // a credentialed remote would otherwise persist in the MCP transcript,
+        // the client's logs, and the model's context.
+        return await formatPackToolResponse(
+          { repository: redactUrl(remote) },
+          packResult,
+          outputFilePath,
+          topFilesLength,
+        );
       } catch (error) {
         return buildMcpToolErrorResponse(convertErrorToJson(error));
       }

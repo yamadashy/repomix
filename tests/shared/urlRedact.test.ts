@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { redactErrorMessage, redactUrl } from '../../src/shared/urlRedact.js';
+import { redactErrorMessage, redactOptionsForLog, redactUrl } from '../../src/shared/urlRedact.js';
 
 // Fixture credentials are assembled from parts rather than written inline, so
 // the URLs below do not read as real basic-auth literals to secret scanners.
@@ -50,6 +50,23 @@ describe('urlRedact', () => {
       expect(redactUrl(`${USER}:${PASSWORD}@github.com:owner/repo.git`)).toBe('***@github.com:owner/repo.git');
     });
 
+    test('should redact a scp-style password containing an @ character', () => {
+      // Stopping at the first '@' would leave the rest of the password in the clear.
+      expect(redactUrl(`${USER}:abc@${PASSWORD}@github.com:owner/repo.git`)).toBe('***@github.com:owner/repo.git');
+    });
+
+    test('should redact a userinfo containing an unencoded ? or #', () => {
+      // Malformed, but still a real secret: a password typed with these characters
+      // unencoded must not survive just because the URL does not parse.
+      expect(redactUrl(`https://oauth2:se?cret@github.com/o/r.git`)).toBe('https://***@github.com/o/r.git');
+      expect(redactUrl(`https://oauth2:se#cret@github.com/o/r.git`)).toBe('https://***@github.com/o/r.git');
+    });
+
+    test('should not mistake a time or port for scp-style credentials', () => {
+      // No `host:path` follows the '@', so this is not a remote at all.
+      expect(redactUrl('Build failed at 12:30@example.com')).toBe('Build failed at 12:30@example.com');
+    });
+
     test('should leave ordinary SSH remotes readable', () => {
       // The username is a fixed literal here, not a secret: authentication
       // happens out of band via the SSH key.
@@ -82,6 +99,13 @@ describe('urlRedact', () => {
     test('should redact both userinfo and query credentials in one URL', () => {
       expect(redactUrl(`https://${USER}:${PASSWORD}@github.com/owner/repo.git?private_token=secret`)).toBe(
         'https://***@github.com/owner/repo.git?private_token=***',
+      );
+    });
+
+    test('should not swallow the diagnostic text that surrounds a redacted query value', () => {
+      // The quote and the trailing status are part of git's message, not the token.
+      expect(redactUrl("fatal: unable to access 'https://example.com/r?token=s3cr3t': HTTP 401")).toBe(
+        "fatal: unable to access 'https://example.com/r?token=***': HTTP 401",
       );
     });
 
@@ -119,6 +143,34 @@ describe('urlRedact', () => {
         'https://***@github.com/o/r.git failed',
       );
       expect(redactErrorMessage(undefined)).toBe('undefined');
+    });
+  });
+
+  describe('redactOptionsForLog', () => {
+    test('should redact every URL-bearing field', () => {
+      const url = `https://${TOKEN}@github.com/o/r.git`;
+
+      const options = { remote: url, skillSourceUrl: url, quiet: true };
+      const redacted = redactOptionsForLog(options);
+
+      expect(redacted.remote).toBe('https://***@github.com/o/r.git');
+      expect(redacted.skillSourceUrl).toBe('https://***@github.com/o/r.git');
+      expect(redacted.quiet).toBe(true);
+    });
+
+    test('should not mutate the options it was given', () => {
+      // The caller keeps using this object to actually reach the remote.
+      const options = { remote: `https://${TOKEN}@github.com/o/r.git` };
+
+      redactOptionsForLog(options);
+
+      expect(options.remote).toBe(`https://${TOKEN}@github.com/o/r.git`);
+    });
+
+    test('should pass through options that carry no URL', () => {
+      const options: { remote?: string; quiet: boolean } = { quiet: true };
+
+      expect(redactOptionsForLog(options)).toEqual({ quiet: true });
     });
   });
 });
