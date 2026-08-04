@@ -1,5 +1,6 @@
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
+import { redactErrorMessage, redactUrl } from '../../shared/urlRedact.js';
 import { execLsRemote, execLsRemoteHead, validateGitUrl } from './gitCommand.js';
 
 /**
@@ -20,7 +21,7 @@ export const checkRemoteRepoExists = async (
     await deps.execLsRemoteHead(url);
     return true;
   } catch (error) {
-    logger.trace(`Remote repository not reachable: ${url}:`, (error as Error).message);
+    logger.trace(`Remote repository not reachable: ${redactUrl(url)}:`, redactErrorMessage(error));
     return false;
   }
 };
@@ -51,10 +52,10 @@ export const getRemoteRefs = async (
       })
       .filter(Boolean);
 
-    logger.trace(`Found ${refs.length} refs in repository: ${url}`);
+    logger.trace(`Found ${refs.length} refs in repository: ${redactUrl(url)}`);
     return refs;
   } catch (error) {
-    logger.trace('Failed to get remote refs:', (error as Error).message);
-    throw new RepomixError(`Failed to get remote refs: ${(error as Error).message}`);
+    logger.trace('Failed to get remote refs:', redactErrorMessage(error));
+    throw new RepomixError(`Failed to get remote refs: ${redactErrorMessage(error)}`);
   }
 };

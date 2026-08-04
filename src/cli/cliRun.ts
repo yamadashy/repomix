@@ -8,6 +8,7 @@ import { isExplicitRemoteUrl, isValidShorthand } from '../core/git/gitRemoteUrl.
 import { handleError, RepomixError } from '../shared/errorHandle.js';
 import { logger, repomixLogLevels } from '../shared/logger.js';
 import { parseHumanSizeToBytes } from '../shared/sizeParse.js';
+import { redactOptionsForLog, redactUrl } from '../shared/urlRedact.js';
 import type { CliOptions } from './types.js';
 
 // Semantic mapping for CLI suggestions
@@ -357,9 +358,11 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
     logger.setLogLevel(repomixLogLevels.SILENT);
   }
 
-  logger.trace('directories:', directories);
+  // A positional argument can itself be a remote URL, and `options.remote` holds
+  // one by definition, so both are redacted before being dumped.
+  logger.trace('directories:', directories.map(redactUrl));
   logger.trace('cwd:', cwd);
-  logger.trace('options:', options);
+  logger.trace('options:', redactOptionsForLog(options));
 
   const sandboxed = options.sandbox != null && options.sandbox !== false;
 
@@ -403,7 +406,7 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
 
   // Auto-detect explicit remote URLs (https://, git@, ssh://, git://) in positional arguments
   if (directories.length === 1 && isExplicitRemoteUrl(directories[0])) {
-    logger.trace(`Auto-detected remote URL from positional argument: ${directories[0]}`);
+    logger.trace(`Auto-detected remote URL from positional argument: ${redactUrl(directories[0])}`);
     const { runRemoteAction } = await import('./actions/remoteAction.js');
     return await runRemoteAction(directories[0], options);
   }

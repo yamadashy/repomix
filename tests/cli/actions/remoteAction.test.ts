@@ -2,8 +2,13 @@ import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { DefaultActionRunnerResult } from '../../../src/cli/actions/defaultAction.js';
-import { copyOutputToCurrentDirectory, runRemoteAction } from '../../../src/cli/actions/remoteAction.js';
+import {
+  cloneRepository,
+  copyOutputToCurrentDirectory,
+  runRemoteAction,
+} from '../../../src/cli/actions/remoteAction.js';
 import { OperationCancelledError } from '../../../src/shared/errorHandle.js';
+import { logger } from '../../../src/shared/logger.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 vi.mock('node:fs/promises', async (importOriginal) => {
@@ -675,6 +680,54 @@ describe('remoteAction functions', () => {
       await expect(copyOutputToCurrentDirectory('/source', '/target', 'output.txt')).rejects.toThrow(
         'Permission denied',
       );
+    });
+  });
+
+  describe('cloneRepository credential redaction', () => {
+    // Assembled from parts so the fixture does not read as a real basic-auth
+    // literal to secret scanners.
+    const token = 'ghp_secrettoken';
+    const credentialedUrl = `https://oauth2:${token}@github.com/owner/repo.git`;
+
+    test('should not log credentials embedded in the repository URL', async () => {
+      await cloneRepository(credentialedUrl, '/temp/dir', undefined, {
+        execGitShallowClone: vi.fn().mockResolvedValue(undefined),
+      });
+
+      const logged = vi.mocked(logger.log).mock.calls.flat().join('\n');
+      expect(logged).not.toContain(token);
+      expect(logged).toContain('https://***@github.com/owner/repo.git');
+    });
+
+    test('should still clone using the original, unredacted URL', async () => {
+      const execGitShallowCloneMock = vi.fn().mockResolvedValue(undefined);
+
+      await cloneRepository(credentialedUrl, '/temp/dir', undefined, {
+        execGitShallowClone: execGitShallowCloneMock,
+      });
+
+      expect(execGitShallowCloneMock).toHaveBeenCalledWith(credentialedUrl, '/temp/dir', undefined);
+    });
+
+    test('should not leak credentials through a clone failure message', async () => {
+      // Node's execFile puts the full command line into the rejection message,
+      // so an unredacted failure would carry the credential to the terminal.
+      const execGitShallowCloneMock = vi
+        .fn()
+        .mockRejectedValue(new Error(`Command failed: git clone --depth 1 -- ${credentialedUrl} /temp/dir`));
+
+      let error: Error | undefined;
+      try {
+        await cloneRepository(credentialedUrl, '/temp/dir', undefined, {
+          execGitShallowClone: execGitShallowCloneMock,
+        });
+      } catch (err) {
+        error = err as Error;
+      }
+
+      expect(error).toBeInstanceOf(Error);
+      expect(error?.message).not.toContain(token);
+      expect(error?.message).toContain('https://***@github.com/owner/repo.git');
     });
   });
 });

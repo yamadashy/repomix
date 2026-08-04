@@ -4,6 +4,7 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
+import { redactErrorMessage, redactUrl } from '../../shared/urlRedact.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -106,7 +107,7 @@ export const execLsRemote = async (
     const result = await deps.execFileAsync('git', ['ls-remote', '--heads', '--tags', '--', url], gitRemoteOpts);
     return result.stdout || '';
   } catch (error) {
-    logger.trace('Failed to execute git ls-remote:', (error as Error).message);
+    logger.trace('Failed to execute git ls-remote:', redactErrorMessage(error));
     throw error;
   }
 };
@@ -127,7 +128,7 @@ export const execLsRemoteHead = async (
     const result = await deps.execFileAsync('git', ['ls-remote', '--', url, 'HEAD'], gitProbeOpts);
     return result.stdout || '';
   } catch (error) {
-    logger.trace('Failed to execute git ls-remote HEAD:', (error as Error).message);
+    logger.trace('Failed to execute git ls-remote HEAD:', redactErrorMessage(error));
     throw error;
   }
 };
@@ -223,12 +224,12 @@ export const validateGitUrl = (url: string): void => {
   // Block dangerous git parameters that could be used for command injection
   const dangerousParams = ['--upload-pack', '--receive-pack', '--config', '--exec'];
   if (dangerousParams.some((param) => url.includes(param))) {
-    throw new RepomixError(`Invalid repository URL. URL contains potentially dangerous parameters: ${url}`);
+    throw new RepomixError(`Invalid repository URL. URL contains potentially dangerous parameters: ${redactUrl(url)}`);
   }
 
   // Check if the URL starts with git@ or https://
   if (!(url.startsWith('git@') || url.startsWith('https://'))) {
-    throw new RepomixError(`Invalid URL protocol for '${url}'. URL must start with 'git@' or 'https://'`);
+    throw new RepomixError(`Invalid URL protocol for '${redactUrl(url)}'. URL must start with 'git@' or 'https://'`);
   }
 
   try {
@@ -236,10 +237,8 @@ export const validateGitUrl = (url: string): void => {
       new URL(url);
     }
   } catch (error: unknown) {
-    // Redact embedded credentials in https URLs to avoid PII leakage
-    const redactedUrl = url.startsWith('https://') ? url.replace(/^(https?:\/\/)([^@/]+)@/i, '$1***@') : url;
-    logger.trace('Invalid repository URL:', (error as Error).message);
-    throw new RepomixError(`Invalid repository URL. Please provide a valid URL: ${redactedUrl}`);
+    logger.trace('Invalid repository URL:', redactErrorMessage(error));
+    throw new RepomixError(`Invalid repository URL. Please provide a valid URL: ${redactUrl(url)}`);
   }
 };
 

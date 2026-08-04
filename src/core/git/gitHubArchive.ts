@@ -4,6 +4,7 @@ import * as zlib from 'node:zlib';
 import { extract as tarExtract } from 'tar';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
+import { redactUrl } from '../../shared/urlRedact.js';
 import { createArchiveEntryFilter } from './archiveEntryFilter.js';
 import {
   buildGitHubArchiveUrl,
@@ -68,7 +69,7 @@ export const downloadGitHubArchive = async (
   for (const archiveUrl of archiveUrls) {
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
-        logger.trace(`Downloading GitHub archive from: ${archiveUrl} (attempt ${attempt}/${retries})`);
+        logger.trace(`Downloading GitHub archive from: ${redactUrl(archiveUrl)} (attempt ${attempt}/${retries})`);
 
         await downloadAndExtractArchive(archiveUrl, targetDirectory, timeout, onProgress, deps);
 

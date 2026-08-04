@@ -10,6 +10,7 @@ import { isGitInstalled } from '../../core/git/gitRepositoryHandle.js';
 import { generateDefaultSkillNameFromUrl, generateProjectNameFromUrl } from '../../core/skill/skillUtils.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
+import { redactErrorMessage, redactUrl } from '../../shared/urlRedact.js';
 import { Spinner } from '../cliSpinner.js';
 import { validateTokenBudget } from '../cliTokenBudget.js';
 import { confirmRemoteConfigTrust } from '../prompts/remoteConfigTrustPrompt.js';
@@ -148,7 +149,10 @@ export const runRemoteAction = async (
 
     // Run the default action on the downloaded/cloned repository
     // Pass the pre-computed skill name, directory, project name, and source URL
-    const skillSourceUrl = cliOptions.skillGenerate !== undefined ? repoUrl : undefined;
+    // Redacted at the source: this URL is only ever rendered as a link in the
+    // generated SKILL.md, never used to reach the network. Leaving it raw would
+    // persist a credentialed remote into a file the user is likely to commit.
+    const skillSourceUrl = cliOptions.skillGenerate !== undefined ? redactUrl(repoUrl) : undefined;
 
     const optionsWithSkill = {
       ...cliOptions,
@@ -224,7 +228,7 @@ const performGitClone = async (
     refs = await deps.getRemoteRefs(parseRemoteValue(repoUrl).repoUrl);
     logger.trace(`Retrieved ${refs.length} refs from remote repository`);
   } catch (error) {
-    logger.trace('Failed to get remote refs, proceeding without them:', (error as Error).message);
+    logger.trace('Failed to get remote refs, proceeding without them:', redactErrorMessage(error));
   }
 
   // Parse the remote URL with the refs information
@@ -262,13 +266,13 @@ export const cloneRepository = async (
     execGitShallowClone,
   },
 ): Promise<void> => {
-  logger.log(`Clone repository: ${url} to temporary directory. ${pc.dim(`path: ${directory}`)}`);
+  logger.log(`Clone repository: ${redactUrl(url)} to temporary directory. ${pc.dim(`path: ${directory}`)}`);
   logger.log('');
 
   try {
     await deps.execGitShallowClone(url, directory, remoteBranch);
   } catch (error) {
-    throw new RepomixError(`Failed to clone repository: ${(error as Error).message}`);
+    throw new RepomixError(`Failed to clone repository: ${redactErrorMessage(error)}`);
   }
 };
 

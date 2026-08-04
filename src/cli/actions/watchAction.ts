@@ -7,6 +7,7 @@ import { type PackResult, pack } from '../../core/packager.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
+import { redactOptionsForLog } from '../../shared/urlRedact.js';
 import { reportResults } from '../cliReport.js';
 import { Spinner } from '../cliSpinner.js';
 import type { CliOptions } from '../types.js';
@@ -69,7 +70,7 @@ export const runWatchAction = async (
   // Only load chokidar if no watch function is provided (enables faster tests)
   const resolvedDeps: WatchDeps = deps?.watch ? (deps as WatchDeps) : { ...(await resolveDefaultDeps()), ...deps };
 
-  logger.trace('Watch mode: loaded CLI options:', cliOptions);
+  logger.trace('Watch mode: loaded CLI options:', redactOptionsForLog(cliOptions));
 
   const config = await buildMergedConfig(cwd, cliOptions);
 
