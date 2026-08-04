@@ -15,6 +15,25 @@ describe('remoteAction functions', () => {
   });
 
   describe('parseRemoteValue', () => {
+    test('refuses a cloud metadata endpoint before any git command runs', () => {
+      // Through MCP an agent picks the URL, so an injected instruction could aim a
+      // clone at an address the user never asked for.
+      expect(() => parseRemoteValue('http://169.254.169.254/latest/meta-data')).toThrow(/metadata endpoint/);
+    });
+
+    test('still allows a self-hosted remote on a private network', () => {
+      // RFC1918 is deliberately not blocked: internal GitLab/Gitea/GHE is normal.
+      expect(parseRemoteValue('http://10.0.0.5/team/repo.git').repoUrl).toBe('http://10.0.0.5/team/repo.git');
+    });
+
+    test('refuses a userless scp-like metadata host one way or another', () => {
+      // host:path with no user@ is not matched by the scp host extractor; today the
+      // form is rejected as an invalid remote before any host check. This test pins
+      // that it keeps throwing — if userless scp-like support is ever added, the
+      // normalized-URL metadata check must catch it instead.
+      expect(() => parseRemoteValue('169.254.169.254:owner/repo')).toThrow();
+    });
+
     test('should convert GitHub shorthand to full URL', () => {
       expect(parseRemoteValue('user/repo')).toEqual({
         repoUrl: 'https://github.com/user/repo.git',

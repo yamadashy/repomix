@@ -94,7 +94,7 @@ export const registerPackCodebaseTool = (
       .describe(
         config.sandboxed
           ? 'Directory to pack, relative to the workspace root (e.g. "." or "src").'
-          : 'Directory to pack (Absolute path)',
+          : 'Directory to pack (Absolute path). Any directory readable by this process can be packed.',
       ),
   });
 

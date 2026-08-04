@@ -84,7 +84,7 @@ This tool attaches an existing Repomix packed output file for AI analysis. It al
 **Features:**
 - Accepts either a directory containing a repomix-output.xml file or a direct path to an XML file
 - Registers the file with the MCP server and returns the same structure as the pack_codebase tool
-- Provides secure access to existing packed outputs without requiring re-processing
+- Provides access to existing packed outputs without requiring re-processing
 - Useful for working with previously generated packed repositories
 
 **Example:**
@@ -129,7 +129,7 @@ This tool reads the contents of a Repomix-generated output file. Supports partia
 **Features:**
 - Specifically designed for web-based environments or sandboxed applications
 - Retrieves the content of previously generated outputs using their ID
-- Provides secure access to packed codebase without requiring file system access
+- Provides access to packed codebase without requiring file system access
 - Supports partial reading for large files
 
 **Example:**
@@ -166,45 +166,6 @@ This tool searches for patterns in a Repomix output file using grep-like functio
   "pattern": "function\\s+\\w+\\(",
   "contextLines": 3,
   "ignoreCase": false
-}
-```
-
-### 6. file_system_read_file
-
-This tool reads a file from the local file system using an absolute path. Includes built-in security validation to detect and prevent access to files containing sensitive information.
-
-**Parameters:**
-- `path`: (Required) Absolute path to the file to read
-
-**Security features:**
-- Implements security validation using [Secretlint](https://github.com/secretlint/secretlint)
-- Prevents access to files containing sensitive information (API keys, passwords, secrets)
-- Validates absolute paths to prevent directory traversal attacks
-
-**Example:**
-```json
-{
-  "path": "/absolute/path/to/file.txt"
-}
-```
-
-### 7. file_system_read_directory
-
-This tool lists the contents of a directory using an absolute path. Returns a formatted list showing files and subdirectories with clear indicators.
-
-**Parameters:**
-- `path`: (Required) Absolute path to the directory to list
-
-**Features:**
-- Shows files and directories with clear indicators (`[FILE]` or `[DIR]`)
-- Provides safe directory traversal with proper error handling
-- Validates paths and ensures they are absolute
-- Useful for exploring project structure and understanding codebase organization
-
-**Example:**
-```json
-{
-  "path": "/absolute/path/to/directory"
 }
 ```
 

@@ -195,7 +195,8 @@ describe('AttachPackedOutputTool', () => {
   test('should mark attached outputs for serve-time secret scanning', async () => {
     // The attach path does not scan or return content itself; instead it flags the
     // registered output so read_repomix_output / grep_repomix_output secret-scan it
-    // before serving, matching the file_system_read_file boundary.
+    // before serving. The scan flags recognized secret formats; it does not restrict
+    // which file the path points at.
     const testFilePath = '/test/repomix-output.xml';
 
     await toolHandler({ path: testFilePath });

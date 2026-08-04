@@ -1,6 +1,7 @@
 import gitUrlParse, { type GitUrl } from 'git-url-parse';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
+import { assertNotMetadataEndpoint } from './gitMetadataEndpoint.js';
 import { isValidShorthand } from './gitRemoteUrl.js';
 
 interface IGitUrl extends GitUrl {
@@ -51,6 +52,18 @@ const isAzureDevOpsUrl = (remoteValue: string): boolean => {
 export const parseRemoteValue = (
   remoteValue: string,
   refs: string[] = [],
+): { repoUrl: string; remoteBranch: string | undefined } => {
+  // Check the input and the resolved URL: shorthand expansion and git-url-parse
+  // normalization can both change the host git will actually contact.
+  assertNotMetadataEndpoint(remoteValue);
+  const parsed = parseRemoteValueInternal(remoteValue, refs);
+  assertNotMetadataEndpoint(parsed.repoUrl);
+  return parsed;
+};
+
+const parseRemoteValueInternal = (
+  remoteValue: string,
+  refs: string[],
 ): { repoUrl: string; remoteBranch: string | undefined } => {
   if (isValidShorthand(remoteValue)) {
     logger.trace(`Formatting GitHub shorthand: ${remoteValue}`);

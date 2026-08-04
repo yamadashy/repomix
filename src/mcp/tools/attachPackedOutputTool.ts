@@ -307,8 +307,9 @@ It will return in that case a new output ID and the updated content.`,
 
         // Mark this output as attach-sourced so read_repomix_output and
         // grep_repomix_output secret-scan its content before serving it. The scan
-        // runs at serve time (not just here) so the boundary cannot be bypassed and
-        // stays correct even if the file changes after being attached.
+        // runs at serve time (not just here), so it stays correct even if the file
+        // changes after being attached. It flags recognized secret formats; it is a
+        // heuristic, not a guarantee about which file the path points at.
         return await formatPackToolResponse(context, packResult, outputFilePath, topFilesLength, true);
       } catch (error) {
         return buildMcpToolErrorResponse(convertErrorToJson(error));

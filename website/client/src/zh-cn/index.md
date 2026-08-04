@@ -17,7 +17,7 @@ features:
 
   - icon: 🛡️
     title: 注重安全
-    details: 集成 Secretlint 进行安全扫描，检测并防止敏感信息泄露。
+    details: 集成 Secretlint，检测匹配已知凭据格式的文件并将其从输出中排除。
 
   - icon: 📊
     title: Token 计数

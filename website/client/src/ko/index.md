@@ -17,7 +17,7 @@ features:
 
   - icon: 🛡️
     title: 보안 중심
-    details: Secretlint를 통합하여 민감한 정보를 감지하고 보호합니다.
+    details: Secretlint를 통합하여 알려진 자격 증명 형식과 일치하는 파일을 감지하고 출력에서 제외합니다.
 
   - icon: 📊
     title: 토큰 카운팅

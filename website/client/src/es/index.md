@@ -17,7 +17,7 @@ features:
 
   - icon: 🛡️
     title: Enfocado en la seguridad
-    details: Incorpora Secretlint para realizar robustas comprobaciones de seguridad que detectan y previenen la inclusión de información sensible.
+    details: Incorpora Secretlint para detectar archivos que coincidan con formatos de credenciales conocidos y excluirlos del output.
 
   - icon: 📊
     title: Conteo de tokens

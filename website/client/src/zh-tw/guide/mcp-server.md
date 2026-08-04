@@ -35,7 +35,7 @@ repomix --mcp --sandbox path/to/project
 當沙箱模式啟用時：
 
 - **每個路徑都相對於工作區根目錄解析。** 絕對路徑、`~`、`..` 以及 Windows 磁碟機／UNC 路徑都會被拒絕，解析後落在根目錄之外的路徑（包括透過符號連結的情況）也會被捨棄。傳回結果與錯誤訊息同樣採用相對路徑，因此不會暴露主機路徑。這適用於下方工具參考中的 `directory` 與 `path` 參數：在沙箱模式下，請傳入相對於工作區根目錄的路徑，而非這些表格中原本描述的絕對路徑。
-- **僅會註冊唯讀且限定在根目錄內的工具：** `pack_codebase`、`read_repomix_output`、`grep_repomix_output`、`file_system_read_file` 和 `file_system_read_directory`。遠端打包、Skills 生成以及附加外部輸出等功能皆會被停用，因為它們會存取網路、寫入文件或參照任意路徑。
+- **僅會註冊唯讀且限定在根目錄內的工具：** `pack_codebase`、`read_repomix_output`、`grep_repomix_output`、`file_system_read_file` 和 `file_system_read_directory`。遠端打包、Skills 生成以及附加外部輸出等功能皆會被停用，因為它們會存取網路、寫入文件或參照任意路徑。這兩個 `file_system_*` 工具本身也僅在沙箱模式下才可用，其可存取範圍由工作區根目錄所限定。
 
 這是在應用程式層級對工具介面所做的限制（縱深防禦），並非作業系統層級的沙箱。若要為不受信任的用戶端託管此伺服器，仍應在您所在平台慣用的隔離機制下運行（容器、專用使用者等）。
 
@@ -206,7 +206,7 @@ claude mcp add repomix -- npx -y repomix --mcp
 **功能：**
 - 專為基於 Web 的環境或沙箱應用程式設計
 - 使用其 ID 檢索先前生成的輸出內容
-- 無需文件系統存取權限即可安全存取打包的程式碼庫
+- 無需文件系統存取權限即可存取打包的程式碼庫
 - 支援大文件的部分讀取
 
 **示例：**
@@ -251,48 +251,35 @@ claude mcp add repomix -- npx -y repomix --mcp
 
 ### file_system_read_file 和 file_system_read_directory
 
-Repomix 的 MCP 伺服器提供了兩個文件系統工具，允許 AI 助手安全地與本地文件系統交互：
+這兩個文件系統工具僅在[沙箱模式](#沙箱模式)（`--sandbox`）下才可用，其可存取範圍由工作區根目錄所限定。若不使用 `--sandbox`，它們不會被註冊。
 
 1. `file_system_read_file`
-  - 使用絕對路徑從本地文件系統讀取文件內容
-  - 包含內建安全驗證以檢測和防止存取包含敏感資訊的文件
-  - 使用 [Secretlint](https://github.com/secretlint/secretlint) 實現安全驗證
-  - 防止存取包含敏感資訊的文件（API 金鑰、密碼、機密）
-  - 驗證絕對路徑以防止目錄遍歷攻擊
-  - 對無效路徑和安全問題返回清晰的錯誤訊息
+  - 讀取相對於工作區根目錄之路徑下的文件內容（例如 `src/index.ts`）
+  - 作為額外的啟發式防護措施，拒絕符合已知敏感資訊格式（[Secretlint](https://github.com/secretlint/secretlint)）的內容；存取邊界是工作區根目錄，而非該掃描
+  - 對無效路徑返回清晰的錯誤訊息，且不會暴露主機路徑
 
 2. `file_system_read_directory`
-  - 使用絕對路徑列出目錄的內容
-  - 返回顯示文件和子目錄的格式化列表，帶有清晰的指示符
+  - 列出相對於工作區根目錄之路徑下的目錄內容（例如 `.` 或 `src`）
   - 使用清晰的指示符（`[FILE]` 或 `[DIR]`）顯示文件和目錄
-  - 提供安全的目錄遍歷和適當的錯誤處理
-  - 驗證路徑並確保使用絕對路徑
   - 對探索專案結構和理解程式碼庫組織很有用
-
-這兩個工具都包含了強大的安全措施：
-- 絕對路徑驗證以防止目錄遍歷攻擊
-- 權限檢查以確保適當的存取權限
-- 與 Secretlint 整合以檢測敏感資訊
-- 清晰的錯誤訊息以便於除錯和安全意識
 
 **示例：**
 ```typescript
 // 讀取文件
 const fileContent = await tools.file_system_read_file({
-  path: '/absolute/path/to/file.txt'
+  path: 'src/index.ts'
 });
 
 // 列出目錄內容
 const dirContent = await tools.file_system_read_directory({
-  path: '/absolute/path/to/directory'
+  path: 'src'
 });
 ```
 
 這些工具在 AI 助手需要執行以下操作時特別有用：
-- 分析程式碼庫中的特定文件
+- 分析工作區中的特定文件
 - 導航目錄結構
 - 驗證文件存在性和可存取性
-- 確保安全的文件系統操作
 
 ## 將 Repomix 作為 MCP 伺服器使用的好處
 

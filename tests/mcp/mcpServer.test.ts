@@ -180,7 +180,7 @@ describe('MCP Server', () => {
       expect(server).toBeDefined();
     });
 
-    test('registers all 8 tools by default (non-sandboxed)', async () => {
+    test('registers the 6 packing/analysis tools by default (non-sandboxed)', async () => {
       const server = await createMcpServer();
       const registerTool = (server as unknown as { registerTool: ReturnType<typeof vi.fn> }).registerTool;
       const names = registerTool.mock.calls.map((c) => c[0]);
@@ -192,11 +192,13 @@ describe('MCP Server', () => {
           'attach_packed_output',
           'read_repomix_output',
           'grep_repomix_output',
-          'file_system_read_file',
-          'file_system_read_directory',
         ]),
       );
-      expect(names).toHaveLength(8);
+      // The raw file tools are sandbox-only: outside --sandbox nothing bounds the
+      // paths they accept, so they are not offered at all.
+      expect(names).not.toContain('file_system_read_file');
+      expect(names).not.toContain('file_system_read_directory');
+      expect(names).toHaveLength(6);
     });
 
     test('registers only the 5 read-only tools when sandboxed', async () => {

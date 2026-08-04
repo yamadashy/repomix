@@ -55,7 +55,7 @@ MCP 서버 통합을 통해 AI 기반 코드베이스 분석을 제공하는 기
 **기능:**
 - 로컬 및 원격 저장소 패키징
 - 패키징된 출력 검색
-- 내장 보안 스캔으로 파일 읽기 ([Secretlint](https://github.com/secretlint/secretlint))
+- 생성된 출력 파일 읽기
 - 자동 Tree-sitter 압축 (토큰 약 70% 감소)
 
 ### 2. repomix-commands (슬래시 명령 플러그인)

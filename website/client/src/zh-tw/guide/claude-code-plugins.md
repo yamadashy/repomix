@@ -55,7 +55,7 @@ Repomix 為 [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overvie
 **功能：**
 - 打包本地和遠端儲存庫
 - 搜尋打包輸出
-- 使用內建安全掃描讀取檔案（[Secretlint](https://github.com/secretlint/secretlint)）
+- 讀取產生的輸出檔案
 - 自動 Tree-sitter 壓縮（減少約 70% 的 token）
 
 ### 2. repomix-commands（斜線指令外掛）

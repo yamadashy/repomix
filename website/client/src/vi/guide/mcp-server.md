@@ -35,7 +35,7 @@ repomix --mcp --sandbox path/to/project
 Khi chế độ sandbox được bật:
 
 - **Mọi đường dẫn đều tương đối với gốc workspace.** Đường dẫn tuyệt đối, `~`, `..`, và đường dẫn ổ đĩa/UNC của Windows đều bị từ chối, và các đường dẫn phân giải ra bên ngoài gốc (kể cả thông qua symlink) đều bị loại bỏ. Kết quả và thông báo lỗi cũng tương đối, vì vậy đường dẫn trên máy host không bị lộ ra. Điều này áp dụng cho các tham số `directory` và `path` trong phần công cụ tham chiếu bên dưới: ở chế độ sandbox, hãy truyền chúng dưới dạng tương đối với gốc workspace, thay vì đường dẫn tuyệt đối như các bảng đó thường mô tả.
-- **Chỉ các công cụ chỉ-đọc, bị giới hạn trong thư mục gốc mới được đăng ký:** `pack_codebase`, `read_repomix_output`, `grep_repomix_output`, `file_system_read_file`, và `file_system_read_directory`. Đóng gói từ xa, tạo skill, và đính kèm đầu ra bên ngoài đều bị vô hiệu hóa, vì chúng cần truy cập mạng, ghi tệp, hoặc tham chiếu đến các đường dẫn tùy ý.
+- **Chỉ các công cụ chỉ-đọc, bị giới hạn trong thư mục gốc mới được đăng ký:** `pack_codebase`, `read_repomix_output`, `grep_repomix_output`, `file_system_read_file`, và `file_system_read_directory`. Đóng gói từ xa, tạo skill, và đính kèm đầu ra bên ngoài đều bị vô hiệu hóa, vì chúng cần truy cập mạng, ghi tệp, hoặc tham chiếu đến các đường dẫn tùy ý. Bản thân hai công cụ `file_system_*` cũng chỉ khả dụng ở chế độ sandbox, nơi gốc workspace giới hạn phạm vi mà chúng có thể truy cập.
 
 Đây là một biện pháp giới hạn ở cấp độ ứng dụng đối với bề mặt công cụ (phòng thủ theo chiều sâu), không phải một sandbox ở cấp độ hệ điều hành. Khi host máy chủ cho các client không đáng tin cậy, bạn vẫn nên chạy nó dưới cơ chế cách ly thông thường của nền tảng (container, người dùng riêng biệt).
 
@@ -206,7 +206,7 @@ Công cụ này đọc nội dung của một file đầu ra được tạo bở
 **Tính năng:**
 - Được thiết kế đặc biệt cho các môi trường dựa trên web hoặc ứng dụng sandbox
 - Truy xuất nội dung của các đầu ra được tạo trước đó bằng ID của chúng
-- Cung cấp truy cập an toàn đến codebase được đóng gói mà không cần truy cập hệ thống file
+- Cung cấp quyền truy cập đến codebase được đóng gói mà không cần truy cập hệ thống file
 - Hỗ trợ đọc một phần cho các file lớn
 
 **Ví dụ:**
@@ -251,48 +251,35 @@ Công cụ này tìm kiếm các pattern trong một file đầu ra Repomix sử
 
 ### file_system_read_file và file_system_read_directory
 
-Máy chủ MCP của Repomix cung cấp hai công cụ hệ thống file cho phép các trợ lý AI tương tác an toàn với hệ thống file cục bộ:
+Hai công cụ hệ thống file này chỉ khả dụng ở [chế độ sandbox](#chế-độ-sandbox) (`--sandbox`), nơi gốc workspace giới hạn phạm vi mà chúng có thể truy cập. Nếu không có `--sandbox`, chúng sẽ không được đăng ký.
 
 1. `file_system_read_file`
-  - Đọc nội dung file từ hệ thống file cục bộ sử dụng đường dẫn tuyệt đối
-  - Bao gồm xác thực bảo mật tích hợp để phát hiện và ngăn chặn truy cập đến các file chứa thông tin nhạy cảm
-  - Triển khai xác thực bảo mật sử dụng [Secretlint](https://github.com/secretlint/secretlint)
-  - Ngăn chặn truy cập đến các file chứa thông tin nhạy cảm (khóa API, mật khẩu, bí mật)
-  - Xác thực đường dẫn tuyệt đối để ngăn chặn các cuộc tấn công directory traversal
-  - Trả về thông báo lỗi rõ ràng cho các đường dẫn không hợp lệ và vấn đề bảo mật
+  - Đọc nội dung file tại một đường dẫn tương đối với gốc workspace (ví dụ `src/index.ts`)
+  - Từ chối nội dung khớp với các định dạng bí mật đã biết ([Secretlint](https://github.com/secretlint/secretlint)) như một biện pháp bảo vệ heuristic bổ sung; ranh giới truy cập là gốc workspace, không phải việc quét
+  - Trả về thông báo lỗi rõ ràng cho các đường dẫn không hợp lệ, mà không làm lộ đường dẫn trên máy host
 
 2. `file_system_read_directory`
-  - Liệt kê nội dung của một thư mục sử dụng đường dẫn tuyệt đối
-  - Trả về một danh sách được định dạng hiển thị các file và thư mục con với các chỉ báo rõ ràng
+  - Liệt kê nội dung của một thư mục tại một đường dẫn tương đối với gốc workspace (ví dụ `.` hoặc `src`)
   - Hiển thị file và thư mục với các chỉ báo rõ ràng (`[FILE]` hoặc `[DIR]`)
-  - Cung cấp điều hướng thư mục an toàn với xử lý lỗi thích hợp
-  - Xác thực đường dẫn và đảm bảo chúng là tuyệt đối
   - Hữu ích cho việc khám phá cấu trúc dự án và hiểu tổ chức codebase
-
-Cả hai công cụ đều kết hợp các biện pháp bảo mật mạnh mẽ:
-- Xác thực đường dẫn tuyệt đối để ngăn chặn các cuộc tấn công directory traversal
-- Kiểm tra quyền để đảm bảo quyền truy cập thích hợp
-- Tích hợp với Secretlint để phát hiện thông tin nhạy cảm
-- Thông báo lỗi rõ ràng để debug tốt hơn và nhận thức bảo mật
 
 **Ví dụ:**
 ```typescript
 // Đọc một file
 const fileContent = await tools.file_system_read_file({
-  path: '/absolute/path/to/file.txt'
+  path: 'src/index.ts'
 });
 
 // Liệt kê nội dung thư mục
 const dirContent = await tools.file_system_read_directory({
-  path: '/absolute/path/to/directory'
+  path: 'src'
 });
 ```
 
 Các công cụ này đặc biệt hữu ích khi các trợ lý AI cần:
-- Phân tích các file cụ thể trong codebase
+- Phân tích các file cụ thể trong workspace
 - Điều hướng cấu trúc thư mục
 - Xác minh sự tồn tại và khả năng truy cập của file
-- Đảm bảo các hoạt động hệ thống file an toàn
 
 ## Lợi ích của việc sử dụng Repomix như một Máy chủ MCP
 

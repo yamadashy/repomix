@@ -17,7 +17,7 @@ features:
 
   - icon: 🛡️
     title: Sicherheitsorientiert
-    details: Integriert Secretlint für robuste Sicherheitsprüfungen zur Erkennung und Verhinderung der Aufnahme sensibler Informationen.
+    details: Integriert Secretlint, um Dateien zu erkennen, die bekannten Anmeldedatenformaten entsprechen, und lässt sie im Output aus.
 
   - icon: 📊
     title: Token-Zählung

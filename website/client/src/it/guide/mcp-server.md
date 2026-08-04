@@ -34,7 +34,7 @@ repomix --mcp --sandbox path/to/project
 Quando la modalità sandbox è attiva:
 
 - **Ogni percorso è relativo alla radice della directory di lavoro.** I percorsi assoluti, `~`, `..` e i percorsi drive/UNC di Windows vengono rifiutati, e i percorsi che si risolvono al di fuori della radice (anche tramite symlink) vengono scartati. Anche i risultati e i messaggi di errore sono relativi, quindi i percorsi dell'host non vengono esposti. Questo vale per gli argomenti `directory` e `path` nel riferimento degli strumenti qui sotto: in modalità sandbox, passali relativi alla radice della directory di lavoro, non come i percorsi assoluti che quelle tabelle descrivono altrimenti.
-- **Vengono registrati solo strumenti di sola lettura e confinati alla radice:** `pack_codebase`, `read_repomix_output`, `grep_repomix_output`, `file_system_read_file` e `file_system_read_directory`. L'impacchettamento remoto, la generazione di skill e l'allegato di output esterni sono disabilitati, poiché raggiungono la rete, scrivono file o fanno riferimento a percorsi arbitrari.
+- **Vengono registrati solo strumenti di sola lettura e confinati alla radice:** `pack_codebase`, `read_repomix_output`, `grep_repomix_output`, `file_system_read_file` e `file_system_read_directory`. L'impacchettamento remoto, la generazione di skill e l'allegato di output esterni sono disabilitati, poiché raggiungono la rete, scrivono file o fanno riferimento a percorsi arbitrari. I due strumenti `file_system_*` stessi sono disponibili solo in modalità sandbox, dove la radice della directory di lavoro delimita ciò che possono raggiungere.
 
 Si tratta di un confinamento a livello applicativo della superficie degli strumenti (difesa in profondità), non di una sandbox a livello di sistema operativo. Quando ospiti il server per client non affidabili, eseguilo comunque con i normali meccanismi di isolamento della tua piattaforma (container, utenti dedicati).
 
@@ -204,7 +204,7 @@ Questo strumento legge il contenuto di un file di output generato da Repomix. Su
 **Funzionalità:**
 - Progettato specificamente per ambienti basati sul web o applicazioni sandbox
 - Recupera il contenuto degli output generati precedentemente usando il loro ID
-- Fornisce accesso sicuro alla codebase impacchettata senza richiedere accesso al file system
+- Fornisce accesso alla codebase impacchettata senza richiedere accesso al file system
 - Supporta la lettura parziale per file grandi
 
 **Esempio:**
@@ -249,48 +249,35 @@ Questo strumento cerca pattern in un file di output Repomix usando funzionalità
 
 ### file_system_read_file e file_system_read_directory
 
-Il server MCP di Repomix fornisce due strumenti per il file system che permettono agli assistenti IA di interagire in sicurezza con il file system locale:
+Questi due strumenti per il file system sono disponibili solo in [modalità sandbox](#modalità-sandbox) (`--sandbox`), dove la radice della directory di lavoro delimita ciò che possono raggiungere. Senza `--sandbox` non vengono registrati.
 
 1. `file_system_read_file`
-  - Legge il contenuto dei file dal file system locale usando percorsi assoluti
-  - Include validazione di sicurezza integrata per rilevare e prevenire l'accesso a file contenenti informazioni sensibili
-  - Implementa la validazione di sicurezza con [Secretlint](https://github.com/secretlint/secretlint)
-  - Impedisce l'accesso a file contenenti informazioni sensibili (chiavi API, password, segreti)
-  - Valida i percorsi assoluti per prevenire attacchi di directory traversal
-  - Restituisce messaggi di errore chiari per percorsi invalidi e problemi di sicurezza
+  - Legge il contenuto di un file a un percorso relativo alla radice della directory di lavoro (ad es. `src/index.ts`)
+  - Rifiuta contenuti che corrispondono a formati di segreti noti ([Secretlint](https://github.com/secretlint/secretlint)) come ulteriore salvaguardia euristica; il confine di accesso è la radice della directory di lavoro, non la scansione
+  - Restituisce messaggi di errore chiari per percorsi non validi, senza esporre i percorsi dell'host
 
 2. `file_system_read_directory`
-  - Elenca il contenuto di una directory usando un percorso assoluto
-  - Restituisce una lista formattata che mostra file e sottodirectory con indicatori chiari
+  - Elenca il contenuto di una directory a un percorso relativo alla radice della directory di lavoro (ad es. `.` o `src`)
   - Mostra file e directory con indicatori chiari (`[FILE]` o `[DIR]`)
-  - Fornisce attraversamento sicuro delle directory con gestione appropriata degli errori
-  - Valida i percorsi e si assicura che siano assoluti
   - Utile per esplorare la struttura del progetto e comprendere l'organizzazione della codebase
-
-Entrambi gli strumenti integrano robuste misure di sicurezza:
-- Validazione dei percorsi assoluti per prevenire attacchi di directory traversal
-- Controlli dei permessi per assicurare diritti di accesso appropriati
-- Integrazione con Secretlint per il rilevamento di informazioni sensibili
-- Messaggi di errore chiari per un migliore debug e consapevolezza della sicurezza
 
 **Esempio:**
 ```typescript
 // Lettura di un file
 const fileContent = await tools.file_system_read_file({
-  path: '/absolute/path/to/file.txt'
+  path: 'src/index.ts'
 });
 
 // Elenco del contenuto di una directory
 const dirContent = await tools.file_system_read_directory({
-  path: '/absolute/path/to/directory'
+  path: 'src'
 });
 ```
 
 Questi strumenti sono particolarmente utili quando gli assistenti IA devono:
-- Analizzare file specifici nella codebase
+- Analizzare file specifici nella directory di lavoro
 - Navigare nelle strutture delle directory
 - Verificare l'esistenza e l'accessibilità dei file
-- Assicurare operazioni sicure sul file system
 
 ## Vantaggi dell'Uso di Repomix come Server MCP
 

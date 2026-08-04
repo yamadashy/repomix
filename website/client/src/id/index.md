@@ -17,7 +17,7 @@ features:
 
   - icon: 🛡️
     title: Fokus pada Keamanan
-    details: Mengintegrasikan Secretlint untuk pemeriksaan keamanan yang kuat untuk mendeteksi dan mencegah penyertaan informasi sensitif.
+    details: Mengintegrasikan Secretlint untuk mendeteksi file yang cocok dengan format kredensial yang dikenal dan mengecualikannya dari output.
 
   - icon: 📊
     title: Penghitungan Token

@@ -35,7 +35,7 @@ repomix --mcp --sandbox path/to/project
 Ketika mode sandbox aktif:
 
 - **Setiap path bersifat relatif terhadap root workspace.** Path absolut, `~`, `..`, dan path drive/UNC Windows ditolak, dan path yang mengarah ke luar root (termasuk melalui symlink) akan dijatuhkan. Hasil dan pesan error juga bersifat relatif, sehingga path host tidak terekspos. Ini berlaku untuk argumen `directory` dan `path` pada referensi tools di bawah: dalam mode sandbox, berikan keduanya secara relatif terhadap root workspace, bukan sebagai path absolut seperti yang biasanya dijelaskan pada tabel-tabel tersebut.
-- **Hanya tools read-only yang dibatasi ke root yang didaftarkan:** `pack_codebase`, `read_repomix_output`, `grep_repomix_output`, `file_system_read_file`, dan `file_system_read_directory`. Pengemasan remote, pembuatan skill, dan pelampiran output eksternal dinonaktifkan, karena tools tersebut mengakses jaringan, menulis file, atau merujuk ke path sembarang.
+- **Hanya tools read-only yang dibatasi ke root yang didaftarkan:** `pack_codebase`, `read_repomix_output`, `grep_repomix_output`, `file_system_read_file`, dan `file_system_read_directory`. Pengemasan remote, pembuatan skill, dan pelampiran output eksternal dinonaktifkan, karena tools tersebut mengakses jaringan, menulis file, atau merujuk ke path sembarang. Kedua tools `file_system_*` itu sendiri hanya tersedia dalam mode sandbox, di mana root workspace membatasi apa yang dapat mereka jangkau.
 
 Ini adalah pembatasan permukaan tools di level aplikasi (defense in depth), bukan sandbox di level OS. Saat meng-host server untuk klien yang tidak tepercaya, tetap jalankan di bawah isolasi standar platform Anda (container, pengguna khusus).
 
@@ -206,7 +206,7 @@ Tool ini membaca konten file output yang dihasilkan oleh Repomix. Mendukung pemb
 **Fitur:**
 - Dirancang khusus untuk lingkungan berbasis web atau aplikasi sandbox
 - Mengambil konten output yang dihasilkan sebelumnya menggunakan ID mereka
-- Menyediakan akses aman ke codebase yang dikemas tanpa memerlukan akses filesystem
+- Menyediakan akses ke codebase yang dikemas tanpa memerlukan akses filesystem
 - Mendukung pembacaan parsial untuk file besar
 
 **Contoh:**
@@ -251,48 +251,35 @@ Tool ini mencari pola dalam file output Repomix menggunakan fungsionalitas mirip
 
 ### file_system_read_file dan file_system_read_directory
 
-Server MCP Repomix menyediakan dua tools filesystem yang memungkinkan asisten AI untuk berinteraksi dengan aman dengan filesystem lokal:
+Kedua tools filesystem ini hanya tersedia dalam [mode sandbox](#mode-sandbox) (`--sandbox`), di mana root workspace membatasi apa yang dapat mereka jangkau. Tanpa `--sandbox`, tools ini tidak didaftarkan.
 
 1. `file_system_read_file`
-  - Membaca konten file dari filesystem lokal menggunakan path absolut
-  - Termasuk validasi keamanan built-in untuk mendeteksi dan mencegah akses ke file yang berisi informasi sensitif
-  - Mengimplementasikan validasi keamanan menggunakan [Secretlint](https://github.com/secretlint/secretlint)
-  - Mencegah akses ke file yang berisi informasi sensitif (API keys, password, secrets)
-  - Memvalidasi path absolut untuk mencegah serangan directory traversal
-  - Mengembalikan pesan error yang jelas untuk path yang tidak valid dan masalah keamanan
+  - Membaca konten file pada path yang relatif terhadap root workspace (misalnya `src/index.ts`)
+  - Menolak konten yang cocok dengan format secret yang dikenal ([Secretlint](https://github.com/secretlint/secretlint)) sebagai pengaman heuristik tambahan; batas akses adalah root workspace, bukan pemindaian tersebut
+  - Mengembalikan pesan error yang jelas untuk path yang tidak valid, tanpa mengekspos path host
 
 2. `file_system_read_directory`
-  - Mendaftar konten direktori menggunakan path absolut
-  - Mengembalikan daftar berformat yang menampilkan file dan subdirektori dengan indikator yang jelas
+  - Mendaftar konten direktori pada path yang relatif terhadap root workspace (misalnya `.` atau `src`)
   - Menampilkan file dan direktori dengan indikator yang jelas (`[FILE]` atau `[DIR]`)
-  - Menyediakan navigasi direktori yang aman dengan penanganan error yang tepat
-  - Memvalidasi path dan memastikan mereka absolut
   - Berguna untuk mengeksplorasi struktur proyek dan memahami organisasi codebase
-
-Kedua tools menggabungkan tindakan keamanan yang kuat:
-- Validasi path absolut untuk mencegah serangan directory traversal
-- Pemeriksaan izin untuk memastikan hak akses yang tepat
-- Integrasi dengan Secretlint untuk deteksi informasi sensitif
-- Pesan error yang jelas untuk debugging dan kesadaran keamanan yang lebih baik
 
 **Contoh:**
 ```typescript
 // Membaca file
 const fileContent = await tools.file_system_read_file({
-  path: '/absolute/path/to/file.txt'
+  path: 'src/index.ts'
 });
 
 // Mendaftar konten direktori
 const dirContent = await tools.file_system_read_directory({
-  path: '/absolute/path/to/directory'
+  path: 'src'
 });
 ```
 
 Tools ini sangat berguna ketika asisten AI perlu:
-- Menganalisis file spesifik dalam codebase
+- Menganalisis file spesifik dalam workspace
 - Menavigasi struktur direktori
 - Memverifikasi eksistensi dan aksesibilitas file
-- Memastikan operasi filesystem yang aman
 
 ## Manfaat Menggunakan Repomix sebagai Server MCP
 

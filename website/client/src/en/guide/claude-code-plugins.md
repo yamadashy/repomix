@@ -55,7 +55,7 @@ Foundation plugin that provides AI-powered codebase analysis through MCP server 
 **Features:**
 - Pack local and remote repositories
 - Search through packed outputs
-- Read files with built-in security scanning ([Secretlint](https://github.com/secretlint/secretlint))
+- Read generated output files
 - Automatic Tree-sitter compression (~70% token reduction)
 
 ### 2. repomix-commands (Slash Commands Plugin)
