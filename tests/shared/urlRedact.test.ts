@@ -109,24 +109,45 @@ describe('urlRedact', () => {
       expect(redactUrl('https://example.com/r?token=(secret)plus')).toBe('https://example.com/r?token=***');
     });
 
-    test('should stay linear on adversarial input', () => {
-      // The userinfo patterns backtrack across every '@' in a token. Unbounded,
-      // this input is quadratic and can stall the event loop of an MCP server
-      // whose `remote` argument comes from an untrusted client.
-      const adversarial = `u:${'a@'.repeat(32_000)}host`;
+    test('should redact a userinfo longer than any hostname', () => {
+      // JWT-style credentials run well past a few hundred characters. A length
+      // cap here would hand back the whole secret.
+      const longToken = 'a'.repeat(1000);
 
-      const start = process.hrtime.bigint();
-      redactUrl(adversarial);
-      const elapsedMs = Number(process.hrtime.bigint() - start) / 1e6;
-
-      expect(elapsedMs).toBeLessThan(100);
+      expect(redactUrl(`https://${longToken}@example.com/repo.git`)).toBe('https://***@example.com/repo.git');
     });
 
-    test('should not swallow the diagnostic text that surrounds a redacted query value', () => {
-      // The quote and the trailing status are part of git's message, not the token.
+    test('should absorb punctuation that closes the URL in a log line', () => {
+      // Documented trade-off: the value runs to whitespace, so the closing quote
+      // is swallowed. Treating quotes as terminators instead would leave a
+      // credential that merely starts with one in the clear.
       expect(redactUrl("fatal: unable to access 'https://example.com/r?token=s3cr3t': HTTP 401")).toBe(
-        "fatal: unable to access 'https://example.com/r?token=***': HTTP 401",
+        "fatal: unable to access 'https://example.com/r?token=*** HTTP 401",
       );
+    });
+
+    test.each([
+      ['many @ in one token', (n: number) => `u:${'a@'.repeat(n / 2)}host`],
+      ['long credential query value', (n: number) => `https://example.com/r?token=${':'.repeat(n)}a`],
+    ])('should scale linearly on adversarial input: %s', (_label, build) => {
+      // These shapes were quadratic in earlier revisions: the userinfo match
+      // backtracks once per '@', and an MCP client controls `remote` with no
+      // length limit, so super-linear growth here stalls the event loop.
+      const measure = (n: number): number => {
+        const input = build(n);
+        const start = process.hrtime.bigint();
+        redactUrl(input);
+        return Number(process.hrtime.bigint() - start) / 1e6;
+      };
+
+      measure(20_000); // warm up the JIT so the first timing is not an outlier
+      const small = measure(20_000);
+      const large = measure(80_000);
+
+      // 4x the input. Linear predicts ~4x; quadratic predicts ~16x. The generous
+      // ceiling keeps this from flaking on a loaded CI machine while still
+      // failing loudly on a return to quadratic behaviour.
+      expect(large).toBeLessThan(Math.max(small, 1) * 8);
     });
 
     test('should redact every URL when text embeds more than one', () => {
