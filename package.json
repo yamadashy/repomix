@@ -87,7 +87,7 @@
     "commander": "^15.0.0",
     "fast-xml-builder": "^1.3.0",
     "git-url-parse": "^16.1.0",
-    "globby": "16.2.1",
+    "globby": "^16.2.2",
     "gpt-tokenizer": "^3.4.0",
     "handlebars": "^4.7.9",
     "iconv-lite": "^0.7.0",
@@ -126,8 +126,5 @@
   "engines": {
     "node": ">=22.0.0",
     "yarn": ">=1.22.22"
-  },
-  "overrides": {
-    "ignore": "7.0.5"
   }
 }
