@@ -48,6 +48,12 @@ export async function processZipFile(
     include: options.includePatterns,
     ignore: options.ignorePatterns,
     quiet: true, // Enable quiet mode to suppress output
+    // An uploaded archive is attacker-controlled, exactly like the cloned
+    // repository in remoteRepo.ts. Without this, a `repomix.config.js` at the
+    // root of the ZIP is imported — and therefore executed — inside this
+    // process during buildMergedConfig(), before packing and before the
+    // security check ever look at file contents.
+    skipLocalConfig: true,
   } as CliOptions;
 
   setLogLevel(-1);
