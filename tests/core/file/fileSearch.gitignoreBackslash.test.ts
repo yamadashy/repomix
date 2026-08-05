@@ -60,6 +60,29 @@ describe.each([{ withGit: false }, { withGit: true }])(
       expect(filePaths).not.toContain('packages/app/noisy.draft');
     });
 
+    // The verbatim 419-line .gitignore from microsoft/data-formulator main
+    // (the #1765 reproduction repo), not just the suspicious lines: if the
+    // real trigger is some other line or a combination, the minimal fixtures
+    // above would keep passing while this one fails.
+    it('survives the full data-formulator .gitignore', async () => {
+      const realWorldGitignore = await fs.readFile(
+        path.join(__dirname, '../../fixtures/gitignore/data-formulator.gitignore'),
+        'utf8',
+      );
+      await writeFixture(tmpDir, {
+        '.gitignore': realWorldGitignore,
+        'keep.ts': 'export {};\n',
+        'noisy.rsuser': 'vs junk\n',
+      });
+
+      const { filePaths } = await searchFiles(tmpDir, createMockConfig());
+
+      expect(filePaths).toContain('keep.ts');
+      // `*.rsuser` appears in the real file and is NOT in defaultIgnoreList,
+      // so its exclusion proves the gitignore rules were really applied.
+      expect(filePaths).not.toContain('noisy.rsuser');
+    });
+
     // Diagnostic: hit globby directly, without repomix's error wrapping, so a
     // CI failure prints the original stack trace and pinpoints where inside
     // globby/ignore the backslash pattern would be rejected.
