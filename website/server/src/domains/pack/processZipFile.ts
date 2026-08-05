@@ -2,11 +2,12 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { unzip } from 'fflate';
-import { type CliOptions, runDefaultAction, setLogLevel } from 'repomix';
+import { runDefaultAction, setLogLevel } from 'repomix';
 import type { PackOptions, PackProgressCallback, PackResult, ProcessPackResult } from '../../types.js';
 import { AppError } from '../../utils/errorHandler.js';
 import { logMemoryUsage } from '../../utils/logger.js';
 import { cleanupTempDirectory, copyOutputToCurrentDirectory, createTempDirectory } from './utils/fileUtils.js';
+import { buildUntrustedPackCliOptions } from './utils/untrustedPackOptions.js';
 
 // Enhanced ZIP extraction limits
 const ZIP_SECURITY_LIMITS = {
@@ -32,29 +33,9 @@ export async function processZipFile(
 
   const outputFilePath = `repomix-output-${randomUUID()}.txt`;
 
-  // Create CLI options
-  const cliOptions = {
-    output: outputFilePath,
-    style: format,
-    parsableStyle: options.outputParsable,
-    removeComments: options.removeComments,
-    removeEmptyLines: options.removeEmptyLines,
-    outputShowLineNumbers: options.showLineNumbers,
-    fileSummary: options.fileSummary,
-    directoryStructure: options.directoryStructure,
-    compress: options.compress,
-    securityCheck: true,
-    topFilesLen: 10,
-    include: options.includePatterns,
-    ignore: options.ignorePatterns,
-    quiet: true, // Enable quiet mode to suppress output
-    // An uploaded archive is attacker-controlled, exactly like the cloned
-    // repository in remoteRepo.ts. Without this, a `repomix.config.js` at the
-    // root of the ZIP is imported — and therefore executed — inside this
-    // process during buildMergedConfig(), before packing and before the
-    // security check ever look at file contents.
-    skipLocalConfig: true,
-  } as CliOptions;
+  // An uploaded archive is attacker-controlled, exactly like the cloned
+  // repository in remoteRepo.ts, so both build their options the same way.
+  const cliOptions = buildUntrustedPackCliOptions({ outputFilePath, format, options, securityCheck: true });
 
   setLogLevel(-1);
 
