@@ -9,6 +9,20 @@ import { logMemoryUsage } from '../../utils/logger.js';
 import { cleanupTempDirectory, copyOutputToCurrentDirectory, createTempDirectory } from './utils/fileUtils.js';
 import { buildUntrustedPackCliOptions } from './utils/untrustedPackOptions.js';
 
+/**
+ * Whether a ZIP entry belongs to an embedded git repository (`.git/…`, or a
+ * bare `.git` gitfile).
+ *
+ * These are dropped rather than extracted. repomix runs `git log` against the
+ * pack directory to order files by change frequency (output.git.sortByChanges
+ * defaults on), and git trusts a repository's own `.git/config` — so an
+ * uploaded `.git` turns that ordering pass into arbitrary command execution in
+ * this process (e.g. log.showSignature + gpg.program). Dropping the directory
+ * costs nothing: repomix already default-ignores `.git/**` from its output and
+ * deletes `.git` after cloning a remote itself, so no upload needs it.
+ */
+const isGitInternalEntry = (entryPath: string): boolean => entryPath.split('/').some((segment) => segment === '.git');
+
 // Enhanced ZIP extraction limits
 const ZIP_SECURITY_LIMITS = {
   MAX_FILES: 10000, // Maximum number of files in the archive
@@ -183,6 +197,9 @@ async function extractZipWithSecurity(file: File, destPath: string): Promise<voi
       // Skip directories (fflate doesn't include directory entries, only files)
       if (entryPath.endsWith('/')) continue;
 
+      // Never materialize an uploaded git repository (see isGitInternalEntry).
+      if (isGitInternalEntry(entryPath)) continue;
+
       // 4.1 Check for unsafe paths (directory traversal prevention)
       const normalizedPath = path.normalize(path.join(destPath, entryPath));
       if (!normalizedPath.startsWith(destPath)) {
@@ -221,6 +238,7 @@ async function extractZipWithSecurity(file: File, destPath: string): Promise<voi
 
     for (const [filePath, data] of Object.entries(files)) {
       if (filePath.endsWith('/')) continue; // Skip directories
+      if (isGitInternalEntry(filePath)) continue; // Dropped above; must not reach disk
 
       const fullPath = path.join(destPath, filePath);
       const dirPath = path.dirname(fullPath);
