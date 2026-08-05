@@ -102,6 +102,7 @@
     "isbinaryfile", // v6+ requires Node.js >= 24
     "iconv-lite", // v0.7.1 has broken ESM types: https://github.com/pillarjs/iconv-lite/issues/363
     "@clack/prompts", // v1 changes text() validate arg to `string | undefined`, breaks initAction.ts (TS18048)
+    "globby", // pinned to 16.2.1: 16.2.2 crashes on Windows when a .gitignore mixes backslash rules with negations (#1765)
   ],
   "minimumReleaseAge": "7 days"
 }
