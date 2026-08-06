@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
-// Shared plumbing for the sandbox e2e suites (confinement.test.ts, stress.test.ts):
+// Shared plumbing for the sandbox e2e suites (confinement.test.ts, leakProof.test.ts):
 // locating the built server, spawning it over MCP stdio, and reading tool results.
 
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');

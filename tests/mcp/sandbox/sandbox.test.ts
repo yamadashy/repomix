@@ -5,8 +5,6 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import { applySandboxOrExit, type SandboxDeps } from '../../../src/mcp/sandbox/sandbox.js';
 import {
   buildRuleset,
-  isSandboxToken,
-  makeSandboxToken,
   nodeModulesPaths,
   nodeRuntimePaths,
   nodeSharedLibDirs,
@@ -135,24 +133,8 @@ describe('stripHostEnv', () => {
   });
 });
 
-describe('sandbox confinement token', () => {
-  test('makeSandboxToken produces a 32-char lowercase-hex token that validates', () => {
-    const t = makeSandboxToken();
-    expect(t).toMatch(/^[0-9a-f]{32}$/);
-    expect(isSandboxToken(t)).toBe(true);
-    // two calls differ (per-invocation, unguessable)
-    expect(makeSandboxToken()).not.toBe(t);
-  });
-
-  test('isSandboxToken rejects the legacy/stray "1" and other non-token values (fail-open guard)', () => {
-    expect(isSandboxToken('1')).toBe(false);
-    expect(isSandboxToken('')).toBe(false);
-    expect(isSandboxToken(undefined)).toBe(false);
-    expect(isSandboxToken('not-a-token')).toBe(false);
-    expect(isSandboxToken('ABCDEF0123456789ABCDEF0123456789')).toBe(false); // uppercase
-    expect(isSandboxToken('0123456789abcdef')).toBe(false); // too short
-  });
-});
+// The confinement-token contract is tested in tests/shared/sandboxEnv.test.ts,
+// next to its implementation.
 
 describe('nodeSharedLibDirs', () => {
   test('parses ldd and dyld loader output into unique dirs; unresolved lines yield nothing', () => {

@@ -1,32 +1,14 @@
 import childProcess from 'node:child_process';
-import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { logger } from '../../shared/logger.js';
-import { SANDBOXED_ENV } from '../../shared/sandboxEnv.js';
+import { SANDBOX_TOKEN_ENV, SANDBOXED_ENV } from '../../shared/sandboxEnv.js';
 
 // Building blocks for the --sandbox-strict kernel sandbox, shared between sandbox.ts
-// (fail-closed dispatch) and its sole backend, landstrip.ts.
-
-/**
- * Confinement PROOF (distinct from the REPOMIX_SANDBOXED behavior marker in
- * src/shared/sandboxEnv.ts): a per-invocation random token the parent sets only on
- * the child it actually confined, so a stray inherited value cannot make the server
- * believe it is confined and serve unprotected. This is a format check, not an
- * authenticated binding — it does not stop someone who deliberately plants a
- * well-formed token, which is out of scope since only the trusted operator sets the
- * launch env. Unspoofable hardening if this graduates: probe a known-denied read on
- * entry instead of trusting the env.
- */
-export const SANDBOX_TOKEN_ENV = 'REPOMIX_SANDBOX_TOKEN';
-
-/** Generate a fresh confinement token (128 bits of entropy, lowercase hex). */
-export const makeSandboxToken = (): string => crypto.randomBytes(16).toString('hex');
-
-/** True only for a well-formed confinement token (our own format), never for "1". */
-export const isSandboxToken = (value: string | undefined): boolean => !!value && /^[0-9a-f]{32}$/.test(value);
+// (fail-closed dispatch) and its sole backend, landstrip.ts. The confinement env
+// contract (marker + proof token) lives in src/shared/sandboxEnv.ts.
 
 /**
  * The two grant levels the backend policy can express. Every listed path is

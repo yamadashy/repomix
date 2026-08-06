@@ -8,7 +8,7 @@ import { defaultIgnoreList } from '../../config/defaultIgnore.js';
 import { mapWithConcurrency } from '../../shared/asyncMap.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
-import { isSandboxedProcess } from '../../shared/sandboxEnv.js';
+import { isKernelConfinedProcess } from '../../shared/sandboxEnv.js';
 import { redactUrl } from '../../shared/urlRedact.js';
 import { sortPaths } from './filePathSort.js';
 
@@ -326,11 +326,12 @@ export const searchFiles = async (
           // A kernel sandbox can deny canonicalizing ancestor dirs (Windows
           // AppContainer), which would drop every file and yield an empty pack. Fall
           // back to the lexical containment proven above, but ONLY when a kernel
-          // boundary is actually enforcing (REPOMIX_SANDBOXED) and the failure is a
-          // denial. Everything else — plain --sandbox, or ENOENT/ELOOP/reparse
-          // quirks — still fails closed, per #1769.
+          // boundary is provably enforcing (the launcher's confinement token — never
+          // the spoofable REPOMIX_SANDBOXED marker, since this weakens the symlink
+          // guard) and the failure is a denial. Everything else — plain --sandbox, or
+          // ENOENT/ELOOP/reparse quirks — still fails closed, per #1769.
           const code = (error as NodeJS.ErrnoException)?.code;
-          const deniedUnderKernelSandbox = isSandboxedProcess() && (code === 'EPERM' || code === 'EACCES');
+          const deniedUnderKernelSandbox = isKernelConfinedProcess() && (code === 'EPERM' || code === 'EACCES');
           return deniedUnderKernelSandbox;
         }
       };

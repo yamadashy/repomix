@@ -1,5 +1,6 @@
 import { logger } from '../../shared/logger.js';
-import { isSandboxToken, SANDBOX_TOKEN_ENV, type SandboxBackend, stripHostEnv } from './shared.js';
+import { isKernelConfinedProcess } from '../../shared/sandboxEnv.js';
+import { type SandboxBackend, stripHostEnv } from './shared.js';
 
 /**
  * Kernel-enforced confinement for `repomix --mcp --sandbox-strict`, layered on the
@@ -25,7 +26,7 @@ const defaultDeps = (): SandboxDeps => ({
   loadBackend: () => loadBackend(),
   // The token, never REPOMIX_SANDBOXED: a stray inherited "1" must not convince us
   // we are already confined and serve unprotected.
-  isConfinedChild: () => isSandboxToken(process.env[SANDBOX_TOKEN_ENV]),
+  isConfinedChild: isKernelConfinedProcess,
   processExit: process.exit,
 });
 

@@ -1,9 +1,9 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
-import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { landstripBinaryPath } from '../../src/mcp/sandbox/landstrip.js';
 import { connect, realpath, textOf } from './helpers.js';
 
 // Leak-proof e2e for the long-lived sandboxed MCP server: once warmed up (grammar
@@ -22,15 +22,7 @@ import { connect, realpath, textOf } from './helpers.js';
 // snapshotProcesses(); everything else is platform-shared.
 
 const plat = process.platform;
-const nodeRequire = createRequire(import.meta.url);
-const landstripAvailable: boolean = (() => {
-  try {
-    (nodeRequire('@landstrip/landstrip') as { binaryPath: () => string }).binaryPath();
-    return true;
-  } catch {
-    return false;
-  }
-})();
+const landstripAvailable: boolean = landstripBinaryPath() !== null;
 
 const FILES = 40; // workspace size — enough that a per-file leak is amplified fast
 const WARMUP_WAVES = 6; // capped-heap ramp reaches its plateau by ~wave 5 (measured)

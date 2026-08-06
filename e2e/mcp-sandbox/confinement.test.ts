@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { landstripBinaryPath } from '../../src/mcp/sandbox/landstrip.js';
 import { nodeSharedLibDirs } from '../../src/mcp/sandbox/shared.js';
 import { bin, connect, realpath, textOf } from './helpers.js';
 
@@ -16,13 +17,7 @@ import { bin, connect, realpath, textOf } from './helpers.js';
 const plat = process.platform;
 const nodeRequire = createRequire(import.meta.url);
 // null when the optional per-platform package is absent (musl, unsupported arch).
-const landstripBinPath: string | null = (() => {
-  try {
-    return (nodeRequire('@landstrip/landstrip') as { binaryPath: () => string }).binaryPath();
-  } catch {
-    return null;
-  }
-})();
+const landstripBinPath: string | null = landstripBinaryPath();
 const mkWorkspace = (): string => {
   const w = realpath(fs.mkdtempSync(path.join(os.tmpdir(), 'rpx-confine-')));
   fs.mkdirSync(path.join(w, 'src'));

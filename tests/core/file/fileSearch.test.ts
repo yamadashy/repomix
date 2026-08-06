@@ -196,13 +196,16 @@ describe('fileSearch', () => {
     });
 
     test('confineToBaseDir fails OPEN to lexical containment on realpath EPERM ONLY under the kernel sandbox', async () => {
-      // A kernel sandbox (e.g. a Windows AppContainer, REPOMIX_SANDBOXED=1) can deny
-      // canonicalizing ancestor dirs, so fs.realpath throws EPERM even for in-workspace
-      // files. Because a kernel boundary is actively enforcing confinement, fall back to
-      // lexical containment rather than dropping the whole pack — but still reject paths
-      // lexically outside the root.
-      const prev = process.env.REPOMIX_SANDBOXED;
+      // A kernel sandbox (e.g. a Windows AppContainer) can deny canonicalizing ancestor
+      // dirs, so fs.realpath throws EPERM even for in-workspace files. Because a kernel
+      // boundary is actively enforcing confinement — proven by the confinement token the
+      // launcher set, not the spoofable REPOMIX_SANDBOXED marker — fall back to lexical
+      // containment rather than dropping the whole pack, but still reject paths
+      // lexically outside the root. Env mirrors the real confined child: both vars set.
+      const prevMarker = process.env.REPOMIX_SANDBOXED;
+      const prevToken = process.env.REPOMIX_SANDBOX_TOKEN;
       process.env.REPOMIX_SANDBOXED = '1';
+      process.env.REPOMIX_SANDBOX_TOKEN = '0123456789abcdef0123456789abcdef';
       try {
         const mockConfig = createMockConfig({ output: { includeEmptyDirectories: false } });
         vi.mocked(globby).mockResolvedValue(['src/a.ts', '/etc/passwd', '../sibling/secret.txt'] as never);
@@ -214,17 +217,22 @@ describe('fileSearch', () => {
 
         expect(result.filePaths).toEqual(['src/a.ts']);
       } finally {
-        if (prev === undefined) delete process.env.REPOMIX_SANDBOXED;
-        else process.env.REPOMIX_SANDBOXED = prev;
+        if (prevMarker === undefined) delete process.env.REPOMIX_SANDBOXED;
+        else process.env.REPOMIX_SANDBOXED = prevMarker;
+        if (prevToken === undefined) delete process.env.REPOMIX_SANDBOX_TOKEN;
+        else process.env.REPOMIX_SANDBOX_TOKEN = prevToken;
       }
     });
 
-    test('confineToBaseDir fails CLOSED on realpath EPERM when NOT under a kernel sandbox', async () => {
-      // Plain --sandbox (software path guard, no kernel backstop, REPOMIX_SANDBOXED unset)
-      // has no kernel boundary to lean on, so an unresolvable path is never safe to pack —
-      // preserve the merged upstream symlink-escape guard (#1769) and drop it.
-      const prev = process.env.REPOMIX_SANDBOXED;
-      delete process.env.REPOMIX_SANDBOXED;
+    test('confineToBaseDir fails CLOSED on realpath EPERM under a stray REPOMIX_SANDBOXED marker without the confinement token', async () => {
+      // REPOMIX_SANDBOXED is a spoofable behavior marker — any inherited "1" sets it.
+      // Weakening the #1769 symlink-escape guard needs proof a kernel boundary really
+      // is enforcing, and that proof is the launcher's confinement token. Marker
+      // without token = no kernel backstop = keep failing closed.
+      const prevMarker = process.env.REPOMIX_SANDBOXED;
+      const prevToken = process.env.REPOMIX_SANDBOX_TOKEN;
+      process.env.REPOMIX_SANDBOXED = '1';
+      delete process.env.REPOMIX_SANDBOX_TOKEN;
       try {
         const mockConfig = createMockConfig({ output: { includeEmptyDirectories: false } });
         vi.mocked(globby).mockResolvedValue(['src/a.ts'] as never);
@@ -236,17 +244,48 @@ describe('fileSearch', () => {
 
         expect(result.filePaths).toEqual([]);
       } finally {
-        if (prev === undefined) delete process.env.REPOMIX_SANDBOXED;
-        else process.env.REPOMIX_SANDBOXED = prev;
+        if (prevMarker === undefined) delete process.env.REPOMIX_SANDBOXED;
+        else process.env.REPOMIX_SANDBOXED = prevMarker;
+        if (prevToken === undefined) delete process.env.REPOMIX_SANDBOX_TOKEN;
+        else process.env.REPOMIX_SANDBOX_TOKEN = prevToken;
+      }
+    });
+
+    test('confineToBaseDir fails CLOSED on realpath EPERM when NOT under a kernel sandbox', async () => {
+      // Plain --sandbox (software path guard, no kernel backstop, no confinement env)
+      // has no kernel boundary to lean on, so an unresolvable path is never safe to pack —
+      // preserve the merged upstream symlink-escape guard (#1769) and drop it.
+      const prevMarker = process.env.REPOMIX_SANDBOXED;
+      const prevToken = process.env.REPOMIX_SANDBOX_TOKEN;
+      delete process.env.REPOMIX_SANDBOXED;
+      delete process.env.REPOMIX_SANDBOX_TOKEN;
+      try {
+        const mockConfig = createMockConfig({ output: { includeEmptyDirectories: false } });
+        vi.mocked(globby).mockResolvedValue(['src/a.ts'] as never);
+        vi.mocked(fs.realpath).mockRejectedValue(
+          Object.assign(new Error('EPERM: operation not permitted, realpath'), { code: 'EPERM' }) as never,
+        );
+
+        const result = await searchFiles('/mock/root', mockConfig, undefined, true);
+
+        expect(result.filePaths).toEqual([]);
+      } finally {
+        if (prevMarker === undefined) delete process.env.REPOMIX_SANDBOXED;
+        else process.env.REPOMIX_SANDBOXED = prevMarker;
+        if (prevToken === undefined) delete process.env.REPOMIX_SANDBOX_TOKEN;
+        else process.env.REPOMIX_SANDBOX_TOKEN = prevToken;
       }
     });
 
     test('confineToBaseDir fails CLOSED on a non-permission realpath error even under the kernel sandbox', async () => {
       // The fail-open is scoped to the confinement denial (EPERM/EACCES). Any OTHER error
       // — a broken symlink (ENOENT), ELOOP, ENAMETOOLONG — is not the confined-canonicalize
-      // case, so drop the path rather than pack something unresolvable.
-      const prev = process.env.REPOMIX_SANDBOXED;
+      // case, so drop the path rather than pack something unresolvable. Env mirrors the
+      // real confined child (marker + token) to prove the token alone never fails open.
+      const prevMarker = process.env.REPOMIX_SANDBOXED;
+      const prevToken = process.env.REPOMIX_SANDBOX_TOKEN;
       process.env.REPOMIX_SANDBOXED = '1';
+      process.env.REPOMIX_SANDBOX_TOKEN = '0123456789abcdef0123456789abcdef';
       try {
         const mockConfig = createMockConfig({ output: { includeEmptyDirectories: false } });
         vi.mocked(globby).mockResolvedValue(['src/a.ts'] as never);
@@ -258,8 +297,10 @@ describe('fileSearch', () => {
 
         expect(result.filePaths).toEqual([]);
       } finally {
-        if (prev === undefined) delete process.env.REPOMIX_SANDBOXED;
-        else process.env.REPOMIX_SANDBOXED = prev;
+        if (prevMarker === undefined) delete process.env.REPOMIX_SANDBOXED;
+        else process.env.REPOMIX_SANDBOXED = prevMarker;
+        if (prevToken === undefined) delete process.env.REPOMIX_SANDBOX_TOKEN;
+        else process.env.REPOMIX_SANDBOX_TOKEN = prevToken;
       }
     });
 

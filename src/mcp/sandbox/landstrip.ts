@@ -2,16 +2,8 @@ import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { logger } from '../../shared/logger.js';
-import { SANDBOXED_ENV } from '../../shared/sandboxEnv.js';
-import {
-  buildRuleset,
-  makeSandboxToken,
-  makeSessionTmp,
-  nodeSharedLibDirs,
-  SANDBOX_TOKEN_ENV,
-  type SandboxBackend,
-  spawnConfinedChild,
-} from './shared.js';
+import { makeSandboxToken, SANDBOX_TOKEN_ENV, SANDBOXED_ENV } from '../../shared/sandboxEnv.js';
+import { buildRuleset, makeSessionTmp, nodeSharedLibDirs, type SandboxBackend, spawnConfinedChild } from './shared.js';
 
 /**
  * The kernel-sandbox backend for `repomix --mcp --sandbox-strict`, on every OS,
@@ -36,8 +28,12 @@ const canon = (p: string): string => {
 
 const nodeRequire = createRequire(import.meta.url);
 
-/** Binary path for this platform, or null when the optional dependency is absent. */
-const landstripBinary = (): string | null => {
+/**
+ * Binary path for this platform, or null when the optional dependency is absent
+ * (musl, an unsupported arch, an --omit=optional install). The single probe — the
+ * e2e suites import it too, so availability detection cannot drift.
+ */
+export const landstripBinaryPath = (): string | null => {
   try {
     return (nodeRequire('@landstrip/landstrip') as { binaryPath: () => string }).binaryPath();
   } catch {
@@ -72,9 +68,9 @@ export const buildLandstripPolicy = (readOnly: string[], readWrite: string[]): s
 
 export const landstripBackend: SandboxBackend = {
   name: 'landstrip',
-  isAvailable: () => landstripBinary() !== null,
+  isAvailable: () => landstripBinaryPath() !== null,
   async confine(root: string): Promise<void> {
-    const bin = landstripBinary();
+    const bin = landstripBinaryPath();
     if (!bin) throw new Error('landstrip binary unavailable for this platform');
 
     const sessionTmp = canon(makeSessionTmp());
