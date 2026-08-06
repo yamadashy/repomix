@@ -44,4 +44,15 @@ describe('RepomixIntegration', () => {
     const navContainer = document.querySelector('ul.pagehead-actions');
     expect(navContainer).toBeTruthy();
   });
+
+  it('should find navigation container in the new React-based repo header', () => {
+    document.body.innerHTML = '';
+    const navActions = document.createElement('ul');
+    navActions.setAttribute('data-testid', 'repo-header-actions');
+    document.body.appendChild(navActions);
+
+    const navContainer =
+      document.querySelector('ul[data-testid="repo-header-actions"]') ?? document.querySelector('ul.pagehead-actions');
+    expect(navContainer).toBe(navActions);
+  });
 });
