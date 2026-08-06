@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786028609142,
+  "lastUpdate": 1786031223070,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -10485,6 +10485,44 @@ window.BENCHMARK_DATA = {
             "range": "±132",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1319ms, Q3: 1451ms\nAll times: 1283, 1306, 1308, 1313, 1317, 1319, 1319, 1320, 1321, 1325, 1327, 1332, 1342, 1414, 1437, 1451, 1472, 1502, 1662, 2067ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a27ecec777f2e2b22871f3b280767c1625e23c8b",
+          "message": "Merge pull request #1774 from yamadashy/dependabot/npm_and_yarn/npm_and_yarn-142266d5e2\n\nchore(deps): bump the npm_and_yarn group across 4 directories with 5 updates",
+          "timestamp": "2026-08-07T00:31:00+09:00",
+          "tree_id": "4c318d2a44562cf05617c5ef4a02c121d5143694",
+          "url": "https://github.com/yamadashy/repomix/commit/a27ecec777f2e2b22871f3b280767c1625e23c8b"
+        },
+        "date": 1786031222307,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 938,
+            "range": "±63",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 926ms, Q3: 989ms\nAll times: 910, 913, 915, 916, 918, 926, 927, 931, 933, 934, 938, 939, 942, 950, 960, 989, 1017, 1073, 1083, 1096ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1023,
+            "range": "±23",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1014ms, Q3: 1037ms\nAll times: 1002, 1006, 1011, 1012, 1013, 1014, 1014, 1018, 1018, 1020, 1023, 1023, 1024, 1026, 1028, 1037, 1038, 1047, 1050, 1051ms"
           }
         ]
       }
