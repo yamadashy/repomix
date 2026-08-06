@@ -195,6 +195,74 @@ describe('fileSearch', () => {
       expect(result.filePaths).toEqual(['etc/hosts', 'srv/app.ts']);
     });
 
+    test('confineToBaseDir fails OPEN to lexical containment on realpath EPERM ONLY under the kernel sandbox', async () => {
+      // A kernel sandbox (e.g. a Windows AppContainer, REPOMIX_SANDBOXED=1) can deny
+      // canonicalizing ancestor dirs, so fs.realpath throws EPERM even for in-workspace
+      // files. Because a kernel boundary is actively enforcing confinement, fall back to
+      // lexical containment rather than dropping the whole pack — but still reject paths
+      // lexically outside the root.
+      const prev = process.env.REPOMIX_SANDBOXED;
+      process.env.REPOMIX_SANDBOXED = '1';
+      try {
+        const mockConfig = createMockConfig({ output: { includeEmptyDirectories: false } });
+        vi.mocked(globby).mockResolvedValue(['src/a.ts', '/etc/passwd', '../sibling/secret.txt'] as never);
+        vi.mocked(fs.realpath).mockRejectedValue(
+          Object.assign(new Error('EPERM: operation not permitted, realpath'), { code: 'EPERM' }) as never,
+        );
+
+        const result = await searchFiles('/mock/root', mockConfig, undefined, true);
+
+        expect(result.filePaths).toEqual(['src/a.ts']);
+      } finally {
+        if (prev === undefined) delete process.env.REPOMIX_SANDBOXED;
+        else process.env.REPOMIX_SANDBOXED = prev;
+      }
+    });
+
+    test('confineToBaseDir fails CLOSED on realpath EPERM when NOT under a kernel sandbox', async () => {
+      // Plain --sandbox (software path guard, no kernel backstop, REPOMIX_SANDBOXED unset)
+      // has no kernel boundary to lean on, so an unresolvable path is never safe to pack —
+      // preserve the merged upstream symlink-escape guard (#1769) and drop it.
+      const prev = process.env.REPOMIX_SANDBOXED;
+      delete process.env.REPOMIX_SANDBOXED;
+      try {
+        const mockConfig = createMockConfig({ output: { includeEmptyDirectories: false } });
+        vi.mocked(globby).mockResolvedValue(['src/a.ts'] as never);
+        vi.mocked(fs.realpath).mockRejectedValue(
+          Object.assign(new Error('EPERM: operation not permitted, realpath'), { code: 'EPERM' }) as never,
+        );
+
+        const result = await searchFiles('/mock/root', mockConfig, undefined, true);
+
+        expect(result.filePaths).toEqual([]);
+      } finally {
+        if (prev === undefined) delete process.env.REPOMIX_SANDBOXED;
+        else process.env.REPOMIX_SANDBOXED = prev;
+      }
+    });
+
+    test('confineToBaseDir fails CLOSED on a non-permission realpath error even under the kernel sandbox', async () => {
+      // The fail-open is scoped to the confinement denial (EPERM/EACCES). Any OTHER error
+      // — a broken symlink (ENOENT), ELOOP, ENAMETOOLONG — is not the confined-canonicalize
+      // case, so drop the path rather than pack something unresolvable.
+      const prev = process.env.REPOMIX_SANDBOXED;
+      process.env.REPOMIX_SANDBOXED = '1';
+      try {
+        const mockConfig = createMockConfig({ output: { includeEmptyDirectories: false } });
+        vi.mocked(globby).mockResolvedValue(['src/a.ts'] as never);
+        vi.mocked(fs.realpath).mockRejectedValue(
+          Object.assign(new Error('ENOENT: no such file or directory, realpath'), { code: 'ENOENT' }) as never,
+        );
+
+        const result = await searchFiles('/mock/root', mockConfig, undefined, true);
+
+        expect(result.filePaths).toEqual([]);
+      } finally {
+        if (prev === undefined) delete process.env.REPOMIX_SANDBOXED;
+        else process.env.REPOMIX_SANDBOXED = prev;
+      }
+    });
+
     test('without confineToBaseDir, out-of-root matches are preserved (default CLI/library behavior)', async () => {
       // confineToBaseDir defaults to false so the documented ../ / absolute
       // include-pattern behavior is unchanged for normal CLI and library callers.

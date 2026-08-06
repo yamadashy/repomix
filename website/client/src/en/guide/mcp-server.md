@@ -41,6 +41,17 @@ This is an application-level confinement of the tool surface (defense in depth),
 
 `--sandbox` only affects the MCP server; it has no effect without `--mcp`.
 
+### Kernel enforcement (`--sandbox-strict`, experimental)
+
+`--sandbox-strict` adds a required **OS kernel** sandbox on top of the same path guard. Unlike `--sandbox`, it **refuses to start (exit 1)** if the kernel sandbox cannot be applied — there is no software-only fallback, so a successful start means the process is kernel-confined:
+
+```bash
+repomix --mcp --sandbox-strict
+repomix --mcp --sandbox-strict path/to/project
+```
+
+Confinement runs **out-of-process** via the optional [`@landstrip/landstrip`](https://github.com/landstrip/landstrip) helper — Landlock + a seccomp broker on Linux (network denied, including UDP), Seatbelt on macOS, and an AppContainer on Windows. The confined server may read only its own runtime + the workspace and write only a per-session temp dir. The helper ships as an optional, per-platform binary; if it is not installed (musl/Alpine, an unsupported arch, or an `--omit=optional` install), `--sandbox-strict` exits rather than run unconfined. It is experimental and not yet validated on every platform/kernel — `--sandbox` is the portable, stable option. Like `--sandbox`, it has no effect without `--mcp` (in fact it errors), and the two flags are mutually exclusive: pass exactly one confinement level, or neither.
+
 ## Configuring MCP Servers
 
 To use Repomix as an MCP server with AI assistants like Claude, you need to configure the MCP settings:

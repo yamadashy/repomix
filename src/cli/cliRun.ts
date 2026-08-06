@@ -199,7 +199,12 @@ export const run = async () => {
       .option('--mcp', 'Run as Model Context Protocol server for AI tool integration')
       .option(
         '--sandbox [dir]',
-        "With --mcp: confine the MCP server's file tools to a workspace directory (defaults to the working directory; e.g. --sandbox path/to/project). Every path is relative to that root, absolute/host paths are refused, and remote packing, skill generation, and attaching external outputs are disabled.",
+        "With --mcp: confine the MCP server's file tools to a workspace directory with a software path guard (defaults to the working directory; e.g. --sandbox path/to/project). Every path is relative to that root, absolute/host paths are refused, and remote packing, skill generation, and attaching external outputs are disabled. Portable — needs no OS support. For kernel-enforced confinement use --sandbox-strict.",
+      )
+      .optionsGroup('MCP Kernel Sandbox (Experimental)')
+      .option(
+        '--sandbox-strict [dir]',
+        'Experimental. Like --sandbox (mutually exclusive with it), but also REQUIRES an OS kernel sandbox — refuses to start (exit 1) if it is unavailable or fails to apply (no software-only fallback). Confinement runs out-of-process via the prebuilt landstrip helper (Landlock + seccomp on Linux, Seatbelt on macOS, AppContainer on Windows); if its per-platform binary is not installed (musl/Alpine, an unsupported arch), --sandbox-strict fail-closes. The kernel layer is not yet validated on every platform and relies on a young, pre-1.0 dependency — --sandbox (software path guard) is the portable, stable option. Note: the confined server inherits only an allowlisted subset of the environment (no NODE_OPTIONS, no host secrets).',
       )
       // Skill Generation
       .optionsGroup('Skill Generation (Experimental)')
@@ -364,21 +369,43 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
   logger.trace('cwd:', cwd);
   logger.trace('options:', redactOptionsForLog(options));
 
-  const sandboxed = options.sandbox != null && options.sandbox !== false;
+  // Set when present with any value — the optional [dir] arg is a string, bare is `true`.
+  const isFlagEnabled = (v: boolean | string | undefined): boolean => v != null && v !== false;
+  const strict = isFlagEnabled(options.sandboxStrict);
+  const sandboxFlagSet = isFlagEnabled(options.sandbox);
+  const sandboxed = strict || sandboxFlagSet;
 
-  if (sandboxed && !options.mcp) {
+  // Exactly one way to request a confinement level — no "both set, one wins" rule.
+  if (strict && sandboxFlagSet) {
+    throw new RepomixError(
+      '--sandbox and --sandbox-strict are mutually exclusive: pass one or neither. --sandbox-strict already includes the software path guard.',
+    );
+  }
+  // Throw, not warn: without --mcp there is nothing to confine, and a warning is
+  // suppressed under --quiet/--stdout — leaving exactly the unconfined run this
+  // fail-closed flag exists to prevent. Plain --sandbox keeps its benign warning.
+  if (strict && !options.mcp) {
+    throw new RepomixError(
+      '--sandbox-strict requires --mcp: it only confines the MCP server, and its kernel sandbox is fail-closed. Refusing to run unconfined.',
+    );
+  }
+  if (sandboxFlagSet && !options.mcp) {
     logger.warn('--sandbox has no effect without --mcp; it only confines the MCP server.');
   }
 
   if (options.mcp) {
-    // A string value of --sandbox is the workspace dir to confine to; otherwise use cwd.
-    const requestedRoot = typeof options.sandbox === 'string' ? path.resolve(cwd, options.sandbox) : cwd;
+    // A string flag value is the workspace dir; the flags are mutually exclusive, so
+    // at most one is set.
+    const rootArg =
+      (typeof options.sandboxStrict === 'string' ? options.sandboxStrict : undefined) ??
+      (typeof options.sandbox === 'string' ? options.sandbox : undefined);
+    const requestedRoot = rootArg != null ? path.resolve(cwd, rootArg) : cwd;
     // Canonicalize the root so the guard/virtualization/error-scrubbing agree with the
     // realpaths resolveWithinRoot returns. Runs before any agent connects, so surfacing
     // the operator's own path in a resolution error is fine.
     const sandboxRoot = sandboxed ? await canonicalizeSandboxRoot(requestedRoot) : requestedRoot;
     const { runMcpAction } = await import('./actions/mcpAction.js');
-    return await runMcpAction({ sandboxed, cwd: sandboxRoot });
+    return await runMcpAction({ sandboxed, strict, cwd: sandboxRoot });
   }
 
   if (options.version) {

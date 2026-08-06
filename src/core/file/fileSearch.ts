@@ -8,6 +8,7 @@ import { defaultIgnoreList } from '../../config/defaultIgnore.js';
 import { mapWithConcurrency } from '../../shared/asyncMap.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
+import { isSandboxedProcess } from '../../shared/sandboxEnv.js';
 import { redactUrl } from '../../shared/urlRedact.js';
 import { sortPaths } from './filePathSort.js';
 
@@ -302,19 +303,35 @@ export const searchFiles = async (
       // point outside when an intermediate component is a symlink — a glob whose
       // static base names a symlinked dir (e.g. "gateway/x" with gateway -> /etc) is
       // read through by fast-glob even with followSymbolicLinks:false. Canonicalize
-      // each match and drop anything outside the canonical root, or that cannot be
-      // resolved at all (fail closed — an unresolvable path is never safe to pack).
+      // each match and drop anything that resolves outside the canonical root.
       const realRoot = await fs.realpath(rootAbs).catch(() => rootAbs);
       // A filesystem/drive root already ends in the separator (POSIX "/", Windows
       // "C:\"), so appending another would make the prefix "//" and reject every
       // child — build it only when the separator is missing.
       const realRootPrefix = realRoot.endsWith(path.sep) ? realRoot : `${realRoot}${path.sep}`;
+      // Lexical prefix for the pre-check + fail-open path. `realRoot` may itself be the
+      // lexical `rootAbs` when its own realpath was denied (confined env, below).
+      const rootAbsPrefix = rootAbs.endsWith(path.sep) ? rootAbs : `${rootAbs}${path.sep}`;
       const withinRealRoot = async (rel: string): Promise<boolean> => {
-        try {
-          const real = await fs.realpath(path.resolve(rootAbs, rel));
-          return real === realRoot || real.startsWith(realRootPrefix);
-        } catch {
+        const abs = path.resolve(rootAbs, rel);
+        // Lexically outside the base is always rejected — cheap, and needs no fs access
+        // (so it holds even where realpath is denied).
+        if (abs !== rootAbs && !abs.startsWith(rootAbsPrefix)) {
           return false;
+        }
+        try {
+          const real = await fs.realpath(abs);
+          return real === realRoot || real.startsWith(realRootPrefix);
+        } catch (error) {
+          // A kernel sandbox can deny canonicalizing ancestor dirs (Windows
+          // AppContainer), which would drop every file and yield an empty pack. Fall
+          // back to the lexical containment proven above, but ONLY when a kernel
+          // boundary is actually enforcing (REPOMIX_SANDBOXED) and the failure is a
+          // denial. Everything else — plain --sandbox, or ENOENT/ELOOP/reparse
+          // quirks — still fails closed, per #1769.
+          const code = (error as NodeJS.ErrnoException)?.code;
+          const deniedUnderKernelSandbox = isSandboxedProcess() && (code === 'EPERM' || code === 'EACCES');
+          return deniedUnderKernelSandbox;
         }
       };
       const fileKeep = await Promise.all(filePaths.map(withinRealRoot));

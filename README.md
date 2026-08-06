@@ -682,6 +682,7 @@ Instruction
 #### MCP
 - `--mcp`: Run as Model Context Protocol server for AI tool integration
 - `--sandbox [dir]`: (with `--mcp`) confine the MCP server's file tools to a workspace directory (defaults to the working directory; e.g. `--sandbox path/to/project`) — every path is relative to that root, absolute/host paths are refused, and remote packing, skill generation, and attaching external outputs are disabled.
+- `--sandbox-strict [dir]`: (experimental; with `--mcp`; mutually exclusive with `--sandbox`) like `--sandbox`, but also enforces an OS **kernel** sandbox and **refuses to start** if it cannot be applied — no software-only fallback. `--sandbox` remains the portable, stable option.
 
 #### Agent Skills Generation
 
@@ -955,6 +956,8 @@ repomix --mcp --sandbox path/to/project
 ```
 
 When sandbox mode is on, every path is relative to the workspace root (absolute, `~`, `..`, and Windows drive/UNC paths are refused, as are paths that resolve outside the root through symlinks), and only the read-only, root-confined tools are registered; remote packing, skill generation, and attaching external outputs are disabled. The raw file tools (`file_system_read_file`, `file_system_read_directory`) are available only in sandbox mode, where the workspace root bounds what they can reach. This is an application-level confinement of the tool surface, not an OS-level sandbox. See the [MCP Server guide](https://repomix.com/guide/mcp-server) for details.
+
+For OS-level enforcement, `--sandbox-strict` (experimental) adds a required **kernel** sandbox on top of the same guard and **refuses to start** if it cannot be applied — confinement runs out-of-process via the optional [`@landstrip/landstrip`](https://github.com/landstrip/landstrip) helper (Landlock+seccomp on Linux, Seatbelt on macOS, AppContainer on Windows). `--sandbox` stays the portable, stable option. See the [MCP Server guide](https://repomix.com/guide/mcp-server) for details.
 
 #### Configuring MCP Servers
 
