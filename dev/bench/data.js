@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785857090136,
+  "lastUpdate": 1786028609142,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -10440,6 +10440,51 @@ window.BENCHMARK_DATA = {
             "range": "±33",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1313ms, Q3: 1346ms\nAll times: 1300, 1302, 1309, 1311, 1312, 1313, 1321, 1322, 1327, 1327, 1329, 1332, 1344, 1345, 1346, 1346, 1355, 1360, 1370, 1501ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cc0a6e16ab5f544c612eaa6eedeeff7b8e119b24",
+          "message": "Merge pull request #1768 from yamadashy/renovate/major-root-major-dependencies\n\nfix(deps): update dependency tinyclip to v1",
+          "timestamp": "2026-08-07T00:01:27+09:00",
+          "tree_id": "0feb717f1b80f9f8a7675c8bc5158709f95c2586",
+          "url": "https://github.com/yamadashy/repomix/commit/cc0a6e16ab5f544c612eaa6eedeeff7b8e119b24"
+        },
+        "date": 1786028608344,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 737,
+            "range": "±143",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 706ms, Q3: 849ms\nAll times: 616, 647, 656, 676, 683, 686, 705, 706, 712, 721, 725, 732, 733, 736, 737, 737, 769, 780, 785, 814, 821, 824, 849, 889, 914, 959, 966, 987, 990, 1221ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 893,
+            "range": "±20",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 881ms, Q3: 901ms\nAll times: 872, 872, 873, 878, 879, 881, 883, 888, 891, 892, 893, 894, 894, 895, 899, 901, 906, 906, 915, 921ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1327,
+            "range": "±132",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1319ms, Q3: 1451ms\nAll times: 1283, 1306, 1308, 1313, 1317, 1319, 1319, 1320, 1321, 1325, 1327, 1332, 1342, 1414, 1437, 1451, 1472, 1502, 1662, 2067ms"
           }
         ]
       }
