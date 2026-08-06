@@ -1,3 +1,4 @@
+import { findNavigationContainer } from '../utils/github-navigation';
 import './styles.css';
 
 interface RepositoryInfo {
@@ -67,15 +68,6 @@ function extractRepositoryInfo(): RepositoryInfo | null {
     repo,
     url: `https://github.com/${owner}/${repo}`,
   };
-}
-
-function findNavigationContainer(): Element | null {
-  // GitHub is rolling out a React-based repository header that replaces the
-  // legacy `ul.pagehead-actions` list with `ul[data-testid="repo-header-actions"]`.
-  // Keep the legacy selector as a fallback while the rollout is in progress.
-  return (
-    document.querySelector('ul[data-testid="repo-header-actions"]') ?? document.querySelector('ul.pagehead-actions')
-  );
 }
 
 function isRepositoryPage(): boolean {
