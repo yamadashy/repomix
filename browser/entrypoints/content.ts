@@ -1,3 +1,4 @@
+import { findNavigationContainer } from '../utils/github-navigation';
 import './styles.css';
 
 interface RepositoryInfo {
@@ -67,10 +68,6 @@ function extractRepositoryInfo(): RepositoryInfo | null {
     repo,
     url: `https://github.com/${owner}/${repo}`,
   };
-}
-
-function findNavigationContainer(): Element | null {
-  return document.querySelector('ul.pagehead-actions');
 }
 
 function isRepositoryPage(): boolean {
