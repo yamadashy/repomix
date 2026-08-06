@@ -62,6 +62,9 @@ function extractRepositoryInfo(): RepositoryInfo | null {
   }
 
   const [, owner, repo] = pathMatch;
+  if (!owner || !repo) {
+    return null;
+  }
   return {
     owner,
     repo,
@@ -76,7 +79,7 @@ function findNavigationContainer(): Element | null {
 function isRepositoryPage(): boolean {
   // Check if we're on a repository page (not user profile, organization, etc.)
   const pathParts = window.location.pathname.split('/').filter(Boolean);
-  return pathParts.length >= 2 && !pathParts[0].startsWith('@');
+  return pathParts.length >= 2 && !pathParts[0]?.startsWith('@');
 }
 
 // Main integration functions
