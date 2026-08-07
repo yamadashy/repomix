@@ -72,6 +72,23 @@ describe('gitRepositoryHandle', () => {
       expect(result).toBe(false);
       expect(mockExecGitRevParse).toHaveBeenCalledWith('/test/dir');
     });
+
+    test('returns false without spawning git under the kernel sandbox (REPOMIX_SANDBOXED)', async () => {
+      const prev = process.env.REPOMIX_SANDBOXED;
+      process.env.REPOMIX_SANDBOXED = '1';
+      try {
+        const mockExecGitRevParse = vi.fn().mockResolvedValue('true');
+        const result = await isGitRepository('/test/dir', { execGitRevParse: mockExecGitRevParse });
+        expect(result).toBe(false);
+        expect(mockExecGitRevParse).not.toHaveBeenCalled();
+      } finally {
+        if (prev === undefined) {
+          delete process.env.REPOMIX_SANDBOXED;
+        } else {
+          process.env.REPOMIX_SANDBOXED = prev;
+        }
+      }
+    });
   });
 
   describe('isGitInstalled', () => {
@@ -96,6 +113,23 @@ describe('gitRepositoryHandle', () => {
       expect(result).toBe(false);
       expect(mockExecGitVersion).toHaveBeenCalled();
       expect(logger.trace).toHaveBeenCalledWith('Git is not installed:', 'Command not found: git');
+    });
+
+    test('returns false without spawning git under the kernel sandbox (REPOMIX_SANDBOXED)', async () => {
+      const prev = process.env.REPOMIX_SANDBOXED;
+      process.env.REPOMIX_SANDBOXED = '1';
+      try {
+        const mockExecGitVersion = vi.fn().mockResolvedValue('git version 2.34.1');
+        const result = await isGitInstalled({ execGitVersion: mockExecGitVersion });
+        expect(result).toBe(false);
+        expect(mockExecGitVersion).not.toHaveBeenCalled();
+      } finally {
+        if (prev === undefined) {
+          delete process.env.REPOMIX_SANDBOXED;
+        } else {
+          process.env.REPOMIX_SANDBOXED = prev;
+        }
+      }
     });
 
     test('should return false when git version output contains error', async () => {
