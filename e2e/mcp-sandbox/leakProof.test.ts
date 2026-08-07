@@ -199,6 +199,13 @@ fsp.readFile = async function (...args) {
           return ['--require', spyPath];
         });
         try {
+          // A crash only counts as leak detection if the server actually served
+          // work first — dying on wave 1 would be a preload/startup failure, not
+          // the OOM this harness-proof exists to demonstrate.
+          expect(
+            run.samples.length,
+            'the spy server failed before completing a single wave — startup failure, not a detected leak',
+          ).toBeGreaterThan(0);
           expect(run.crashed, 'the spy-leaking server survived every wave — the leak harness failed to detect it').toBe(
             true,
           );

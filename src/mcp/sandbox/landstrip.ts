@@ -75,14 +75,23 @@ export const landstripBackend: SandboxBackend = {
 
     const sessionTmp = canon(makeSessionTmp());
     const libDirs = nodeSharedLibDirs(process.execPath);
-    const { readOnly, readWrite } = buildRuleset(root, sessionTmp, libDirs);
-    const policyFile = path.join(sessionTmp, 'landstrip-policy.json');
-    fs.writeFileSync(policyFile, buildLandstripPolicy(readOnly, readWrite));
+    let policyFile: string;
+    let opensslConf: string;
+    try {
+      const { readOnly, readWrite } = buildRuleset(root, sessionTmp, libDirs);
+      policyFile = path.join(sessionTmp, 'landstrip-policy.json');
+      fs.writeFileSync(policyFile, buildLandstripPolicy(readOnly, readWrite));
 
-    // node aborts at startup if OpenSSL's config is unreadable, so give it an empty
-    // one inside the session tmp rather than granting host /etc.
-    const opensslConf = path.join(sessionTmp, 'openssl.cnf');
-    fs.writeFileSync(opensslConf, '');
+      // node aborts at startup if OpenSSL's config is unreadable, so give it an empty
+      // one inside the session tmp rather than granting host /etc.
+      opensslConf = path.join(sessionTmp, 'openssl.cnf');
+      fs.writeFileSync(opensslConf, '');
+    } catch (error) {
+      // The refusal path must not leave the just-created session dir behind — in the
+      // in-workspace-TMPDIR case it would sit inside the user's repo.
+      fs.rmSync(sessionTmp, { recursive: true, force: true });
+      throw error;
+    }
 
     // execArgv is forwarded so node CLI flags (e.g. --max-old-space-size) survive
     // the re-exec.

@@ -35,6 +35,17 @@ describe('buildRuleset', () => {
     expect(rs.readOnly).not.toContain('/no/such/path/xyzzy');
   });
 
+  test('throws when the session tmp resolves inside the workspace root (writable grant would breach the read-only workspace)', () => {
+    // An operator TMPDIR/TEMP/TMP pointing into the workspace (direnv-style
+    // TMPDIR=$PWD/.tmp) would otherwise make makeSessionTmp() the one writable
+    // grant INSIDE the root the policy promises is read-only. Fail closed instead.
+    const root = process.cwd();
+    expect(() => buildRuleset(root, path.join(root, '.tmp', 'repomix-sbx-x'), [])).toThrow(/inside the workspace/);
+    expect(() => buildRuleset(root, root, [])).toThrow(/inside the workspace/);
+    // A SIBLING of the root sharing a name prefix is outside — must not throw.
+    expect(() => buildRuleset(root, `${root}-sibling`, [])).not.toThrow();
+  });
+
   test('grants the node runtime + the node_modules resolution walk so the confined child loads its deps', () => {
     // The repo checkout has a top-level node_modules; the confined re-exec must be able
     // to read node itself + that dir (and any ancestor node_modules for a flat-hoisted

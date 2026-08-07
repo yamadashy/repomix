@@ -43,8 +43,11 @@ interface ToolsWork {
 // --sandbox-strict (required kernel), to confirm confinement does not break them.
 const runAllTools = async (): Promise<ToolsWork> => {
   const ws = mkWorkspace();
+  // Closed in finally — a rejected tool call must not leak the spawned server.
+  let closeClient: (() => Promise<void>) | undefined;
   try {
     const { client } = await connect(ws);
+    closeClient = () => client.close();
     const call = (name: string, args: Record<string, unknown>) => client.callTool({ name, arguments: args });
     const { tools } = await client.listTools();
     const rf = textOf(await call('file_system_read_file', { path: 'src/a.ts' }));
@@ -53,7 +56,6 @@ const runAllTools = async (): Promise<ToolsWork> => {
     const outputId = (pk.match(/"outputId"\s*:\s*"([a-f0-9]+)"/) || [])[1];
     const ro = outputId ? textOf(await call('read_repomix_output', { outputId })) : '';
     const gr = outputId ? textOf(await call('grep_repomix_output', { outputId, pattern: 'answer' })) : '';
-    await client.close().catch(() => {});
     const result: ToolsWork = {
       toolCount: tools.length,
       readFile: rf.includes('answer = 42'),
@@ -70,6 +72,7 @@ const runAllTools = async (): Promise<ToolsWork> => {
     }
     return result;
   } finally {
+    await closeClient?.().catch(() => {});
     fs.rmSync(ws, { recursive: true, force: true });
   }
 };
@@ -107,7 +110,8 @@ const waitUntil = async (cond: () => boolean, ms: number): Promise<boolean> => {
 // policy on disk at that moment is exactly what the kernel was applied with.
 const captureServerPolicy = async (ws: string, tmpParent: string): Promise<CapturedPolicy> => {
   const { client } = await connect(ws, { env: { TMPDIR: tmpParent, TEMP: tmpParent, TMP: tmpParent } });
-  let session: string | undefined;
+  let session: string;
+  let captured: CapturedPolicy;
   try {
     const sessions = fs.readdirSync(tmpParent).filter((d) => d.startsWith('repomix-sbx-'));
     if (sessions.length !== 1) {
@@ -119,14 +123,18 @@ const captureServerPolicy = async (ws: string, tmpParent: string): Promise<Captu
     // The canonicalized session tmp is the only writable grant.
     const sessionTmp = writes.find((w) => w.length > 0);
     if (!sessionTmp) throw new Error('captured policy has no session tmp in allowWrite');
-    return { policy, sessionTmp };
+    captured = { policy, sessionTmp };
   } finally {
     await client.close().catch(() => {});
-    // The launcher removes its session tmp on exit; wait for that cleanup so the
-    // probe's re-creation of the directory can't race the deletion.
-    const gone = session;
-    if (gone) await waitUntil(() => !fs.existsSync(path.join(tmpParent, gone)), 10000);
   }
+  // The launcher removes its session tmp on exit; wait for that cleanup so the
+  // probe's re-creation of the directory can't race the deletion — and FAIL if it
+  // never completes, rather than run a probe racing a live deletion. Success path
+  // only (out of the finally), so a capture error above is never masked.
+  if (!(await waitUntil(() => !fs.existsSync(path.join(tmpParent, session)), 10000))) {
+    throw new Error(`launcher session-tmp cleanup timed out: ${session}`);
+  }
+  return captured;
 };
 
 // Run a bare `node -e` under the captured policy: in-workspace read must SUCCEED (so
@@ -272,6 +280,28 @@ describe.runIf(['linux', 'darwin', 'win32'].includes(plat) && landstripBinPath !
       } finally {
         fs.rmSync(ws, { recursive: true, force: true });
         fs.rmSync(tmpParent, { recursive: true, force: true });
+      }
+    });
+
+    it('refuses to start when TMPDIR/TEMP/TMP point inside the workspace (writable session tmp would breach the read-only root)', () => {
+      const ws = mkWorkspace();
+      try {
+        const insideTmp = path.join(ws, '.tmp');
+        fs.mkdirSync(insideTmp);
+        const res = spawnSync(process.execPath, [bin, '--mcp', '--sandbox-strict'], {
+          cwd: ws,
+          encoding: 'utf8',
+          timeout: 30000,
+          env: { ...process.env, TMPDIR: insideTmp, TEMP: insideTmp, TMP: insideTmp },
+        });
+        expect(res.status).toBe(1);
+        expect(res.stderr).toMatch(/inside the workspace root/);
+        expect(res.stderr).toMatch(/Refusing to start/);
+        // The refused launch must clean up after itself — no session dir left in the
+        // repo. Only OUR entries: node itself drops a node-compile-cache dir in TMPDIR.
+        expect(fs.readdirSync(insideTmp).filter((d) => d.startsWith('repomix-sbx-'))).toEqual([]);
+      } finally {
+        fs.rmSync(ws, { recursive: true, force: true });
       }
     });
   },

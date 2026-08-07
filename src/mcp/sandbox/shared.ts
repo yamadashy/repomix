@@ -222,15 +222,26 @@ export const nodeSharedLibDirs = (execPath: string): string[] => {
  * The confined process's ruleset: its runtime and the workspace read-only, the
  * session temp read-write — so even a path-guard bypass cannot write the workspace
  * or reach host secrets at the kernel level.
- * Non-existent paths are dropped.
+ * Non-existent paths are dropped. Both `root` and `sessionTmp` must arrive
+ * canonicalized (they do: cliRun canonicalizes the root, confine() the session tmp).
  */
 export const buildRuleset = (root: string, sessionTmp: string, libDirs: string[]): SandboxRuleset => {
+  const rootAbs = path.resolve(root);
+  // A host TMPDIR/TEMP/TMP pointing into the workspace would make the session tmp —
+  // the ONLY writable grant — a subtree of the root the policy promises is
+  // read-only. No relocation guesswork: refuse, and the launch fails closed.
+  const rootPrefix = rootAbs.endsWith(path.sep) ? rootAbs : `${rootAbs}${path.sep}`;
+  if (sessionTmp === rootAbs || sessionTmp.startsWith(rootPrefix)) {
+    throw new Error(
+      `session temp dir ${sessionTmp} resolves inside the workspace root ${rootAbs}, which must stay read-only — unset TMPDIR/TEMP/TMP pointing into the workspace`,
+    );
+  }
   const readOnly = existing([
     ...nodeRuntimePaths(process.execPath),
     packageRoot(),
     ...nodeModulesPaths(packageRoot()),
     ...libDirs,
-    path.resolve(root),
+    rootAbs,
   ]);
   const readWrite = existing([sessionTmp]);
   return { readOnly, readWrite };
