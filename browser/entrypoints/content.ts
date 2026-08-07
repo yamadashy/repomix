@@ -1,3 +1,4 @@
+import { findNavigationContainer } from '../utils/github-navigation';
 import './styles.css';
 
 interface RepositoryInfo {
@@ -62,6 +63,9 @@ function extractRepositoryInfo(): RepositoryInfo | null {
   }
 
   const [, owner, repo] = pathMatch;
+  if (!owner || !repo) {
+    return null;
+  }
   return {
     owner,
     repo,
@@ -69,14 +73,10 @@ function extractRepositoryInfo(): RepositoryInfo | null {
   };
 }
 
-function findNavigationContainer(): Element | null {
-  return document.querySelector('ul.pagehead-actions');
-}
-
 function isRepositoryPage(): boolean {
   // Check if we're on a repository page (not user profile, organization, etc.)
   const pathParts = window.location.pathname.split('/').filter(Boolean);
-  return pathParts.length >= 2 && !pathParts[0].startsWith('@');
+  return pathParts.length >= 2 && !pathParts[0]?.startsWith('@');
 }
 
 // Main integration functions
