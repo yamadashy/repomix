@@ -15,11 +15,11 @@
     "cloud-deploy": "gcloud builds submit --config=cloudbuild.yaml ."
   },
   "dependencies": {
-    "@hono/node-server": "^2.0.12",
+    "@hono/node-server": "^2.1.0",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.38.1",
     "fflate": "^0.8.3",
-    "hono": "^4.12.33",
+    "hono": "^4.13.1",
     "isbot": "^5.2.1",
     "repomix": "github:yamadashy/repomix#main",
     "valibot": "^1.4.2",
