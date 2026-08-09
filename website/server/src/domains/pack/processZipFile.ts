@@ -20,8 +20,13 @@ import { buildUntrustedPackCliOptions } from './utils/untrustedPackOptions.js';
  * this process (e.g. log.showSignature + gpg.program). Dropping the directory
  * costs nothing: repomix already default-ignores `.git/**` from its output and
  * deletes `.git` after cloning a remote itself, so no upload needs it.
+ *
+ * Both separators are treated as boundaries. A ZIP should use '/', but a crafted
+ * archive can embed '\\', which becomes a path separator once extracted onto a
+ * Windows host, so a `.git\\config` entry must be recognized as git-internal too.
  */
-const isGitInternalEntry = (entryPath: string): boolean => entryPath.split('/').some((segment) => segment === '.git');
+export const isGitInternalEntry = (entryPath: string): boolean =>
+  entryPath.split(/[/\\]/).some((segment) => segment === '.git');
 
 // Enhanced ZIP extraction limits
 const ZIP_SECURITY_LIMITS = {
