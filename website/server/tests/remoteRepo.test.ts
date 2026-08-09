@@ -210,4 +210,13 @@ describe('processRemoteRepo — assertPublicHttpsRepoUrl integration', () => {
     // The hardening config must precede the `clone` subcommand to take effect.
     expect(gitArgs.indexOf('http.followRedirects=false')).toBeLessThan(gitArgs.indexOf('clone'));
   });
+
+  test('packs the cloned tree with skipLocalConfig: true', async () => {
+    // Sibling of the same assertion in processZipFile.test.ts. Both pack paths
+    // hand `runDefaultAction` a directory whose contents came from outside; a
+    // `repomix.config.*` in there is executed on load unless this flag is set.
+    await processRemoteRepo('owner/repo', 'xml', baseOptions);
+
+    expect(runDefaultActionMock.mock.calls[0][2]).toMatchObject({ skipLocalConfig: true });
+  });
 });
