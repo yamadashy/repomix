@@ -5,14 +5,14 @@ import type { PackOptions } from '../src/types.js';
 describe('buildUntrustedPackCliOptions', () => {
   const base = { outputFilePath: 'out.txt', format: 'xml', options: {} as PackOptions };
 
-  test.each([
-    { securityCheck: true },
-    { securityCheck: false },
-  ])('always sets skipLocalConfig (securityCheck: $securityCheck)', ({ securityCheck }) => {
-    // The whole point of routing both pack paths through here: neither of them
-    // gets to be the one that forgets.
-    expect(buildUntrustedPackCliOptions({ ...base, securityCheck })).toMatchObject({ skipLocalConfig: true });
-  });
+  test.each([{ securityCheck: true }, { securityCheck: false }])(
+    'always sets skipLocalConfig (securityCheck: $securityCheck)',
+    ({ securityCheck }) => {
+      // The whole point of routing both pack paths through here: neither of them
+      // gets to be the one that forgets.
+      expect(buildUntrustedPackCliOptions({ ...base, securityCheck })).toMatchObject({ skipLocalConfig: true });
+    },
+  );
 
   test('leaves securityCheck to the caller', () => {
     // The one setting the ZIP and remote paths genuinely disagree on.
