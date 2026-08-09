@@ -19,14 +19,10 @@ describe('isGitInternalEntry', () => {
     expect(isGitInternalEntry(entry)).toBe(true);
   });
 
-  test.each([
-    'README.md',
-    'src/index.ts',
-    '.gitignore',
-    '.github/workflows/ci.yml',
-    'a.git',
-    'git/config',
-  ])('leaves %j alone', (entry) => {
-    expect(isGitInternalEntry(entry)).toBe(false);
-  });
+  test.each(['README.md', 'src/index.ts', '.gitignore', '.github/workflows/ci.yml', 'a.git', 'git/config'])(
+    'leaves %j alone',
+    (entry) => {
+      expect(isGitInternalEntry(entry)).toBe(false);
+    },
+  );
 });
