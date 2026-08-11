@@ -92,7 +92,7 @@ Apply the **mutation testing mental model** -- for each assertion, ask: "If I in
 
 Structure findings by severity. For each finding:
 1. State **what** is missing or wrong
-2. Note your **confidence** (High / Medium / Low) when it is not High, and what it hinges on
+2. State your **confidence**: High / Medium / Low -- and what the Medium/Low ones hinge on
 3. Explain **why** it matters (what bug could slip through)
 4. Suggest a **specific test case** (not just "add tests")
 

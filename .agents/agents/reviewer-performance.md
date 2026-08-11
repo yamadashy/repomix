@@ -72,6 +72,6 @@ If nothing clears the threshold, say so briefly. Do not invent issues.
 
 ## Guidelines
 
-- The threshold is about impact at realistic scale, not about your confidence. If you suspect a real cost but cannot size it, report it with a confidence note rather than dropping it.
+- The threshold is about impact at realistic scale, not about your confidence. If you have concrete evidence of a threshold-clearing cost but cannot quantify it, report it with a confidence note rather than dropping it.
 - If a pattern is used intentionally for readability or simplicity, don't flag it unless the impact is significant.
 - Do not flag: Loop style preferences on small collections, micro-allocation in cold paths, patterns V8 optimizes well in modern versions (Node 22+).

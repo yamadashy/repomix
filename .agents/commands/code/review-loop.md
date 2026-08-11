@@ -11,7 +11,7 @@ Repeat the following cycle on the current branch's changes against `main` (max 3
    - reviewer-test-coverage
    - reviewer-conventions
    - reviewer-holistic
-2. **Triage** — The agents do not pre-filter: they report everything with a severity and a confidence level, and **you are the filter**. Keep only what you also deem noteworthy, dropping the low-confidence and low-severity ones unless you can confirm them against the code yourself. Classify each survivor as **Fix** (clear defects, must fix) or **Skip** (style, nitpicks, scope creep). Show a brief table before changing anything.
+2. **Triage** — The agents do not pre-filter: they report everything with a severity and a confidence level, and **you are the filter**. Keep only what you also deem noteworthy, dropping the low-confidence or low-severity ones unless you can confirm them against the code yourself. Classify each survivor as **Fix** (clear defects, must fix) or **Skip** (style, nitpicks, scope creep). Show a brief table before changing anything.
 3. **Fix** only the "Fix" items. Keep changes minimal.
 4. **Verify** with `npm run lint` and `npm run test`. Fix any regressions and repeat this step until all checks pass before continuing.
 5. **Re-review** only the newly changed lines. Do not re-raise skipped items.
