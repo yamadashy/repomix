@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786287165280,
+  "lastUpdate": 1786413038685,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -10883,6 +10883,51 @@ window.BENCHMARK_DATA = {
             "range": "±28",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1212ms, Q3: 1240ms\nAll times: 1200, 1201, 1202, 1207, 1209, 1212, 1214, 1215, 1218, 1218, 1220, 1228, 1228, 1235, 1239, 1240, 1251, 1261, 1396, 1614ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "34e7432baf0acc9263b94e3450b1ca4b1a1068a4",
+          "message": "Merge pull request #1798 from yamadashy/security/pin-remote-clone-git-removal\n\ntest(security): Pin that a remote clone's .git is always removed",
+          "timestamp": "2026-08-11T10:49:10+09:00",
+          "tree_id": "b7848ebe25fa34c4d61b58b56656c7696163a4e8",
+          "url": "https://github.com/yamadashy/repomix/commit/34e7432baf0acc9263b94e3450b1ca4b1a1068a4"
+        },
+        "date": 1786413036829,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 648,
+            "range": "±120",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 608ms, Q3: 728ms\nAll times: 579, 580, 585, 589, 598, 604, 607, 608, 612, 619, 620, 636, 637, 643, 647, 648, 654, 660, 661, 669, 679, 706, 728, 748, 764, 771, 788, 805, 821, 878ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 893,
+            "range": "±52",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 883ms, Q3: 935ms\nAll times: 860, 875, 877, 879, 881, 883, 883, 884, 885, 886, 893, 901, 903, 911, 929, 935, 995, 1030, 1031, 1047ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1222,
+            "range": "±19",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1215ms, Q3: 1234ms\nAll times: 1192, 1194, 1210, 1210, 1214, 1215, 1215, 1216, 1216, 1218, 1222, 1222, 1224, 1228, 1228, 1234, 1236, 1239, 1249, 1261ms"
           }
         ]
       }
