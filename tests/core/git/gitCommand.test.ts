@@ -593,7 +593,7 @@ describe.skipIf(process.platform === 'win32')(
       const tree = git('write-tree').toString().trim();
 
       const payload = path.join(repoDir, 'pwn.sh');
-      await fs.writeFile(payload, `#!/bin/sh\ntouch ${marker}\necho '[GNUPG:] GOODSIG fake' 1>&2\nexit 0\n`);
+      await fs.writeFile(payload, `#!/bin/sh\ntouch "${marker}"\necho '[GNUPG:] GOODSIG fake' 1>&2\nexit 0\n`);
       await fs.chmod(payload, 0o755);
       await fs.appendFile(
         path.join(repoDir, '.git', 'config'),
@@ -660,13 +660,15 @@ describe.skipIf(process.platform === 'win32')(
       execFileSync('git', ['init', '-q', repoDir], { stdio: 'pipe' });
       git('config', 'user.email', 'a@b.c');
       git('config', 'user.name', 'a');
-      const payload = path.join(repoDir, 'pwn.sh');
-      await fs.writeFile(payload, `#!/bin/sh\ntouch ${marker}\nexit 0\n`);
-      await fs.chmod(payload, 0o755);
+      await fs.writeFile(path.join(repoDir, 'pwn.sh'), `#!/bin/sh\ntouch "${marker}"\nexit 0\n`);
+      await fs.chmod(path.join(repoDir, 'pwn.sh'), 0o755);
       await fs.writeFile(path.join(repoDir, 'f.txt'), 'one\n');
       git('add', 'f.txt', 'pwn.sh');
       git('commit', '-q', '-m', 'init');
-      await fs.appendFile(path.join(repoDir, '.git', 'config'), `\n[diff]\n\texternal = ${payload}\n`);
+      // git runs diff.external through a shell, so a relative ./pwn.sh keeps the
+      // command space-free even when the repo sits under a path with spaces (the
+      // gpg.program vector above is exec'd directly, so it is not affected).
+      await fs.appendFile(path.join(repoDir, '.git', 'config'), '\n[diff]\n\texternal = ./pwn.sh\n');
       await fs.writeFile(path.join(repoDir, 'f.txt'), 'one\ntwo\n'); // unstaged edit
     };
 
@@ -681,7 +683,7 @@ describe.skipIf(process.platform === 'win32')(
       // Positive control: the same repo does fire the driver when git honors its
       // config, so the assertion above tests the hardening, not a dead payload.
       const controlMarker = path.join(workDir, `marker-diff-control-${path.basename(repoDir)}`);
-      await fs.writeFile(path.join(repoDir, 'pwn.sh'), `#!/bin/sh\ntouch ${controlMarker}\nexit 0\n`);
+      await fs.writeFile(path.join(repoDir, 'pwn.sh'), `#!/bin/sh\ntouch "${controlMarker}"\nexit 0\n`);
       await realExec('git', ['-C', repoDir, 'diff']);
       expect(await exists(controlMarker)).toBe(true);
     });
