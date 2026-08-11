@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786419357999,
+  "lastUpdate": 1786420638951,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -10973,6 +10973,51 @@ window.BENCHMARK_DATA = {
             "range": "±33",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1219ms, Q3: 1252ms\nAll times: 1207, 1214, 1214, 1217, 1218, 1219, 1227, 1227, 1230, 1231, 1238, 1246, 1246, 1246, 1247, 1252, 1261, 1263, 1269, 1287ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e3b15a406ed78d8a463620a032a059ce911bfc0e",
+          "message": "Merge pull request #1800 from yamadashy/chore/biome-ignore-browser-output\n\nchore(browser): Exclude WXT build output from biome",
+          "timestamp": "2026-08-11T12:55:54+09:00",
+          "tree_id": "53226d596754db8851ffee90f72e2a29f7c692b9",
+          "url": "https://github.com/yamadashy/repomix/commit/e3b15a406ed78d8a463620a032a059ce911bfc0e"
+        },
+        "date": 1786420637744,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 942,
+            "range": "±214",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 839ms, Q3: 1053ms\nAll times: 728, 772, 801, 814, 815, 836, 836, 839, 881, 883, 902, 904, 908, 913, 916, 942, 958, 961, 993, 998, 1031, 1046, 1053, 1056, 1057, 1069, 1094, 1096, 1114, 1132ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 902,
+            "range": "±38",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 889ms, Q3: 927ms\nAll times: 876, 880, 887, 887, 889, 889, 893, 894, 899, 901, 902, 903, 907, 908, 911, 927, 992, 1057, 1057, 1074ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1160,
+            "range": "±23",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1147ms, Q3: 1170ms\nAll times: 1135, 1136, 1145, 1145, 1147, 1147, 1148, 1149, 1152, 1157, 1160, 1162, 1165, 1166, 1167, 1170, 1173, 1184, 1189, 1189ms"
           }
         ]
       }
