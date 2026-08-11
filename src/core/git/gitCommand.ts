@@ -18,8 +18,15 @@ const execFileAsync = promisify(execFile);
 // log/diff drivers and core.fsmonitor (which has no flag) is overridden to empty.
 // Verified against git 2.53 to block all four vectors while leaving output for a
 // legitimate repository byte-for-byte unchanged.
+//
+// GIT_UNTRUSTED_CONFIG_ARGS goes before the subcommand and so applies to any git
+// command run in the target directory (log, diff, and the rev-parse repository
+// probe). The log args carry the diff-driver flags too: today `git log` only
+// asks for --name-only, but including them keeps the driver keys disabled even if
+// a later change adds patch output, so the guarantee does not depend on the exact
+// log arguments. Both are verified to leave legitimate output unchanged.
 const GIT_UNTRUSTED_CONFIG_ARGS = ['-c', 'core.fsmonitor='];
-const GIT_LOG_HARDENING_ARGS = ['--no-show-signature'];
+const GIT_LOG_HARDENING_ARGS = ['--no-show-signature', '--no-ext-diff', '--no-textconv'];
 const GIT_DIFF_HARDENING_ARGS = ['--no-ext-diff', '--no-textconv'];
 
 const GIT_REMOTE_TIMEOUT = 30000;
@@ -108,7 +115,13 @@ export const execGitRevParse = async (
   },
 ): Promise<string> => {
   try {
-    const result = await deps.execFileAsync('git', ['-C', directory, 'rev-parse', '--is-inside-work-tree']);
+    const result = await deps.execFileAsync('git', [
+      '-C',
+      directory,
+      ...GIT_UNTRUSTED_CONFIG_ARGS,
+      'rev-parse',
+      '--is-inside-work-tree',
+    ]);
     return result.stdout || '';
   } catch (error) {
     logger.trace('Failed to execute git rev-parse:', (error as Error).message);

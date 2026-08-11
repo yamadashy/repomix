@@ -48,8 +48,9 @@ file2.ts
       const result = await execGitLogFilenames('/test/dir', 5, { execFileAsync: mockFileExecAsync });
 
       expect(result).toEqual(['file1.ts', 'file2.ts', 'file1.ts', 'file3.ts', 'file2.ts']);
-      // core.fsmonitor= and --no-show-signature neutralize executable keys the
-      // target directory's own .git/config could set (see gitCommand.ts).
+      // core.fsmonitor=, --no-show-signature and the diff-driver flags neutralize
+      // executable keys the target directory's own .git/config could set (see
+      // gitCommand.ts).
       expect(mockFileExecAsync).toHaveBeenCalledWith('git', [
         '-C',
         '/test/dir',
@@ -57,6 +58,8 @@ file2.ts
         'core.fsmonitor=',
         'log',
         '--no-show-signature',
+        '--no-ext-diff',
+        '--no-textconv',
         '--pretty=format:',
         '--name-only',
         '-n',
@@ -134,7 +137,16 @@ file2.ts
       const result = await execGitRevParse('/test/dir', { execFileAsync: mockFileExecAsync });
 
       expect(result).toBe(mockOutput);
-      expect(mockFileExecAsync).toHaveBeenCalledWith('git', ['-C', '/test/dir', 'rev-parse', '--is-inside-work-tree']);
+      // The repository probe also runs in the target directory, so it carries the
+      // core.fsmonitor= override (see gitCommand.ts).
+      expect(mockFileExecAsync).toHaveBeenCalledWith('git', [
+        '-C',
+        '/test/dir',
+        '-c',
+        'core.fsmonitor=',
+        'rev-parse',
+        '--is-inside-work-tree',
+      ]);
     });
 
     test('should throw error when git rev-parse fails', async () => {
@@ -381,6 +393,8 @@ test/feature.test.ts`;
         'core.fsmonitor=',
         'log',
         '--no-show-signature',
+        '--no-ext-diff',
+        '--no-textconv',
         '--pretty=format:%x00%ad|%s',
         '--date=iso',
         '--name-only',
@@ -405,6 +419,8 @@ file1.txt`;
         'core.fsmonitor=',
         'log',
         '--no-show-signature',
+        '--no-ext-diff',
+        '--no-textconv',
         `--pretty=format:${customSeparator}%ad|%s`,
         '--date=iso',
         '--name-only',
@@ -438,6 +454,8 @@ file.txt`;
         'core.fsmonitor=',
         'log',
         '--no-show-signature',
+        '--no-ext-diff',
+        '--no-textconv',
         `--pretty=format:${separator}%ad|%s`,
         '--date=iso',
         '--name-only',
@@ -631,6 +649,40 @@ describe.skipIf(process.platform === 'win32')(
 
       await realExec('git', ['-C', repoDir, 'log', '--pretty=format:', '--name-only', '-n', '100']);
 
+      expect(await exists(controlMarker)).toBe(true);
+    });
+
+    // A repository whose config runs a diff.external driver, plus an unstaged edit
+    // so `git diff` produces a diff and reaches the driver.
+    const buildMaliciousDiffRepo = async (repoDir: string, marker: string): Promise<void> => {
+      const git = (...args: string[]) => execFileSync('git', ['-C', repoDir, ...args], { stdio: 'pipe' });
+      await fs.mkdir(repoDir, { recursive: true });
+      execFileSync('git', ['init', '-q', repoDir], { stdio: 'pipe' });
+      git('config', 'user.email', 'a@b.c');
+      git('config', 'user.name', 'a');
+      const payload = path.join(repoDir, 'pwn.sh');
+      await fs.writeFile(payload, `#!/bin/sh\ntouch ${marker}\nexit 0\n`);
+      await fs.chmod(payload, 0o755);
+      await fs.writeFile(path.join(repoDir, 'f.txt'), 'one\n');
+      git('add', 'f.txt', 'pwn.sh');
+      git('commit', '-q', '-m', 'init');
+      await fs.appendFile(path.join(repoDir, '.git', 'config'), `\n[diff]\n\texternal = ${payload}\n`);
+      await fs.writeFile(path.join(repoDir, 'f.txt'), 'one\ntwo\n'); // unstaged edit
+    };
+
+    test('execGitDiff does not run diff.external from the repo .git/config', async () => {
+      const repoDir = await fs.mkdtemp(path.join(workDir, 'diff-'));
+      const marker = path.join(workDir, `marker-diff-${path.basename(repoDir)}`);
+      await buildMaliciousDiffRepo(repoDir, marker);
+
+      await execGitDiff(repoDir, [], { execFileAsync: realExec });
+      expect(await exists(marker)).toBe(false);
+
+      // Positive control: the same repo does fire the driver when git honors its
+      // config, so the assertion above tests the hardening, not a dead payload.
+      const controlMarker = path.join(workDir, `marker-diff-control-${path.basename(repoDir)}`);
+      await fs.writeFile(path.join(repoDir, 'pwn.sh'), `#!/bin/sh\ntouch ${controlMarker}\nexit 0\n`);
+      await realExec('git', ['-C', repoDir, 'diff']);
       expect(await exists(controlMarker)).toBe(true);
     });
   },
