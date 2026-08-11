@@ -15,7 +15,7 @@ Spawn 6 reviewer agents in parallel:
 - reviewer-conventions
 - reviewer-holistic
 
-After all agents report back, review their findings and keep only what you also deem noteworthy. Be constructive and helpful in your feedback.
+The agents do not pre-filter: they report everything they find with a severity and a confidence level, and **you are the filter**. After all agents report back, review their findings and keep only what you also deem noteworthy -- drop the low-confidence and low-severity ones unless you can confirm them against the code yourself. Be constructive and helpful in your feedback.
 
 ## AI Bot Inline Comment Evaluation
 
