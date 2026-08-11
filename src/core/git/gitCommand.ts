@@ -8,6 +8,20 @@ import { redactErrorMessage, redactUrl } from '../../shared/urlRedact.js';
 
 const execFileAsync = promisify(execFile);
 
+// A repository's own .git/config can name executables that git will run while
+// merely reading history: gpg.program (reached through log.showSignature),
+// diff.external, per-attribute textconv drivers, and core.fsmonitor. repomix
+// runs these read-only git commands inside directories it did not create — a
+// local pack of an untrusted checkout, or any working directory — so a malicious
+// repository could otherwise turn `git log`/`git diff` into command execution on
+// this host. Every such invocation is neutralized: the command flags disable the
+// log/diff drivers and core.fsmonitor (which has no flag) is overridden to empty.
+// Verified against git 2.53 to block all four vectors while leaving output for a
+// legitimate repository byte-for-byte unchanged.
+const GIT_UNTRUSTED_CONFIG_ARGS = ['-c', 'core.fsmonitor='];
+const GIT_LOG_HARDENING_ARGS = ['--no-show-signature'];
+const GIT_DIFF_HARDENING_ARGS = ['--no-ext-diff', '--no-textconv'];
+
 const GIT_REMOTE_TIMEOUT = 30000;
 const gitRemoteEnv = { ...process.env, GIT_TERMINAL_PROMPT: '0' };
 const gitRemoteOpts = { timeout: GIT_REMOTE_TIMEOUT, env: gitRemoteEnv };
@@ -29,7 +43,9 @@ export const execGitLogFilenames = async (
     const result = await deps.execFileAsync('git', [
       '-C',
       directory,
+      ...GIT_UNTRUSTED_CONFIG_ARGS,
       'log',
+      ...GIT_LOG_HARDENING_ARGS,
       '--pretty=format:',
       '--name-only',
       '-n',
@@ -54,7 +70,9 @@ export const execGitDiff = async (
     const result = await deps.execFileAsync('git', [
       '-C',
       directory,
+      ...GIT_UNTRUSTED_CONFIG_ARGS,
       'diff',
+      ...GIT_DIFF_HARDENING_ARGS,
       '--no-color', // Avoid ANSI color codes
       ...options,
     ]);
@@ -207,7 +225,9 @@ export const execGitLog = async (
     const result = await deps.execFileAsync('git', [
       '-C',
       directory,
+      ...GIT_UNTRUSTED_CONFIG_ARGS,
       'log',
+      ...GIT_LOG_HARDENING_ARGS,
       `--pretty=format:${gitSeparator}%ad|%s`,
       '--date=iso',
       '--name-only',
