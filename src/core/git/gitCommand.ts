@@ -72,9 +72,12 @@ export const execGitDiff = async (
       directory,
       ...GIT_UNTRUSTED_CONFIG_ARGS,
       'diff',
-      ...GIT_DIFF_HARDENING_ARGS,
       '--no-color', // Avoid ANSI color codes
       ...options,
+      // Hardening flags come last so a caller's option can never re-enable an
+      // external diff or textconv driver (for conflicting flags git honors the
+      // final one).
+      ...GIT_DIFF_HARDENING_ARGS,
     ]);
 
     return result.stdout || '';
