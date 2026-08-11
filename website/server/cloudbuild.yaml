@@ -50,6 +50,12 @@ steps:
       - '--ingress'
       - 'all'
       - '--allow-unauthenticated'
+      # Dedicated runtime identity. Its only permission is secretAccessor on the
+      # four secrets below, so a compromise of the server process cannot reach
+      # the rest of the project. Keep this pinned: without it a deploy would fall
+      # back to the default compute service account, which holds project editor.
+      - '--service-account'
+      - 'repomix-server-run@$PROJECT_ID.iam.gserviceaccount.com'
       - '--set-env-vars'
       - 'NODE_ENV=production'
       - '--set-secrets'
