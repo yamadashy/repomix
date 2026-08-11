@@ -1,3 +1,6 @@
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   execGitDiff,
@@ -126,6 +129,28 @@ file2.ts
   });
 
   describe('execGitShallowClone', () => {
+    // The .git removal is load-bearing for safety, not just tidiness: packing runs
+    // `git log` inside the clone by default and git honors that repository's own
+    // .git/config, so a retained .git would be a host command-execution vector.
+    // Unlike the sibling tests this one touches a real directory, because the
+    // guarantee is about what is left on disk rather than which git args ran.
+    test('removes the clone .git so a cloned repository cannot supply git config', async () => {
+      const mockFileExecAsync = vi.fn().mockResolvedValue({ stdout: '', stderr: '' });
+      const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-clone-git-'));
+      await fs.mkdir(path.join(directory, '.git'), { recursive: true });
+      await fs.writeFile(path.join(directory, '.git', 'config'), '[log]\n\tshowSignature = true\n');
+
+      try {
+        await execGitShallowClone('https://github.com/user/repo.git', directory, undefined, {
+          execFileAsync: mockFileExecAsync,
+        });
+
+        await expect(fs.access(path.join(directory, '.git'))).rejects.toThrow();
+      } finally {
+        await fs.rm(directory, { recursive: true, force: true });
+      }
+    });
+
     test('should execute without branch option if not specified by user', async () => {
       const mockFileExecAsync = vi.fn().mockResolvedValue({ stdout: '', stderr: '' });
       const url = 'https://github.com/user/repo.git';
