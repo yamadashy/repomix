@@ -185,7 +185,13 @@ export const execGitShallowClone = async (
     await deps.execFileAsync('git', ['clone', '--depth', '1', '--', url, directory], gitRemoteOpts);
   }
 
-  // Clean up .git directory
+  // Drop the clone's .git. This keeps git internals out of the packed output, but
+  // it is also load-bearing for safety, so keep it unconditional. Packing runs
+  // `git -C <dir> log` by default (output.git.sortByChanges), and git honors the
+  // repository's own .git/config — so a retained .git would let a cloned repo
+  // execute commands on this host through keys such as gpg.program (reached via
+  // log.showSignature). Making the removal conditional, for example to support
+  // diffs on a remote repo, would reopen that path.
   await fs.rm(path.join(directory, '.git'), { recursive: true, force: true });
 };
 
