@@ -2,11 +2,31 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { unzip } from 'fflate';
-import { type CliOptions, runDefaultAction, setLogLevel } from 'repomix';
+import { runDefaultAction, setLogLevel } from 'repomix';
 import type { PackOptions, PackProgressCallback, PackResult, ProcessPackResult } from '../../types.js';
 import { AppError } from '../../utils/errorHandler.js';
 import { logMemoryUsage } from '../../utils/logger.js';
 import { cleanupTempDirectory, copyOutputToCurrentDirectory, createTempDirectory } from './utils/fileUtils.js';
+import { buildUntrustedPackCliOptions } from './utils/untrustedPackOptions.js';
+
+/**
+ * Whether a ZIP entry belongs to an embedded git repository (`.git/…`, or a
+ * bare `.git` gitfile).
+ *
+ * These are dropped rather than extracted. repomix runs `git log` against the
+ * pack directory to order files by change frequency (output.git.sortByChanges
+ * defaults on), and git trusts a repository's own `.git/config` — so an
+ * uploaded `.git` turns that ordering pass into arbitrary command execution in
+ * this process (e.g. log.showSignature + gpg.program). Dropping the directory
+ * costs nothing: repomix already default-ignores `.git/**` from its output and
+ * deletes `.git` after cloning a remote itself, so no upload needs it.
+ *
+ * Both separators are treated as boundaries. A ZIP should use '/', but a crafted
+ * archive can embed '\\', which becomes a path separator once extracted onto a
+ * Windows host, so a `.git\\config` entry must be recognized as git-internal too.
+ */
+export const isGitInternalEntry = (entryPath: string): boolean =>
+  entryPath.split(/[/\\]/).some((segment) => segment === '.git');
 
 // Enhanced ZIP extraction limits
 const ZIP_SECURITY_LIMITS = {
@@ -32,23 +52,9 @@ export async function processZipFile(
 
   const outputFilePath = `repomix-output-${randomUUID()}.txt`;
 
-  // Create CLI options
-  const cliOptions = {
-    output: outputFilePath,
-    style: format,
-    parsableStyle: options.outputParsable,
-    removeComments: options.removeComments,
-    removeEmptyLines: options.removeEmptyLines,
-    outputShowLineNumbers: options.showLineNumbers,
-    fileSummary: options.fileSummary,
-    directoryStructure: options.directoryStructure,
-    compress: options.compress,
-    securityCheck: true,
-    topFilesLen: 10,
-    include: options.includePatterns,
-    ignore: options.ignorePatterns,
-    quiet: true, // Enable quiet mode to suppress output
-  } as CliOptions;
+  // An uploaded archive is attacker-controlled, exactly like the cloned
+  // repository in remoteRepo.ts, so both build their options the same way.
+  const cliOptions = buildUntrustedPackCliOptions({ outputFilePath, format, options, securityCheck: true });
 
   setLogLevel(-1);
 
@@ -196,6 +202,9 @@ async function extractZipWithSecurity(file: File, destPath: string): Promise<voi
       // Skip directories (fflate doesn't include directory entries, only files)
       if (entryPath.endsWith('/')) continue;
 
+      // Never materialize an uploaded git repository (see isGitInternalEntry).
+      if (isGitInternalEntry(entryPath)) continue;
+
       // 4.1 Check for unsafe paths (directory traversal prevention)
       const normalizedPath = path.normalize(path.join(destPath, entryPath));
       if (!normalizedPath.startsWith(destPath)) {
@@ -234,6 +243,7 @@ async function extractZipWithSecurity(file: File, destPath: string): Promise<voi
 
     for (const [filePath, data] of Object.entries(files)) {
       if (filePath.endsWith('/')) continue; // Skip directories
+      if (isGitInternalEntry(filePath)) continue; // Dropped above; must not reach disk
 
       const fullPath = path.join(destPath, filePath);
       const dirPath = path.dirname(fullPath);

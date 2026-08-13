@@ -5,7 +5,7 @@ export default defineConfig({
   manifest: {
     name: 'Repomix',
     short_name: 'repomix',
-    version: '1.0.1',
+    version: '1.0.2',
     description: '__MSG_appDescription__',
     default_locale: 'en',
     icons: {

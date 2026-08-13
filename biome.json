@@ -21,6 +21,8 @@
       "!**/website/client/.vitepress/cache",
       "!**/website/server/dist",
       "!**/browser/dist",
+      "!**/browser/.output",
+      "!**/browser/.wxt",
       "!**/browser/packages",
       "!.claude/worktrees",
       "!**/*.svg"

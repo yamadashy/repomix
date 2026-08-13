@@ -33,11 +33,11 @@
   "author": "yamadashy",
   "license": "MIT",
   "devDependencies": {
-    "@types/chrome": "^0.2.2",
+    "@types/chrome": "^0.2.5",
     "@types/node": "^24.13.3",
-    "jsdom": "^29.1.1",
+    "jsdom": "^30.0.1",
     "sharp": "^0.35.3",
-    "tsx": "^4.23.1",
+    "tsx": "^4.23.3",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10",
     "wxt": "^0.21.3"
