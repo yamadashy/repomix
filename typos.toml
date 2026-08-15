@@ -4,6 +4,8 @@ extend-exclude = [
     "website/client/src/**/*.md",
     ".git",
     "browser/**/*.txt",
+    # Verbatim real-world .gitignore replayed in tests; must stay byte-identical
+    "tests/fixtures/gitignore/*.gitignore",
 ]
 ignore-hidden = false
 
