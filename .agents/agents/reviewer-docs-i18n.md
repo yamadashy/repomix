@@ -9,7 +9,7 @@ Scope limits still apply: stay within documentation and localization (see Focus 
 
 ## Project Facts You Must Apply
 
-- Docs live in **15 language directories** under `website/client/src/`: `en` plus `de`, `es`, `fr`, `hi`, `id`, `it`, `ja`, `ko`, `pt-br`, `ru`, `tr`, `vi`, `zh-cn`, `zh-tw`. Any user-facing option or feature change must update **all 15**, not just `en`.
+- Docs live in **15 language directories** under `website/client/src/`: `en` plus `de`, `es`, `fr`, `hi`, `id`, `it`, `ja`, `ko`, `pt-br`, `ru`, `tr`, `vi`, `zh-cn`, `zh-tw`. This list is a snapshot -- verify it against the actual directories (`ls website/client/src/`) before enumerating gaps, in case a locale has been added. Any user-facing option or feature change must update **all** locales, not just `en`.
 - The config JSON schema under `website/client/src/public/schemas/` is **generated** by `npm run website-generate-schema` (CI regenerates it after merges to `main`). A hand edit to it is always a finding.
 - VitePress **does not validate in-page anchor links**. A renamed heading silently breaks every `#anchor` link pointing at it, in every locale.
 - `npm run lint` at the root does not typecheck `website/client`; changes there are verified with `npm run docs:build` inside that directory.

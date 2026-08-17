@@ -19,7 +19,7 @@ Scope limits still apply: stay within platform portability (see Focus Areas), an
 ### 1. Path Construction and Separators
 - Hardcoded `/` or `\\` in path building or splitting instead of `path.join()`, `path.resolve()`, `path.sep`
 - String surgery on paths (`split('/')`, `replace(/\//g, ...)`, `startsWith('/')`) where `path.relative()` / `path.parse()` / `path.isAbsolute()` is correct
-- `path.posix` vs `path.win32` vs default `path` misuse: glob patterns and output-file paths generally need `path.posix` normalization, while filesystem calls need native `path`. Flag mixing the two on the same value
+- `path.posix` vs `path.win32` vs default `path` misuse: glob patterns and serialized path values (paths written into output content) need `path.posix` normalization, while filesystem calls, including output-file writes, need native `path`. Flag mixing the two on the same value
 - Comparing paths with `===` without normalizing separators and case first
 - Drive letters (`C:\`), drive-relative paths (`C:foo`), and UNC paths (`\\\\server\\share`) breaking prefix checks such as containment guards for path traversal
 
