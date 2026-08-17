@@ -9,14 +9,14 @@ Scope limits still apply: stay within documentation and localization (see Focus 
 
 ## Project Facts You Must Apply
 
-- Docs live in **15 language directories** under `website/client/src/`: `en` plus `de`, `es`, `fr`, `hi`, `id`, `it`, `ja`, `ko`, `pt-br`, `ru`, `tr`, `vi`, `zh-cn`, `zh-tw`. This list is a snapshot -- verify it against the actual directories (`ls website/client/src/`) before enumerating gaps, in case a locale has been added. Any user-facing option or feature change must update **all** locales, not just `en`.
+- Docs live in **15 language directories** under `website/client/src/`: `en` plus `de`, `es`, `fr`, `hi`, `id`, `it`, `ja`, `ko`, `pt-br`, `ru`, `tr`, `vi`, `zh-cn`, `zh-tw`. This list is a snapshot -- verify it against the actual locale set (the locale keys in the `website/client/.vitepress/` config, or `ls website/client/src/` excluding non-locale directories like `public` and `shared`) before enumerating gaps, in case a locale has been added. Any user-facing option or feature change must update **all** locales, not just `en`.
 - The config JSON schema under `website/client/src/public/schemas/` is **generated** by `npm run website-generate-schema` (CI regenerates it after merges to `main`). A hand edit to it is always a finding.
 - VitePress **does not validate in-page anchor links**. A renamed heading silently breaks every `#anchor` link pointing at it, in every locale.
 - `npm run lint` at the root does not typecheck `website/client`; changes there are verified with `npm run docs:build` inside that directory.
 
 ## Severity Levels
 
-- **High**: Users will be actively misled -- documented behavior contradicts the shipped code, a documented flag does not exist, or a hand-edited generated schema will be reverted by CI.
+- **High**: Users will be actively misled -- documented behavior contradicts the shipped code, a documented flag does not exist, or a generated schema was hand-edited (the post-merge regeneration will override it in a follow-up PR).
 - **Medium**: A user-facing change is undocumented, or documented in only some locales (feature is discoverable in `en` but invisible in 14 languages).
 - **Low**: Cosmetic or structural inconsistency: stale wording, formatting drift between locales, a link that still resolves but points somewhere suboptimal.
 
@@ -25,12 +25,12 @@ Scope limits still apply: stay within documentation and localization (see Focus 
 ### 1. Locale Coverage
 - A CLI flag, `repomix.config.json` option, output-format change, or behavior change touched in `src/` with no corresponding docs update
 - Docs updated in `en` only, or in a partial set of locales. **Enumerate exactly which of the 15 directories are missing the change** -- do not say "some locales"
-- New doc pages added to one locale without the sibling pages in the others, and without the corresponding sidebar/nav entry in `website/client/src/.vitepress/` config for each locale
+- New doc pages added to one locale without the sibling pages in the others, or without the corresponding sidebar/nav entry in the `website/client/.vitepress/` config for each locale
 - Locale files that keep an outdated value (old default, removed flag) after `en` was corrected
 
 ### 2. Generated Schema
 - Any manual edit to `website/client/src/public/schemas/` -- flag it and point the author at `npm run website-generate-schema`
-- A change to `src/config/configSchema.ts` (new field, changed default, changed description) with no note that the schema will need regenerating
+- Do not require PRs to regenerate or annotate the schema for `src/config/configSchema.ts` changes -- CI regenerates it after merges to `main`
 - Schema and prose docs disagreeing about a field's type, default, or whether it is required
 
 ### 3. Accuracy Against Code
@@ -47,7 +47,7 @@ Scope limits still apply: stay within documentation and localization (see Focus 
 
 ### 5. Links and Anchors
 - A heading renamed or removed without searching **all 15 locales** for `#old-anchor` links to it -- VitePress will not catch this
-- Broken relative links: wrong `../` depth, missing locale prefix, links to `.md` paths that were moved or renamed
+- Broken links: wrong `../` depth in relative links, root-absolute links to documentation pages in a non-root locale missing that locale's `/<locale>/` prefix (relative links, root-locale `en` pages, and public assets like `/images/...` take no prefix), links to `.md` paths that were moved or renamed
 - Cross-locale links that accidentally point into `en` from a translated page
 - Anchors in translated pages generated from translated headings -- verify the link target uses that locale's actual heading slug, not the English one
 

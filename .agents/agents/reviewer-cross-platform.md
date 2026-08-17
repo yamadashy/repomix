@@ -19,14 +19,14 @@ Scope limits still apply: stay within platform portability (see Focus Areas), an
 ### 1. Path Construction and Separators
 - Hardcoded `/` or `\\` in path building or splitting instead of `path.join()`, `path.resolve()`, `path.sep`
 - String surgery on paths (`split('/')`, `replace(/\//g, ...)`, `startsWith('/')`) where `path.relative()` / `path.parse()` / `path.isAbsolute()` is correct
-- `path.posix` vs `path.win32` vs default `path` misuse: glob patterns and serialized path values (paths written into output content) need `path.posix` normalization, while filesystem calls, including output-file writes, need native `path`. Flag mixing the two on the same value
-- Comparing paths with `===` without normalizing separators and case first
+- `path.posix` vs `path.win32` vs default `path` misuse: glob patterns and serialized path values (paths written into output content) need forward-slash separators -- note `path.posix.normalize()` does NOT convert backslashes; use fast-glob's `convertPathToPattern()` when building glob patterns (it also escapes glob metacharacters, so keep it out of serialized/display paths -- those need a plain separator replacement) -- while filesystem calls, including output-file writes, need native `path`. Flag values that cross between the two representations without an explicit conversion
+- Comparing paths with `===` without normalizing separators first; case-fold only when a known case-insensitive filesystem is being targeted -- unconditional case-folding wrongly merges distinct files on Linux
 - Drive letters (`C:\`), drive-relative paths (`C:foo`), and UNC paths (`\\\\server\\share`) breaking prefix checks such as containment guards for path traversal
 
 ### 2. Glob Patterns (globby / picomatch / fast-glob)
 - Native Windows paths passed straight to `globby`/`picomatch` as patterns: `\` is an **escape character** in glob syntax, not a separator. Patterns must be converted to forward slashes first
-- User-supplied ignore rules (`.gitignore`, `.repomixignore`, `--ignore`) containing backslashes fed into a glob matcher without sanitizing -- this is the exact shape of issue #1765
-- `cwd` passed as a native path while patterns are posix, or absolute patterns on Windows (fast-glob rejects/mis-handles drive-letter patterns)
+- User-supplied ignore rules (`.gitignore`, `.repomixignore`, `--ignore`) containing backslashes: backslash is valid gitignore escape syntax, so preserve it for ignore-file APIs rather than stripping it -- a matcher bug in this shape caused issue #1765 (a globby regression, since fixed upstream)
+- Absolute paths used as glob patterns on Windows: drive-letter patterns need fast-glob's `convertPathToPattern()`. A native-path `cwd` combined with posix patterns is fine and officially supported -- do not flag it
 - Results from globby assumed to use native separators when they are posix
 
 ### 3. Filesystem Case Sensitivity
@@ -39,16 +39,16 @@ Scope limits still apply: stay within platform portability (see Focus Areas), an
 - Characters illegal on Windows in generated file names: `< > : " | ? *`, trailing dots/spaces
 - `MAX_PATH` (260 chars): deeply nested output paths or temp dirs built without regard for length
 - `fs.chmod` / mode bits / `fs.access(X_OK)` / symlink creation -- largely no-ops or permission-gated on Windows; code must not depend on them for correctness or security
-- File locking: `EBUSY`/`EPERM` on rename or unlink of an open file is Windows-only; watch/unlink and atomic-rename flows need it handled
+- File locking: `EBUSY`/`EPERM` on rename or unlink of an open file is common on Windows (rare but possible on POSIX); watch/unlink and atomic-rename flows need it handled
 
 ### 5. Child Processes and Shells
-- `shell: true`, or `exec`/`execSync` with an interpolated command string -- quoting rules differ between `cmd.exe` and `sh`, and a path with spaces breaks one but not the other. Prefer `execFile`/`spawn` with an argument array
+- `shell: true`, or `exec`/`execSync` with an interpolated command string -- an unquoted path with spaces breaks on both shells, and the quoting grammar that fixes it differs between `cmd.exe` and `sh`. Prefer `execFile`/`spawn` with an argument array
 - Assuming a POSIX shell exists (pipes, `&&`, `$VAR`, single quotes, `2>/dev/null`) in a spawned command
 - `.cmd`/`.bat` resolution on Windows (`spawn` without `shell` does not resolve them; npm-installed binaries are `.cmd` shims)
 - Parsing subprocess stdout with assumptions about locale, encoding, or line endings; git output paths are quoted/escaped differently depending on `core.quotepath`
 
 ### 6. Paths With Spaces and Special Characters
-- Any path embedded unquoted into a command string, config value, or generated snippet. macOS `TMPDIR` is under `/var/folders/.../T/` and **can contain spaces** -- this repo has already been bitten by it in e2e tests
+- Any path embedded unquoted into a command string or into a value a shell will later interpret (e.g. git config driver/command values) -- quoting is irrelevant in pure-data contexts like JSON fields. macOS `TMPDIR` is under `/var/folders/.../T/` and **can contain spaces** -- this repo has already been bitten by it in e2e tests
 - Test fixtures or scripts that assume the repo lives at a path without spaces or non-ASCII characters
 
 ### 7. Line Endings and Text Encoding

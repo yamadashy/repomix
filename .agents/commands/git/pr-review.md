@@ -10,13 +10,13 @@ If REPO and PR_NUMBER are not provided above, use `gh pr view` to detect the cur
 Skim the diff first (`gh pr diff`), then spawn only the reviewer agents relevant to what the PR touches, in parallel:
 
 - reviewer-code-quality — any source code change
-- reviewer-security — code touching child processes, file I/O, network, user input, config parsing, or CI/workflow files
+- reviewer-security — code touching child processes, file I/O, network, user input, config parsing, auth/crypto/secrets, CI/workflow files, or dependency/lockfile changes
 - reviewer-performance — hot paths (file scanning, parsing, output generation) or algorithmic changes
-- reviewer-test-coverage — any behavior change in `src/` (also catches missing tests)
+- reviewer-test-coverage — behavior changes in production code (`src/`, `browser/`, `website/`), and any added, modified, or deleted tests
 - reviewer-conventions — new files, new/renamed APIs, or structural changes
-- reviewer-holistic — multi-file changes affecting architecture, data flow, or user-facing behavior
-- reviewer-cross-platform — path handling, glob patterns, shell/child-process usage, or file I/O where Windows/macOS/Linux behavior can diverge
-- reviewer-docs-i18n — user-facing option or feature changes, changes to `src/config/configSchema.ts`, or any edits under `website/client/src/`
+- reviewer-holistic — multi-file changes affecting architecture, data flow, or user-facing behavior, or single-file changes that alter a public contract (CLI flags, config schema, output format, exported API)
+- reviewer-cross-platform — path handling, glob patterns, shell/child-process usage, file I/O, environment/OS APIs, or line-ending/encoding handling where Windows/macOS/Linux behavior can diverge
+- reviewer-docs-i18n — user-facing option or feature changes, changes to `src/config/configSchema.ts`, or edits to `README.md` or anything under `website/client/`
 
 Selection bias: **when in doubt, spawn the agent** — a wasted agent costs little, a missed finding costs a lot. A substantial `src/` change usually warrants most of the list. Narrow PRs (docs/translation-only, dependency bumps, comment fixes, small config tweaks) need only the relevant subset; if none apply, review the diff directly yourself instead of spawning agents.
 
