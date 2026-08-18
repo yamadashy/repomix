@@ -1,6 +1,12 @@
 import path from 'node:path';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { reportCompletion, reportSecurityCheck, reportSummary, reportTopFiles } from '../../src/cli/cliReport.js';
+import {
+  getDisplayPath,
+  reportCompletion,
+  reportSecurityCheck,
+  reportSummary,
+  reportTopFiles,
+} from '../../src/cli/cliReport.js';
 import type { SuspiciousFileResult } from '../../src/core/security/securityCheck.js';
 import type { PackResult } from '../../src/index.js';
 import { logger } from '../../src/shared/logger.js';
@@ -21,6 +27,15 @@ vi.mock('picocolors', () => ({
 describe('cliReport', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+  });
+
+  describe('getDisplayPath', () => {
+    test('should keep paths in a sibling directory with the same prefix absolute', () => {
+      const cwd = path.join(path.parse(process.cwd()).root, 'workspace', 'app');
+      const siblingPath = path.join(path.dirname(cwd), 'application', 'output.xml');
+
+      expect(getDisplayPath(siblingPath, cwd)).toBe(siblingPath);
+    });
   });
 
   describe('reportSummary', () => {
