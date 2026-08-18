@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786783745208,
+  "lastUpdate": 1787066676655,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -11153,6 +11153,51 @@ window.BENCHMARK_DATA = {
             "range": "±20",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1215ms, Q3: 1235ms\nAll times: 1194, 1201, 1207, 1212, 1212, 1215, 1216, 1216, 1217, 1219, 1221, 1222, 1225, 1228, 1230, 1235, 1237, 1244, 1250, 1256ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "367b94a1b32ac3310688a89be9a408f0c6778a82",
+          "message": "Merge pull request #1807 from yamadashy/chore/claude-review-selective-agents\n\nchore(agents): Selective reviewer spawning, two new specialist agents, review workflow tuning",
+          "timestamp": "2026-08-19T00:23:09+09:00",
+          "tree_id": "3a5e84fb1e2cc3b51ce866acd53a9c8d3398a7a2",
+          "url": "https://github.com/yamadashy/repomix/commit/367b94a1b32ac3310688a89be9a408f0c6778a82"
+        },
+        "date": 1787066674477,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 615,
+            "range": "±53",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 586ms, Q3: 639ms\nAll times: 552, 555, 559, 566, 575, 577, 578, 586, 590, 600, 600, 601, 603, 605, 609, 615, 619, 625, 626, 638, 638, 639, 639, 644, 648, 650, 658, 695, 797, 801ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 825,
+            "range": "±78",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 811ms, Q3: 889ms\nAll times: 802, 804, 806, 807, 808, 811, 812, 815, 817, 824, 825, 827, 828, 830, 833, 889, 923, 934, 936, 967ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1234,
+            "range": "±32",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1218ms, Q3: 1250ms\nAll times: 1198, 1212, 1213, 1216, 1217, 1218, 1223, 1224, 1224, 1233, 1234, 1237, 1239, 1242, 1242, 1250, 1252, 1253, 1259, 1263ms"
           }
         ]
       }
