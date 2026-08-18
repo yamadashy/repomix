@@ -7,13 +7,18 @@ $ARGUMENTS
 
 If REPO and PR_NUMBER are not provided above, use `gh pr view` to detect the current PR.
 
-Spawn 6 reviewer agents in parallel:
-- reviewer-code-quality
-- reviewer-security
-- reviewer-performance
-- reviewer-test-coverage
-- reviewer-conventions
-- reviewer-holistic
+Skim the diff first (`gh pr diff`), then spawn only the reviewer agents relevant to what the PR touches, in parallel:
+
+- reviewer-code-quality — any source code change
+- reviewer-security — code touching child processes, file I/O, network, user input, config parsing, auth/crypto/secrets, CI/workflow files, or dependency/lockfile changes
+- reviewer-performance — hot paths (file scanning, parsing, output generation) or algorithmic changes
+- reviewer-test-coverage — behavior changes in production code (`src/`, `browser/`, `website/`), and any added, modified, or deleted tests
+- reviewer-conventions — new files, new/renamed APIs, or structural changes
+- reviewer-holistic — multi-file changes affecting architecture, data flow, or user-facing behavior, or single-file changes that alter a public contract (CLI flags, config schema, output format, exported API)
+- reviewer-cross-platform — path handling, glob patterns, shell/child-process usage, file I/O, environment/OS APIs, or line-ending/encoding handling where Windows/macOS/Linux behavior can diverge
+- reviewer-docs-i18n — user-facing option or feature changes, changes to `src/config/configSchema.ts`, or edits to `README.md` or anything under `website/client/`
+
+Selection bias: **when in doubt, spawn the agent** — a wasted agent costs little, a missed finding costs a lot. A substantial `src/` change usually warrants most of the list. Narrow PRs (docs/translation-only, dependency bumps, comment fixes, small config tweaks) need only the relevant subset; if none apply, review the diff directly yourself instead of spawning agents.
 
 The agents do not pre-filter: they report everything they find with a severity and a confidence level, and **you are the filter**. After all agents report back, review their findings and keep only what you also deem noteworthy -- drop the low-confidence or low-severity ones unless you can confirm them against the code yourself. Be constructive and helpful in your feedback.
 
