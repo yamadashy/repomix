@@ -87,4 +87,10 @@ jobs:
         if: ${{ !inputs.dry-run }}
         run: |
           SERVER_NAME=$(node -p "require('./server.json').name")
-          curl -fsSL "https://registry.modelcontextprotocol.io/v0.1/servers?search=${SERVER_NAME}" | jq .
+          SERVER_VERSION=$(node -p "require('./server.json').version")
+          # The server name contains a slash, so it has to be percent-encoded to
+          # address the version endpoint (an unencoded name returns 404).
+          ENCODED_NAME=$(node -p "encodeURIComponent(require('./server.json').name)")
+          curl -fsSL "https://registry.modelcontextprotocol.io/v0.1/servers/${ENCODED_NAME}/versions/${SERVER_VERSION}" \
+            | jq -e --arg v "${SERVER_VERSION}" '.server.version == $v' > /dev/null
+          echo "${SERVER_NAME}@${SERVER_VERSION} is live on the MCP Registry"
