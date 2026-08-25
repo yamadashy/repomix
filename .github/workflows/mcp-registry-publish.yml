@@ -72,9 +72,12 @@ jobs:
         run: |
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
           SERVER_NAME=$(node -p "require('./server.json').name")
-          PUBLISHED_MCP_NAME=$(npm view "repomix@${PACKAGE_VERSION}" mcpName 2>/dev/null || true)
+          # `npm view <pkg> <field>` exits 0 with empty output when the field is
+          # absent and non-zero when the version itself is missing, so npm's own
+          # error is left to surface rather than being collapsed into "empty".
+          PUBLISHED_MCP_NAME=$(npm view "repomix@${PACKAGE_VERSION}" mcpName)
           if [ -z "${PUBLISHED_MCP_NAME}" ]; then
-            echo "::error::repomix@${PACKAGE_VERSION} is not published to npm or has no mcpName field"
+            echo "::error::repomix@${PACKAGE_VERSION} is published but has no mcpName field"
             exit 1
           fi
           if [ "${PUBLISHED_MCP_NAME}" != "${SERVER_NAME}" ]; then
@@ -99,6 +102,17 @@ jobs:
           # The server name contains a slash, so it has to be percent-encoded to
           # address the version endpoint (an unencoded name returns 404).
           ENCODED_NAME=$(node -p "encodeURIComponent(require('./server.json').name)")
-          curl -fsSL "https://registry.modelcontextprotocol.io/v0.1/servers/${ENCODED_NAME}/versions/${SERVER_VERSION}" \
-            | jq -e --arg v "${SERVER_VERSION}" '.server.version == $v' > /dev/null
-          echo "${SERVER_NAME}@${SERVER_VERSION} is live on the MCP Registry"
+          URL="https://registry.modelcontextprotocol.io/v0.1/servers/${ENCODED_NAME}/versions/${SERVER_VERSION}"
+          # Retry rather than failing on the first miss: the publish above is not
+          # repeatable (the registry rejects a version it already has), so a red
+          # run caused by read-after-write lag would have no clean recovery path.
+          for attempt in 1 2 3 4 5; do
+            if curl -fsSL "${URL}" | jq -e --arg v "${SERVER_VERSION}" '.server.version == $v' > /dev/null; then
+              echo "${SERVER_NAME}@${SERVER_VERSION} is live on the MCP Registry"
+              exit 0
+            fi
+            echo "Not visible yet, retrying in 10s (${attempt}/5)"
+            sleep 10
+          done
+          echo "::error::${SERVER_NAME}@${SERVER_VERSION} did not appear on the registry"
+          exit 1
