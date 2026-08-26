@@ -86,12 +86,29 @@ jobs:
           fi
           echo "repomix@${PACKAGE_VERSION} is published with mcpName=${PUBLISHED_MCP_NAME}"
 
-      - name: Login to MCP Registry
+      # Publishing a version the registry already holds is rejected, which would
+      # make a re-run permanently red. Skipping the publish when the version is
+      # already there turns a re-run into a plain re-verify.
+      - name: Check whether the version is already on the registry
+        id: registry-check
         if: ${{ !inputs.dry-run }}
+        run: |
+          SERVER_VERSION=$(node -p "require('./server.json').version")
+          ENCODED_NAME=$(node -p "encodeURIComponent(require('./server.json').name)")
+          URL="https://registry.modelcontextprotocol.io/v0.1/servers/${ENCODED_NAME}/versions/${SERVER_VERSION}"
+          if curl -fsSL "${URL}" > /dev/null 2>&1; then
+            echo "Version ${SERVER_VERSION} is already on the registry, skipping publish"
+            echo "already-published=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "already-published=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Login to MCP Registry
+        if: ${{ !inputs.dry-run && steps.registry-check.outputs.already-published != 'true' }}
         run: ./mcp-publisher login github-oidc
 
       - name: Publish to MCP Registry
-        if: ${{ !inputs.dry-run }}
+        if: ${{ !inputs.dry-run && steps.registry-check.outputs.already-published != 'true' }}
         run: ./mcp-publisher publish server.json
 
       - name: Verify the published entry
@@ -103,16 +120,17 @@ jobs:
           # address the version endpoint (an unencoded name returns 404).
           ENCODED_NAME=$(node -p "encodeURIComponent(require('./server.json').name)")
           URL="https://registry.modelcontextprotocol.io/v0.1/servers/${ENCODED_NAME}/versions/${SERVER_VERSION}"
-          # Retry rather than failing on the first miss: the publish above is not
-          # repeatable (the registry rejects a version it already has), so a red
-          # run caused by read-after-write lag would have no clean recovery path.
+          # Retry to absorb read-after-write lag. `curl | jq` needs no pipefail:
+          # a failed curl leaves jq with empty input and `jq -e` then exits 4.
           for attempt in 1 2 3 4 5; do
             if curl -fsSL "${URL}" | jq -e --arg v "${SERVER_VERSION}" '.server.version == $v' > /dev/null; then
               echo "${SERVER_NAME}@${SERVER_VERSION} is live on the MCP Registry"
               exit 0
             fi
-            echo "Not visible yet, retrying in 10s (${attempt}/5)"
-            sleep 10
+            if [ "${attempt}" -lt 5 ]; then
+              echo "Not visible yet, retrying in 10s (${attempt}/5)"
+              sleep 10
+            fi
           done
           echo "::error::${SERVER_NAME}@${SERVER_VERSION} did not appear on the registry"
           exit 1
