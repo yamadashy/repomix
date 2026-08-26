@@ -88,7 +88,10 @@ jobs:
 
       # Publishing a version the registry already holds is rejected, which would
       # make a re-run permanently red. Skipping the publish when the version is
-      # already there turns a re-run into a plain re-verify.
+      # already there turns a re-run into a plain re-verify. Note that registry
+      # versions are immutable, so a server.json metadata change (description,
+      # websiteUrl, ...) only reaches the registry with the next version bump:
+      # re-running on an unchanged version reports success without republishing.
       - name: Check whether the version is already on the registry
         id: registry-check
         if: ${{ !inputs.dry-run }}

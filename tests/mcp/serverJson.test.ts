@@ -13,11 +13,13 @@ const repoRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '../..'
 /**
  * Collects the CLI flags declared with commander in cliRun.ts, e.g. `--mcp` from
  * `.option('--mcp', ...)` and both `-w` and `--watch` from `.option('-w, --watch', ...)`.
+ * Both declaration styles are matched so the assertion tracks whether a flag exists
+ * rather than how it happens to be declared.
  */
 const getDeclaredCliFlags = (): Set<string> => {
   const source = readFileSync(path.join(repoRoot, 'src/cli/cliRun.ts'), 'utf8');
   const flags = new Set<string>();
-  for (const match of source.matchAll(/\.option\(\s*'([^']+)'/g)) {
+  for (const match of source.matchAll(/(?:\.option\(|new Option\()\s*'([^']+)'/g)) {
     for (const part of match[1].split(',')) {
       // Drop the value placeholder, e.g. `--sandbox [dir]` -> `--sandbox`
       const flag = part.trim().split(/[\s<[]/)[0];
