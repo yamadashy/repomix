@@ -141,17 +141,14 @@ describe('truncateBase64Content', () => {
     // after truncation, not just the last one
     const input = 'data:image/png;name=icon.png;charset=utf-8;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
     const result = truncateBase64Content(input);
-    expect(result).toContain(';name=icon.png');
-    expect(result).toContain(';charset=utf-8');
-    expect(result).toContain(';base64,');
+    const expected = 'data:image/png;name=icon.png;charset=utf-8;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB...';
+    expect(result).toBe(expected);
   });
 
   it('should handle data URIs with three or more parameters', () => {
     const input = 'data:image/svg+xml;name=logo.svg;charset=utf-8;foo=bar;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIi8+PC9zdmc+';
     const result = truncateBase64Content(input);
-    expect(result).toContain(';name=logo.svg');
-    expect(result).toContain(';charset=utf-8');
-    expect(result).toContain(';foo=bar');
-    expect(result).toContain(';base64,');
+    const expected = 'data:image/svg+xml;name=logo.svg;charset=utf-8;foo=bar;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53...';
+    expect(result).toBe(expected);
   });
 });
