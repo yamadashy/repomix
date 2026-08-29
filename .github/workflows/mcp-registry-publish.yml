@@ -111,11 +111,21 @@ jobs:
           SERVER_VERSION=$(node -p "require('./server.json').version")
           ENCODED_NAME=$(node -p "encodeURIComponent(require('./server.json').name)")
           URL="https://registry.modelcontextprotocol.io/v0.1/servers/${ENCODED_NAME}/versions/${SERVER_VERSION}"
-          if curl -fsSL "${URL}" > /dev/null 2>&1; then
+          # Only a 404 means the version is absent. Treating a 5xx or a
+          # transport error as "not published" would send the workflow on to
+          # republish an immutable version, which the registry then rejects.
+          if ! STATUS=$(curl -sSL -o /dev/null -w '%{http_code}' "${URL}"); then
+            echo "::error::Could not reach the MCP Registry"
+            exit 1
+          fi
+          if [ "${STATUS}" = "200" ]; then
             echo "Version ${SERVER_VERSION} is already on the registry, skipping publish"
             echo "already-published=true" >> "${GITHUB_OUTPUT}"
-          else
+          elif [ "${STATUS}" = "404" ]; then
             echo "already-published=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "::error::MCP Registry returned HTTP ${STATUS}"
+            exit 1
           fi
 
       - name: Login to MCP Registry
