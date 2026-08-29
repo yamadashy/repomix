@@ -20,10 +20,19 @@
       "transport": {
         "type": "stdio"
       },
+      "runtimeArguments": [
+        {
+          "type": "positional",
+          "value": "-y",
+          "isRequired": true,
+          "description": "Skip the npx install prompt, which would otherwise stall the stdio handshake on a cold cache"
+        }
+      ],
       "packageArguments": [
         {
           "type": "positional",
           "value": "--mcp",
+          "isRequired": true,
           "description": "Run Repomix as an MCP server over stdio"
         }
       ]

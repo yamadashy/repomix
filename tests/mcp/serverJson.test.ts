@@ -35,6 +35,10 @@ const getDeclaredCliFlags = (): Set<string> => {
 // published package.json and comparing it to the `name` in server.json. That
 // check only runs at publish time, after the npm version is already published
 // and therefore immutable, so a mismatch is caught here instead.
+//
+// Note that the `version` fields committed in server.json are not asserted here:
+// mcp-registry-publish.yml overwrites them from package.json before publishing,
+// so the committed values are placeholders and drift from package.json by design.
 describe('server.json (MCP Registry metadata)', () => {
   test('mcpName in package.json matches the server.json name', () => {
     expect(packageJson.mcpName).toBe(serverJson.name);
@@ -67,5 +71,26 @@ describe('server.json (MCP Registry metadata)', () => {
     for (const flag of packagedFlags) {
       expect(declaredFlags).toContain(flag);
     }
+  });
+
+  // Every packaged argument here is a constant needed to start the server, so a
+  // client that renders only the required arguments must still emit all of them.
+  test('every packaged argument is marked required', () => {
+    const npmPackage = serverJson.packages.find((pkg: { registryType: string }) => pkg.registryType === 'npm');
+
+    for (const arg of npmPackage.packageArguments) {
+      expect(arg.isRequired).toBe(true);
+    }
+  });
+
+  // runtimeArguments go to npx rather than to repomix, so they are checked
+  // against the documented launch command instead of against the CLI flags.
+  // Without `-y`, npx can stall on its install prompt on a cold cache, which
+  // over stdio is indistinguishable from a server that never starts.
+  test('the npx runtime arguments match the documented launch command', () => {
+    const npmPackage = serverJson.packages.find((pkg: { registryType: string }) => pkg.registryType === 'npm');
+
+    expect(npmPackage.runtimeHint).toBe('npx');
+    expect(npmPackage.runtimeArguments.map((arg: { value: string }) => arg.value)).toContain('-y');
   });
 });
