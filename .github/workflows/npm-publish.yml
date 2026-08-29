@@ -6,13 +6,16 @@ name: npm-publish
 #   tree (vitest, the linters' native binaries, everything `src/` imports),
 #   so it holds no publish permission and never touches the tarball.
 # - build produces the tarball. It only runs `npm ci` and `npm pack`, so the
-#   code that can reach the package contents is limited to npm itself, the
-#   install scripts, and the TypeScript compiler. Dev-only dependencies have
-#   no other path to end users, which is why they are kept out of this job.
+#   code that executes there is limited to npm itself, the install scripts,
+#   and `prepare` (rimraf + tsc, run by both commands). The full dependency
+#   tree is still installed, but no other dev-only dependency is executed,
+#   and executing here is their only path to the package contents.
 # - publish holds `id-token: write`. That permission puts the OIDC minting
 #   credentials in the job environment, and anything running there can
-#   exchange them for an npm publish token, so this job runs nothing but
-#   `npm publish` on the tarball the build job handed over.
+#   exchange them for an npm publish token. This job therefore has no
+#   checkout and no `npm ci`: apart from the artifact download and Node setup
+#   actions, it only verifies the tarball digest and the npm version, then
+#   runs `npm publish` on the tarball.
 
 on:
   workflow_dispatch:
@@ -45,8 +48,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # `lint` runs biome and oxlint in write mode. The build job packs the
+      # committed tree from its own checkout, so any auto-fix here would mean
+      # the tested code and the published code differ: fail instead, as ci.yml
+      # does.
       - name: Lint
-        run: node --run lint
+        run: node --run lint && git diff --exit-code
 
       - name: Test
         run: node --run test-coverage
