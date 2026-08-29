@@ -1,10 +1,18 @@
 name: npm-publish
 
-# Split into two jobs on purpose: `id-token: write` puts the OIDC minting
-# credentials in the job environment, and anything running there can exchange
-# them for an npm publish token. The build job installs and runs ~400 packages
-# (npm ci, lint, tests, build) and therefore must not hold that permission; the
-# publish job holds it and runs nothing but `npm publish` on the packed tarball.
+# Split into three jobs on purpose:
+#
+# - check runs lint and the test suite. This executes the whole dependency
+#   tree (vitest, the linters' native binaries, everything `src/` imports),
+#   so it holds no publish permission and never touches the tarball.
+# - build produces the tarball. It only runs `npm ci` and `npm pack`, so the
+#   code that can reach the package contents is limited to npm itself, the
+#   install scripts, and the TypeScript compiler. Dev-only dependencies have
+#   no other path to end users, which is why they are kept out of this job.
+# - publish holds `id-token: write`. That permission puts the OIDC minting
+#   credentials in the job environment, and anything running there can
+#   exchange them for an npm publish token, so this job runs nothing but
+#   `npm publish` on the tarball the build job handed over.
 
 on:
   workflow_dispatch:
@@ -18,6 +26,31 @@ on:
 permissions: {}
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .tool-versions
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: node --run lint
+
+      - name: Test
+        run: node --run test-coverage
+
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -67,15 +100,6 @@ jobs:
           fi
           echo "Version ${PACKAGE_VERSION} is not yet published"
 
-      - name: Lint
-        run: node --run lint
-
-      - name: Test
-        run: node --run test-coverage
-
-      - name: Build
-        run: node --run build
-
       - name: Verify npm audit signatures
         run: npm audit signatures
         env:
@@ -83,9 +107,9 @@ jobs:
           npm_config_min_release_age: 0
 
       # Runs prepack + prepare (`npm run build`) + postpack, the same lifecycle
-      # scripts `npm publish` from the directory runs today. Publishing the
-      # resulting tarball streams it verbatim, so the package contents are
-      # unchanged by the split.
+      # scripts `npm publish` from the directory runs today, so there is no
+      # separate build step. Publishing the resulting tarball streams it
+      # verbatim, so the package contents are unchanged by the split.
       - name: Pack
         id: pack
         env:
@@ -104,7 +128,9 @@ jobs:
           retention-days: 1
 
   publish:
-    needs: build
+    # `check` is the only thing gating the publish on lint and tests passing:
+    # the build job no longer runs them, so it must stay listed here.
+    needs: [build, check]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
