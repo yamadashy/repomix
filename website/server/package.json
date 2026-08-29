@@ -19,20 +19,20 @@
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.38.2",
     "fflate": "^0.8.3",
-    "hono": "^4.13.2",
+    "hono": "^4.13.3",
     "isbot": "^5.2.1",
     "repomix": "github:yamadashy/repomix#main",
     "valibot": "^1.4.2",
     "winston": "^3.19.0"
   },
   "devDependencies": {
-    "@swc/core": "^1.16.0",
+    "@swc/core": "^1.16.1",
     "@types/node": "^24.13.3",
     "rimraf": "^6.1.3",
     "tsx": "^4.23.12",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.10",
-    "rolldown": "^1.2.4",
+    "vitest": "^4.1.11",
+    "rolldown": "^1.2.5",
     "rollup-plugin-swc3": "^0.12.1"
   }
 }
