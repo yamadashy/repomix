@@ -45,9 +45,11 @@ jobs:
           NODE_VERSION=$(sed -n 's/^nodejs[[:space:]]\{1,\}//p' .tool-versions)
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
           test -n "${NODE_VERSION}"
-          echo "node-version=${NODE_VERSION}" >> "${GITHUB_OUTPUT}"
-          echo "package-version=${PACKAGE_VERSION}" >> "${GITHUB_OUTPUT}"
-          echo "tarball=repomix-${PACKAGE_VERSION}.tgz" >> "${GITHUB_OUTPUT}"
+          {
+            echo "node-version=${NODE_VERSION}"
+            echo "package-version=${PACKAGE_VERSION}"
+            echo "tarball=repomix-${PACKAGE_VERSION}.tgz"
+          } >> "${GITHUB_OUTPUT}"
 
       - name: Install dependencies
         run: npm ci
