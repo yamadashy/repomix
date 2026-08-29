@@ -73,21 +73,23 @@ describe('server.json (MCP Registry metadata)', () => {
     }
   });
 
-  // Every packaged argument here is a constant needed to start the server, so a
-  // client that renders only the required arguments must still emit all of them.
-  test('every packaged argument is marked required', () => {
+  // Every argument in server.json is a constant needed to start the server, on
+  // both sides of the package name, so a client that renders only the required
+  // arguments must still emit all of them.
+  test('every argument is marked required', () => {
     const npmPackage = serverJson.packages.find((pkg: { registryType: string }) => pkg.registryType === 'npm');
 
-    for (const arg of npmPackage.packageArguments) {
+    for (const arg of [...npmPackage.runtimeArguments, ...npmPackage.packageArguments]) {
       expect(arg.isRequired).toBe(true);
     }
   });
 
   // runtimeArguments go to npx rather than to repomix, so they are checked
-  // against the documented launch command instead of against the CLI flags.
-  // Without `-y`, npx can stall on its install prompt on a cold cache, which
-  // over stdio is indistinguishable from a server that never starts.
-  test('the npx runtime arguments match the documented launch command', () => {
+  // against `npx -y repomix --mcp` — the launch command every mcp-server.md
+  // documents — instead of against the CLI flags. Without `-y`, npx can stall on
+  // its install prompt on a cold cache, which over stdio is indistinguishable
+  // from a server that never starts.
+  test('the runtime arguments carry the -y that the documented npx command uses', () => {
     const npmPackage = serverJson.packages.find((pkg: { registryType: string }) => pkg.registryType === 'npm');
 
     expect(npmPackage.runtimeHint).toBe('npx');
