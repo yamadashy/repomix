@@ -1,5 +1,22 @@
 name: npm-publish
 
+# Split into three jobs on purpose:
+#
+# - check runs lint and the test suite. This executes the whole dependency
+#   tree (vitest, the linters' native binaries, everything `src/` imports),
+#   so it holds no publish permission and never touches the tarball.
+# - build produces the tarball. It only runs `npm ci` and `npm pack`, so the
+#   code that executes there is limited to npm itself, the install scripts,
+#   and `prepare` (rimraf + tsc, run by both commands). The full dependency
+#   tree is still installed, but no other dev-only dependency is executed,
+#   and executing here is their only path to the package contents.
+# - publish holds `id-token: write`. That permission puts the OIDC minting
+#   credentials in the job environment, and anything running there can
+#   exchange them for an npm publish token. This job therefore has no
+#   checkout and no `npm ci`: apart from the artifact download and Node setup
+#   actions, it only verifies the tarball digest and the npm version, then
+#   runs `npm publish` on the tarball.
+
 on:
   workflow_dispatch:
     inputs:
@@ -9,13 +26,14 @@ on:
         default: false
         type: boolean
 
+permissions: {}
+
 jobs:
-  publish:
+  check:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
       contents: read
-      id-token: write # Required for OIDC trusted publishing
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -26,31 +44,68 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .tool-versions
-          registry-url: 'https://registry.npmjs.org'
 
-      - name: Update npm to latest version
-        run: npm install -g npm@latest
+      - name: Install dependencies
+        run: npm ci
+
+      # `lint` runs biome and oxlint in write mode. The build job packs the
+      # committed tree from its own checkout, so any auto-fix here would mean
+      # the tested code and the published code differ: fail instead, as ci.yml
+      # does.
+      - name: Lint
+        run: node --run lint && git diff --exit-code
+
+      - name: Test
+        run: node --run test-coverage
+
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      node-version: ${{ steps.meta.outputs.node-version }}
+      tarball: ${{ steps.meta.outputs.tarball }}
+      # Job outputs travel over the Actions control plane rather than the
+      # artifact store, so the publish job can check what it downloaded.
+      tarball-sha256: ${{ steps.pack.outputs.sha256 }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .tool-versions
+
+      # The publish job has no checkout, so the values it needs are passed as
+      # job outputs rather than read from the working tree.
+      - name: Resolve versions
+        id: meta
+        run: |
+          NODE_VERSION=$(awk '$1 == "nodejs" { print $2; exit }' .tool-versions)
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          test -n "${NODE_VERSION}"
+          {
+            echo "node-version=${NODE_VERSION}"
+            echo "package-version=${PACKAGE_VERSION}"
+            echo "tarball=repomix-${PACKAGE_VERSION}.tgz"
+          } >> "${GITHUB_OUTPUT}"
 
       - name: Install dependencies
         run: npm ci
 
       - name: Check if version already published
+        env:
+          PACKAGE_VERSION: ${{ steps.meta.outputs.package-version }}
         run: |
-          PACKAGE_VERSION=$(node -p "require('./package.json').version")
           if npm view "repomix@${PACKAGE_VERSION}" version 2>/dev/null; then
             echo "::error::Version ${PACKAGE_VERSION} is already published to npm"
             exit 1
           fi
           echo "Version ${PACKAGE_VERSION} is not yet published"
-
-      - name: Lint
-        run: node --run lint
-
-      - name: Test
-        run: node --run test-coverage
-
-      - name: Build
-        run: node --run build
 
       - name: Verify npm audit signatures
         run: npm audit signatures
@@ -58,10 +113,86 @@ jobs:
           # Disable min-release-age during audit to avoid ETARGET errors for recently published dependencies
           npm_config_min_release_age: 0
 
+      # Runs prepack + prepare (`npm run build`) + postpack, the same lifecycle
+      # scripts `npm publish` from the directory runs today, so there is no
+      # separate build step. Publishing the resulting tarball streams it
+      # verbatim, so the package contents are unchanged by the split.
+      - name: Pack
+        id: pack
+        env:
+          TARBALL: ${{ steps.meta.outputs.tarball }}
+        run: |
+          npm pack --pack-destination .
+          test -f "${TARBALL}"
+          echo "sha256=$(sha256sum "${TARBALL}" | cut -d' ' -f1)" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload tarball
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: npm-tarball
+          path: ${{ steps.meta.outputs.tarball }}
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    # `check` is the only thing gating the publish on lint and tests passing:
+    # the build job no longer runs them, so it must stay listed here.
+    needs: [build, check]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      # No contents: read — this job never checks out, and a same-run artifact
+      # download authenticates with ACTIONS_RUNTIME_TOKEN, not GITHUB_TOKEN.
+      id-token: write # Required for OIDC trusted publishing
+    steps:
+      # Deliberately no actions/checkout and no `npm ci`: provenance is derived
+      # from the GitHub Actions environment (GITHUB_WORKFLOW_REF, GITHUB_SHA,
+      # ...), never from a .git directory, so this job needs no repository
+      # contents and runs no third-party code.
+      - name: Download tarball
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: npm-tarball
+          path: .
+
+      # The artifact name is the only thing tying this download to the build
+      # job, so check the digest the build job recorded before publishing it.
+      - name: Verify tarball digest
+        env:
+          TARBALL: ${{ needs.build.outputs.tarball }}
+          EXPECTED: ${{ needs.build.outputs.tarball-sha256 }}
+        run: echo "${EXPECTED}  ${TARBALL}" | sha256sum --check --strict
+
+      # The Node version comes from .tool-versions at runtime, so assert the npm
+      # floor next to the step that depends on it rather than in a comment that
+      # would silently drift. Trusted publishing matches on the workflow
+      # filename, not the job, so splitting this file into two jobs needs no
+      # npm-side change.
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ needs.build.outputs.node-version }}
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
+
+      - name: Verify npm supports trusted publishing
+        run: |
+          NPM_VERSION=$(npm --version)
+          echo "npm ${NPM_VERSION}"
+          printf '11.5.1\n%s\n' "${NPM_VERSION}" | sort -V -C \
+            || { echo "::error::npm >= 11.5.1 required for trusted publishing, got ${NPM_VERSION}"; exit 1; }
+
+      # `--provenance` is passed explicitly: trusted publishing auto-enables it,
+      # but that path is wrapped in a try/catch and would fail silently, leaving
+      # the release unattested.
       - name: Publish (dry-run)
         if: ${{ inputs.dry-run }}
-        run: npm publish --provenance --access public --dry-run
+        env:
+          TARBALL: ${{ needs.build.outputs.tarball }}
+        run: npm publish "./${TARBALL}" --provenance --access public --dry-run
 
       - name: Publish
         if: ${{ !inputs.dry-run }}
-        run: npm publish --provenance --access public
+        env:
+          TARBALL: ${{ needs.build.outputs.tarball }}
+        run: npm publish "./${TARBALL}" --provenance --access public
