@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788006739825,
+  "lastUpdate": 1788012151283,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -11513,6 +11513,51 @@ window.BENCHMARK_DATA = {
             "range": "±81",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1258ms, Q3: 1339ms\nAll times: 1231, 1236, 1244, 1247, 1253, 1258, 1268, 1279, 1280, 1285, 1289, 1299, 1300, 1304, 1310, 1339, 1370, 1373, 1667, 1786ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "887770d2a2bb617ecdb6548954dd1385f66fa7cf",
+          "message": "Merge pull request #1827 from yamadashy/security/npm-publish-split\n\nfix(security): Keep dependency code out of the npm-publishing job",
+          "timestamp": "2026-08-29T23:01:04+09:00",
+          "tree_id": "a7d91ac20397064bb9696fd56c4dbb26e4ef9a45",
+          "url": "https://github.com/yamadashy/repomix/commit/887770d2a2bb617ecdb6548954dd1385f66fa7cf"
+        },
+        "date": 1788012150070,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 593,
+            "range": "±48",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 568ms, Q3: 616ms\nAll times: 547, 548, 552, 554, 554, 555, 564, 568, 569, 570, 577, 583, 586, 586, 592, 593, 600, 602, 603, 603, 612, 614, 616, 626, 641, 642, 644, 648, 669, 723ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 960,
+            "range": "±57",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 950ms, Q3: 1007ms\nAll times: 923, 926, 935, 943, 947, 950, 951, 953, 953, 956, 960, 963, 967, 968, 1006, 1007, 1024, 1063, 1115, 1120ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1170,
+            "range": "±80",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1160ms, Q3: 1240ms\nAll times: 1144, 1149, 1150, 1152, 1156, 1160, 1165, 1166, 1168, 1169, 1170, 1170, 1177, 1178, 1198, 1240, 1257, 1261, 1346, 1520ms"
           }
         ]
       }
