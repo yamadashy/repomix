@@ -2,6 +2,7 @@
   "name": "repomix",
   "version": "1.18.0",
   "description": "A tool to pack repository contents to single file for AI consumption",
+  "mcpName": "io.github.yamadashy/repomix",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
   "exports": {

@@ -1,0 +1,161 @@
+name: mcp-registry-publish
+
+# Publishes the MCP server metadata (server.json) to the official MCP Registry
+# (https://registry.modelcontextprotocol.io/). The registry only stores metadata,
+# so the matching npm version must already be published (via npm-publish.yml)
+# before running this workflow.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Validate server.json against the registry without publishing'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  MCP_PUBLISHER_VERSION: 1.8.1
+  # sha256 of mcp-publisher_linux_amd64.tar.gz from the release above
+  MCP_PUBLISHER_SHA256: a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write # Required for GitHub OIDC login to the MCP Registry
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .tool-versions
+
+      - name: Sync server.json version with package.json
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          jq --arg v "${PACKAGE_VERSION}" '.version = $v | .packages[].version = $v' server.json > server.json.tmp
+          mv server.json.tmp server.json
+          cat server.json
+
+      - name: Install mcp-publisher
+        run: |
+          ARCHIVE="mcp-publisher_linux_amd64.tar.gz"
+          curl -fsSL --retry 3 --retry-delay 2 -o "${ARCHIVE}" \
+            "https://github.com/modelcontextprotocol/registry/releases/download/v${MCP_PUBLISHER_VERSION}/${ARCHIVE}"
+          echo "${MCP_PUBLISHER_SHA256}  ${ARCHIVE}" | sha256sum --check
+          tar xzf "${ARCHIVE}" mcp-publisher
+          ./mcp-publisher --help
+
+      # Runs in both modes: it is a local schema check against the registry, so
+      # a dry-run can validate a server.json edit before the npm release exists.
+      - name: Validate server.json
+        run: ./mcp-publisher validate server.json
+
+      # The registry verifies npm ownership by reading `mcpName` from the
+      # published package.json, so the npm release must exist and carry the
+      # same name as server.json. Skipped in dry-run mode, which only checks
+      # server.json itself.
+      - name: Verify the npm release exists and carries the matching mcpName
+        if: ${{ !inputs.dry-run }}
+        env:
+          # The root .npmrc sets min-release-age=7. It filters install-time
+          # version resolution rather than `npm view` metadata reads, but this
+          # step runs against a just-published version, so disable it outright.
+          npm_config_min_release_age: 0
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          SERVER_NAME=$(node -p "require('./server.json').name")
+          # `npm view <pkg> <field>` exits 0 with empty output when the field is
+          # absent and non-zero when the version itself is missing. This workflow
+          # runs right after npm-publish.yml, so a miss here is more likely to be
+          # registry propagation lag than a genuinely absent version: retry on the
+          # non-zero exit, and let npm's own stderr stay in the log either way.
+          for attempt in 1 2 3 4 5; do
+            if PUBLISHED_MCP_NAME=$(npm view "repomix@${PACKAGE_VERSION}" mcpName); then
+              break
+            fi
+            if [ "${attempt}" -eq 5 ]; then
+              echo "::error::repomix@${PACKAGE_VERSION} is not visible on npm"
+              exit 1
+            fi
+            echo "npm metadata not visible yet, retrying in 10s (${attempt}/5)"
+            sleep 10
+          done
+          if [ -z "${PUBLISHED_MCP_NAME}" ]; then
+            echo "::error::repomix@${PACKAGE_VERSION} is published but has no mcpName field"
+            exit 1
+          fi
+          if [ "${PUBLISHED_MCP_NAME}" != "${SERVER_NAME}" ]; then
+            echo "::error::mcpName on npm (${PUBLISHED_MCP_NAME}) does not match server.json name (${SERVER_NAME})"
+            exit 1
+          fi
+          echo "repomix@${PACKAGE_VERSION} is published with mcpName=${PUBLISHED_MCP_NAME}"
+
+      # Publishing a version the registry already holds is rejected, which would
+      # make a re-run permanently red. Skipping the publish when the version is
+      # already there turns a re-run into a plain re-verify. Note that registry
+      # versions are immutable, so a server.json metadata change (description,
+      # websiteUrl, ...) only reaches the registry with the next version bump:
+      # re-running on an unchanged version reports success without republishing.
+      - name: Check whether the version is already on the registry
+        id: registry-check
+        if: ${{ !inputs.dry-run }}
+        run: |
+          SERVER_VERSION=$(node -p "require('./server.json').version")
+          ENCODED_NAME=$(node -p "encodeURIComponent(require('./server.json').name)")
+          URL="https://registry.modelcontextprotocol.io/v0.1/servers/${ENCODED_NAME}/versions/${SERVER_VERSION}"
+          # Only a 404 means the version is absent. Treating a 5xx or a
+          # transport error as "not published" would send the workflow on to
+          # republish an immutable version, which the registry then rejects.
+          if ! STATUS=$(curl -sSL -o /dev/null -w '%{http_code}' "${URL}"); then
+            echo "::error::Could not reach the MCP Registry"
+            exit 1
+          fi
+          if [ "${STATUS}" = "200" ]; then
+            echo "Version ${SERVER_VERSION} is already on the registry, skipping publish"
+            echo "already-published=true" >> "${GITHUB_OUTPUT}"
+          elif [ "${STATUS}" = "404" ]; then
+            echo "already-published=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "::error::MCP Registry returned HTTP ${STATUS}"
+            exit 1
+          fi
+
+      - name: Login to MCP Registry
+        if: ${{ !inputs.dry-run && steps.registry-check.outputs.already-published != 'true' }}
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish to MCP Registry
+        if: ${{ !inputs.dry-run && steps.registry-check.outputs.already-published != 'true' }}
+        run: ./mcp-publisher publish server.json
+
+      - name: Verify the published entry
+        if: ${{ !inputs.dry-run }}
+        run: |
+          SERVER_NAME=$(node -p "require('./server.json').name")
+          SERVER_VERSION=$(node -p "require('./server.json').version")
+          # The server name contains a slash, so it has to be percent-encoded to
+          # address the version endpoint (an unencoded name returns 404).
+          ENCODED_NAME=$(node -p "encodeURIComponent(require('./server.json').name)")
+          URL="https://registry.modelcontextprotocol.io/v0.1/servers/${ENCODED_NAME}/versions/${SERVER_VERSION}"
+          # Retry to absorb read-after-write lag. `curl | jq` needs no pipefail:
+          # a failed curl leaves jq with empty input and `jq -e` then exits 4.
+          for attempt in 1 2 3 4 5; do
+            if curl -fsSL "${URL}" | jq -e --arg v "${SERVER_VERSION}" '.server.version == $v' > /dev/null; then
+              echo "${SERVER_NAME}@${SERVER_VERSION} is live on the MCP Registry"
+              exit 0
+            fi
+            if [ "${attempt}" -lt 5 ]; then
+              echo "Not visible yet, retrying in 10s (${attempt}/5)"
+              sleep 10
+            fi
+          done
+          echo "::error::${SERVER_NAME}@${SERVER_VERSION} did not appear on the registry"
+          exit 1

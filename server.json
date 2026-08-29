@@ -1,0 +1,41 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.yamadashy/repomix",
+  "title": "Repomix",
+  "description": "Pack local or remote codebases into AI-friendly files that LLMs and coding agents can read or search",
+  "websiteUrl": "https://repomix.com",
+  "repository": {
+    "url": "https://github.com/yamadashy/repomix",
+    "source": "github",
+    "id": "828119367"
+  },
+  "version": "1.18.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "repomix",
+      "version": "1.18.0",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "runtimeArguments": [
+        {
+          "type": "positional",
+          "value": "-y",
+          "isRequired": true,
+          "description": "Skip the npx install prompt, which would otherwise stall the stdio handshake on a cold cache"
+        }
+      ],
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "--mcp",
+          "isRequired": true,
+          "description": "Run Repomix as an MCP server over stdio"
+        }
+      ]
+    }
+  ]
+}
