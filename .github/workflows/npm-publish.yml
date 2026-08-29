@@ -26,6 +26,9 @@ jobs:
     outputs:
       node-version: ${{ steps.meta.outputs.node-version }}
       tarball: ${{ steps.meta.outputs.tarball }}
+      # Job outputs travel over the Actions control plane rather than the
+      # artifact store, so the publish job can check what it downloaded.
+      tarball-sha256: ${{ steps.pack.outputs.sha256 }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -42,7 +45,7 @@ jobs:
       - name: Resolve versions
         id: meta
         run: |
-          NODE_VERSION=$(sed -n 's/^nodejs[[:space:]]\{1,\}//p' .tool-versions)
+          NODE_VERSION=$(awk '$1 == "nodejs" { print $2; exit }' .tool-versions)
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
           test -n "${NODE_VERSION}"
           {
@@ -84,11 +87,13 @@ jobs:
       # resulting tarball streams it verbatim, so the package contents are
       # unchanged by the split.
       - name: Pack
+        id: pack
         env:
           TARBALL: ${{ steps.meta.outputs.tarball }}
         run: |
           npm pack --pack-destination .
           test -f "${TARBALL}"
+          echo "sha256=$(sha256sum "${TARBALL}" | cut -d' ' -f1)" >> "${GITHUB_OUTPUT}"
 
       - name: Upload tarball
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -103,7 +108,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
-      contents: read
+      # No contents: read — this job never checks out, and a same-run artifact
+      # download authenticates with ACTIONS_RUNTIME_TOKEN, not GITHUB_TOKEN.
       id-token: write # Required for OIDC trusted publishing
     steps:
       # Deliberately no actions/checkout and no `npm ci`: provenance is derived
@@ -116,16 +122,32 @@ jobs:
           name: npm-tarball
           path: .
 
-      # Node 24.15.0 bundles npm 11.12.1, which covers trusted publishing
-      # (>= 11.5.1) and provenance (>= 9.5.0), so no global npm install is
-      # needed here. Trusted publishing matches on the workflow filename, not
-      # the job, so splitting the file into two jobs needs no npm-side change.
+      # The artifact name is the only thing tying this download to the build
+      # job, so check the digest the build job recorded before publishing it.
+      - name: Verify tarball digest
+        env:
+          TARBALL: ${{ needs.build.outputs.tarball }}
+          EXPECTED: ${{ needs.build.outputs.tarball-sha256 }}
+        run: echo "${EXPECTED}  ${TARBALL}" | sha256sum --check --strict
+
+      # The Node version comes from .tool-versions at runtime, so assert the npm
+      # floor next to the step that depends on it rather than in a comment that
+      # would silently drift. Trusted publishing matches on the workflow
+      # filename, not the job, so splitting this file into two jobs needs no
+      # npm-side change.
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ needs.build.outputs.node-version }}
           registry-url: 'https://registry.npmjs.org'
           package-manager-cache: false
+
+      - name: Verify npm supports trusted publishing
+        run: |
+          NPM_VERSION=$(npm --version)
+          echo "npm ${NPM_VERSION}"
+          printf '11.5.1\n%s\n' "${NPM_VERSION}" | sort -V -C \
+            || { echo "::error::npm >= 11.5.1 required for trusted publishing, got ${NPM_VERSION}"; exit 1; }
 
       # `--provenance` is passed explicitly: trusted publishing auto-enables it,
       # but that path is wrapped in a try/catch and would fail silently, leaving
