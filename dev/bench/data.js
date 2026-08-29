@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787972193363,
+  "lastUpdate": 1788006739825,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -11468,6 +11468,51 @@ window.BENCHMARK_DATA = {
             "range": "±24",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 837ms, Q3: 861ms\nAll times: 822, 823, 824, 829, 835, 837, 842, 843, 844, 844, 845, 845, 850, 850, 856, 861, 865, 868, 916, 999ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4eed7edd13f3586fa0268c17ee5c02328f5c625a",
+          "message": "Merge pull request #1818 from yamadashy/feat/mcp-registry\n\nfeat(mcp): Add MCP Registry publishing metadata and workflow",
+          "timestamp": "2026-08-29T21:30:14+09:00",
+          "tree_id": "057ee39480212c6e4209e289c095b1e1d2b3ccef",
+          "url": "https://github.com/yamadashy/repomix/commit/4eed7edd13f3586fa0268c17ee5c02328f5c625a"
+        },
+        "date": 1788006738340,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 580,
+            "range": "±48",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 560ms, Q3: 608ms\nAll times: 546, 546, 548, 549, 553, 558, 560, 560, 561, 565, 566, 571, 574, 574, 580, 580, 580, 591, 592, 596, 599, 599, 608, 609, 614, 624, 624, 628, 661, 666ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 888,
+            "range": "±14",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 883ms, Q3: 897ms\nAll times: 874, 879, 880, 882, 882, 883, 884, 887, 888, 888, 888, 891, 891, 893, 895, 897, 905, 914, 919, 946ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1289,
+            "range": "±81",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1258ms, Q3: 1339ms\nAll times: 1231, 1236, 1244, 1247, 1253, 1258, 1268, 1279, 1280, 1285, 1289, 1299, 1300, 1304, 1310, 1339, 1370, 1373, 1667, 1786ms"
           }
         ]
       }
