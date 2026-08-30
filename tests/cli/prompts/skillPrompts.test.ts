@@ -240,5 +240,16 @@ describe('skillPrompts', () => {
       expect(getSkillLocation('/project/.claude/skills/my-skill')).toBe('project');
       expect(getSkillLocation('/some/other/path')).toBe('project');
     });
+
+    test('should not treat a sibling directory with the same prefix as personal skills', () => {
+      const personalSkillsBase = getSkillBaseDir('', 'personal');
+      const siblingPath = path.join(
+        path.dirname(personalSkillsBase),
+        `${path.basename(personalSkillsBase)}-backup`,
+        'skill',
+      );
+
+      expect(getSkillLocation(siblingPath)).toBe('project');
+    });
   });
 });
