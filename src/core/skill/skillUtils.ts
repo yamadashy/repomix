@@ -124,6 +124,18 @@ export const extractRepoName = (url: string): string => {
     cleanUrl = cleanUrl.slice(0, -4);
   }
 
+  try {
+    const parsedUrl = new URL(cleanUrl);
+    if (parsedUrl.hostname === 'github.com' || parsedUrl.hostname === 'www.github.com') {
+      const pathParts = parsedUrl.pathname.split('/').filter(Boolean);
+      if (pathParts.length >= 2) {
+        return pathParts[1].replace(/\.git$/, '');
+      }
+    }
+  } catch {
+    // Fall through to shorthand and SSH URL handling.
+  }
+
   // Try to match the last path segment
   const lastSlashIndex = cleanUrl.lastIndexOf('/');
   if (lastSlashIndex !== -1 && lastSlashIndex < cleanUrl.length - 1) {
