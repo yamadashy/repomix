@@ -19,6 +19,10 @@ export const parseHumanSizeToBytes = (input: string): number => {
   const multiplier = unit === 'kb' ? 1024 : 1024 * 1024;
   const bytes = Math.floor(amount * multiplier);
 
+  if (bytes < 1) {
+    throw new RepomixError(`Invalid size: '${input}'. Resulting size must be at least 1 byte.`);
+  }
+
   if (!Number.isSafeInteger(bytes)) {
     throw new RepomixError(`Invalid size: '${input}'. Resulting byte value is too large.`);
   }
