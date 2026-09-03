@@ -900,6 +900,78 @@ r2 := '\\\\'`,
 `,
     },
     {
+      name: 'Shell parameter expansion is not treated as a comment',
+      ext: '.sh',
+      input: `base=\${name##*/}
+ext=\${name#*.}
+count=$#
+echo "value # not a comment"
+grep '# literal' file
+value=1  # real comment`,
+      expected: `base=\${name##*/}
+ext=\${name#*.}
+count=$#
+echo "value # not a comment"
+grep '# literal' file
+value=1`,
+    },
+    {
+      name: 'YAML unquoted hash in value is preserved',
+      ext: '.yaml',
+      input: `repo: https://github.com/a/b#readme
+color: "#ff0000"
+name: value  # trailing comment
+# full line comment
+plain: keep#this`,
+      expected: `repo: https://github.com/a/b#readme
+color: "#ff0000"
+name: value
+
+plain: keep#this`,
+    },
+    {
+      name: 'Shell heredoc body is preserved verbatim',
+      ext: '.sh',
+      input: `cat <<'EOF'
+# not a comment, this is heredoc content
+value # also literal
+EOF
+echo done  # real comment`,
+      expected: `cat <<'EOF'
+# not a comment, this is heredoc content
+value # also literal
+EOF
+echo done`,
+    },
+    {
+      name: 'YAML block scalar body is preserved verbatim',
+      ext: '.yaml',
+      input: `message: |
+  # not a comment
+  keep # this too
+summary: value  # real comment`,
+      expected: `message: |
+  # not a comment
+  keep # this too
+summary: value`,
+    },
+    {
+      name: 'YAML apostrophe in plain scalar does not disable comment stripping',
+      ext: '.yaml',
+      input: `note: it's fine  # trailing comment
+next: value  # another comment`,
+      expected: `note: it's fine
+next: value`,
+    },
+    {
+      name: 'YAML plain scalar ending in pipe is not treated as a block scalar',
+      ext: '.yaml',
+      input: `filter: a |
+  nested: value  # real comment`,
+      expected: `filter: a |
+  nested: value`,
+    },
+    {
       name: 'Vue file comment removal',
       ext: '.vue',
       input: `
