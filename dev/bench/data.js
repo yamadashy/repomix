@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788360028575,
+  "lastUpdate": 1788446834815,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -11648,6 +11648,51 @@ window.BENCHMARK_DATA = {
             "range": "±21",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1270ms, Q3: 1291ms\nAll times: 1254, 1258, 1259, 1262, 1269, 1270, 1270, 1270, 1272, 1272, 1275, 1277, 1285, 1289, 1289, 1291, 1293, 1297, 1317, 1341ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f6aa386e7bf45cf6301e2abd1e79fa729aabeecd",
+          "message": "Merge pull request #1831 from yamadashy/renovate/npm-xmldom-xmldom-vulnerability\n\nchore(deps): update dependency @xmldom/xmldom to v0.9.12 [security]",
+          "timestamp": "2026-09-03T23:45:36+09:00",
+          "tree_id": "053dc98484a6a98c160d3630aae0c6702857658b",
+          "url": "https://github.com/yamadashy/repomix/commit/f6aa386e7bf45cf6301e2abd1e79fa729aabeecd"
+        },
+        "date": 1788446833776,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 996,
+            "range": "±211",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 838ms, Q3: 1049ms\nAll times: 686, 698, 703, 740, 746, 752, 813, 838, 865, 878, 909, 922, 927, 929, 994, 996, 1003, 1012, 1015, 1030, 1037, 1048, 1049, 1070, 1086, 1098, 1110, 1114, 1196, 1293ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 943,
+            "range": "±19",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 935ms, Q3: 954ms\nAll times: 915, 919, 922, 933, 933, 935, 936, 937, 938, 943, 943, 944, 946, 953, 953, 954, 955, 959, 1054, 1055ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1332,
+            "range": "±16",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1323ms, Q3: 1339ms\nAll times: 1299, 1301, 1317, 1319, 1321, 1323, 1323, 1331, 1331, 1331, 1332, 1334, 1334, 1335, 1336, 1339, 1341, 1342, 1351, 1358ms"
           }
         ]
       }
