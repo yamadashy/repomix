@@ -7,6 +7,7 @@ import type { FilesByRoot } from '../file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
+import { joinDisplayPath } from '../packager/rootDisplayPath.js';
 import type { generateOutput } from './outputGenerate.js';
 
 export interface OutputSplitGroup {
@@ -151,6 +152,11 @@ const renderGroups = async (
   const chunkProcessedFiles = groupsToRender.flatMap((g) => g.processedFiles);
   const chunkAllFilePaths = groupsToRender.flatMap((g) => g.allFilePaths);
   const chunkConfig = makeChunkConfig(baseConfig, partIndex);
+  const chunkFilePathSet = new Set(chunkAllFilePaths);
+  const chunkFilePathsByRoot = filePathsByRoot?.map(({ rootLabel, files }) => ({
+    rootLabel,
+    files: files.filter((file) => chunkFilePathSet.has(rootDirs.length > 1 ? joinDisplayPath(rootLabel, file) : file)),
+  }));
 
   return await generateOutput(
     rootDirs,
@@ -159,7 +165,7 @@ const renderGroups = async (
     chunkAllFilePaths,
     partIndex === 1 ? gitDiffResult : undefined,
     partIndex === 1 ? gitLogResult : undefined,
-    filePathsByRoot,
+    chunkFilePathsByRoot,
     emptyDirPaths,
   );
 };
