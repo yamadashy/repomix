@@ -17,10 +17,10 @@
   "dependencies": {
     "@hono/node-server": "^2.1.1",
     "@upstash/ratelimit": "^2.0.8",
-    "@upstash/redis": "^1.38.2",
+    "@upstash/redis": "^1.38.3",
     "fflate": "^0.8.3",
-    "hono": "^4.13.3",
-    "isbot": "^5.2.1",
+    "hono": "^4.13.5",
+    "isbot": "^5.2.2",
     "repomix": "github:yamadashy/repomix#main",
     "valibot": "^1.4.2",
     "winston": "^3.19.0"
@@ -32,7 +32,7 @@
     "tsx": "^4.23.12",
     "typescript": "^7.0.2",
     "vitest": "^4.1.11",
-    "rolldown": "^1.2.5",
+    "rolldown": "^1.2.6",
     "rollup-plugin-swc3": "^0.12.1"
   }
 }
