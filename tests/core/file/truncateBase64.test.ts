@@ -20,6 +20,13 @@ describe('truncateBase64Content', () => {
     expect(result).toBe('src="data:image/svg+xml;charset=utf-8;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53..."');
   });
 
+  it('should keep every parameter when a data URI has more than one', () => {
+    const input =
+      'src="data:image/svg+xml;charset=utf-8;foo=bar;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzAwMCIvPjwvc3ZnPg=="';
+    const result = truncateBase64Content(input);
+    expect(result).toBe('src="data:image/svg+xml;charset=utf-8;foo=bar;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53..."');
+  });
+
   it('should truncate standalone base64 strings longer than 256 chars', () => {
     const input = `const data = "${longBase64}";`;
     const result = truncateBase64Content(input);
