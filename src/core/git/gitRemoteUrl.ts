@@ -28,3 +28,17 @@ const validShorthandRegex = new RegExp(`^${VALID_NAME_PATTERN}/${VALID_NAME_PATT
 export const isValidShorthand = (remoteValue: string): boolean => {
   return validShorthandRegex.test(remoteValue);
 };
+
+// Unlike shorthand, an explicit URL's owner/repo may lead or trail a segment with
+// `.`/`-`/`_` (e.g. the org-profile repo `owner/.github`), so segments only need to
+// be non-empty — but there must be exactly two of them, rejecting doubled slashes
+// (`user//repo`) and extra path components (`user/repo/extra`).
+const EXPLICIT_URL_NAME_PATTERN = '[a-zA-Z0-9._-]+';
+const validExplicitUrlOwnerRepoRegex = new RegExp(`^${EXPLICIT_URL_NAME_PATTERN}/${EXPLICIT_URL_NAME_PATTERN}$`);
+
+/**
+ * Checks if an owner/repo pair extracted from an explicit remote URL is well-formed.
+ */
+export const isValidExplicitUrlOwnerRepo = (ownerSlashRepo: string): boolean => {
+  return validExplicitUrlOwnerRepoRegex.test(ownerSlashRepo);
+};
