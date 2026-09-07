@@ -104,8 +104,8 @@
     "tinyclip": "^1.0.1",
     "tinypool": "^2.1.2",
     "valibot": "^1.4.2",
-    "web-tree-sitter": "^0.26.13",
-    "zod": "^4.5.2"
+    "web-tree-sitter": "^0.27.0",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.11",
@@ -119,7 +119,7 @@
     "oxlint": "^1.80.0",
     "rimraf": "^6.1.3",
     "secretlint": "^13.0.5",
-    "tsx": "^4.23.12",
+    "tsx": "^4.23.13",
     "typescript": "^7.0.2",
     "vite": "^8.2.2",
     "vitest": "^4.1.11"
