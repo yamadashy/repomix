@@ -20,6 +20,26 @@ describe('truncateBase64Content', () => {
     expect(result).toBe('src="data:image/svg+xml;charset=utf-8;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53..."');
   });
 
+  it('should keep every parameter when a data URI has more than one', () => {
+    const input =
+      'src="data:image/svg+xml;charset=utf-8;foo=bar;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzAwMCIvPjwvc3ZnPg=="';
+    const result = truncateBase64Content(input);
+    expect(result).toBe('src="data:image/svg+xml;charset=utf-8;foo=bar;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53..."');
+  });
+
+  it('should truncate when a parameter value has punctuation or percent-encoding', () => {
+    // `;name=photo.v2.png` and `;title=a%20b` are ordinary data-URI parameters.
+    // The parameter class used to be `[a-zA-Z0-9-=]`, so the period and the `%`
+    // made the whole pattern miss and the payload was left whole - the same
+    // false negative this file is about, one level down.
+    const input =
+      'src="data:image/svg+xml;charset=utf-8;name=photo.v2.png;title=a%20b;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzAwMCIvPjwvc3ZnPg=="';
+    const result = truncateBase64Content(input);
+    expect(result).toBe(
+      'src="data:image/svg+xml;charset=utf-8;name=photo.v2.png;title=a%20b;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53..."',
+    );
+  });
+
   it('should truncate standalone base64 strings longer than 256 chars', () => {
     const input = `const data = "${longBase64}";`;
     const result = truncateBase64Content(input);

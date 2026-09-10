@@ -6,8 +6,15 @@ const MIN_CHAR_DIVERSITY = 10;
 const MIN_CHAR_TYPE_COUNT = 3;
 
 // Pre-compiled regex patterns (avoid re-creation per file)
+// Parameter names and values are RFC 2045 tokens, and RFC 2397 allows a value to
+// be percent-encoded, so `;name=photo.v2.png` and `;title=a%20b` are both ordinary.
+// A narrower class here is not a stricter parser, it is a missed data URI: the
+// whole match fails and the payload is left untruncated, which is the same false
+// negative this file exists to remove. The classes deliberately exclude `;` and
+// `,` so a parameter cannot run past its own separator.
+const DATA_URI_TOKEN = 'A-Za-z0-9!#$&*+.^_|~\\-';
 const dataUriPattern = new RegExp(
-  `data:([a-zA-Z0-9\\/\\-\\+]+)(;[a-zA-Z0-9\\-=]+)*;base64,([A-Za-z0-9+/=]{${MIN_BASE64_LENGTH_DATA_URI},})`,
+  `data:([a-zA-Z0-9\\/\\-\\+]+)((?:;[${DATA_URI_TOKEN}]+(?:=[${DATA_URI_TOKEN}%]*)?)*);base64,([A-Za-z0-9+/=]{${MIN_BASE64_LENGTH_DATA_URI},})`,
   'g',
 );
 const standaloneBase64Pattern = new RegExp(`([A-Za-z0-9+/]{${MIN_BASE64_LENGTH_STANDALONE},}={0,2})`, 'g');
