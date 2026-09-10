@@ -20,6 +20,12 @@ describe('truncateBase64Content', () => {
     expect(result).toBe('src="data:image/svg+xml;charset=utf-8;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53..."');
   });
 
+  it('should preserve all data URI parameters when truncating base64 payloads', () => {
+    const input = `src="data:image/svg+xml;charset=utf-8;foo=bar;base64,${longBase64}"`;
+    const result = truncateBase64Content(input);
+    expect(result).toBe('src="data:image/svg+xml;charset=utf-8;foo=bar;base64,DTJXfKHG6xA1Wn+kye4TOF2Cp8zxFjtg..."');
+  });
+
   it('should truncate standalone base64 strings longer than 256 chars', () => {
     const input = `const data = "${longBase64}";`;
     const result = truncateBase64Content(input);
