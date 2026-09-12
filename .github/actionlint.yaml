@@ -1,0 +1,10 @@
+# actionlint configuration
+# https://github.com/rhysd/actionlint/blob/main/docs/config.md
+
+paths:
+  .github/workflows/**/*.{yml,yaml}:
+    ignore:
+      # GitHub's self-repository syntax (`uses: $/path`, July 2026) is not yet
+      # understood by actionlint (rhysd/actionlint#711). zizmor's
+      # `self-repository` audit requires it, so suppress only this message.
+      - 'specifying action "\$/.+" in invalid format because ref is missing'
