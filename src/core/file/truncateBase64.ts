@@ -7,7 +7,7 @@ const MIN_CHAR_TYPE_COUNT = 3;
 
 // Pre-compiled regex patterns (avoid re-creation per file)
 const dataUriPattern = new RegExp(
-  `data:([a-zA-Z0-9\\/\\-\\+]+)(;[a-zA-Z0-9\\-=]+)*;base64,([A-Za-z0-9+/=]{${MIN_BASE64_LENGTH_DATA_URI},})`,
+  `data:([a-zA-Z0-9\\/\\-\\+]+)((?:;[a-zA-Z0-9._\\-=]+)*);base64,([A-Za-z0-9+/=]{${MIN_BASE64_LENGTH_DATA_URI},})`,
   'g',
 );
 const standaloneBase64Pattern = new RegExp(`([A-Za-z0-9+/]{${MIN_BASE64_LENGTH_STANDALONE},}={0,2})`, 'g');
