@@ -20,7 +20,7 @@ jobs:
           persist-credentials: false
 
       - name: Pack repository with Repomix
-        uses: ./.github/actions/repomix
+        uses: $/.github/actions/repomix
         with:
           output: repomix-output.xml
 
