@@ -31,7 +31,7 @@
     "rimraf": "^6.1.3",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.11",
+    "vitest": "^5.0.0",
     "rolldown": "^1.2.7",
     "rollup-plugin-swc3": "^0.12.1"
   }
