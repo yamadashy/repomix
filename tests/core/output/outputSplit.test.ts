@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { generateOutput } from '../../../src/core/output/outputGenerate.js';
 import {
   buildOutputSplitGroups,
   buildSplitOutputFilePath,
@@ -6,6 +7,7 @@ import {
   getRootEntry,
   subdivideSplitGroup,
 } from '../../../src/core/output/outputSplit.js';
+import { createMockConfig as createMergedConfig } from '../../testing/testUtils.js';
 
 describe('outputSplit', () => {
   describe('getRootEntry', () => {
@@ -114,6 +116,84 @@ describe('outputSplit', () => {
 
     const createMockDeps = (outputSize: number) => ({
       generateOutput: async () => 'x'.repeat(outputSize),
+    });
+
+    const getDirectoryTree = (content: string): string => {
+      const match = content.match(/Directory Structure\n=+\n([\s\S]*?)\n\n=+\nFiles/);
+      expect(match).not.toBeNull();
+      return match?.[1].trim() ?? '';
+    };
+
+    it('scopes each part directory tree to the files in that part', async () => {
+      const processedFiles = ['a/file.txt', 'b/file.txt', 'c/file.txt'].map((filePath, index) => ({
+        path: filePath,
+        content: String.fromCharCode(65 + index).repeat(2000),
+      }));
+      const allFilePaths = processedFiles.map((file) => file.path);
+      const baseConfig = createMergedConfig({
+        output: {
+          filePath: 'repomix-output.txt',
+          style: 'plain',
+          git: { sortByChanges: false, includeDiffs: false, includeLogs: false },
+        },
+      });
+
+      const result = await generateSplitOutputParts({
+        rootDirs: ['/repo'],
+        baseConfig,
+        processedFiles,
+        allFilePaths,
+        maxBytesPerPart: 5000,
+        gitDiffResult: undefined,
+        gitLogResult: undefined,
+        progressCallback: () => {},
+        filePathsByRoot: [{ rootLabel: 'repo', files: allFilePaths }],
+        deps: { generateOutput },
+      });
+
+      expect(result).toHaveLength(3);
+      expect(result.map((part) => getDirectoryTree(part.content))).toEqual([
+        'a/\n  file.txt',
+        'b/\n  file.txt',
+        'c/\n  file.txt',
+      ]);
+    });
+
+    it('preserves multi-root labels while scoping split directory trees', async () => {
+      const processedFiles = ['root-a/file.txt', 'root-b/file.txt'].map((filePath, index) => ({
+        path: filePath,
+        content: String.fromCharCode(65 + index).repeat(2000),
+      }));
+      const allFilePaths = processedFiles.map((file) => file.path);
+      const baseConfig = createMergedConfig({
+        output: {
+          filePath: 'repomix-output.txt',
+          style: 'plain',
+          git: { sortByChanges: false, includeDiffs: false, includeLogs: false },
+        },
+      });
+
+      const result = await generateSplitOutputParts({
+        rootDirs: ['/root-a', '/root-b'],
+        baseConfig,
+        processedFiles,
+        allFilePaths,
+        maxBytesPerPart: 5000,
+        gitDiffResult: undefined,
+        gitLogResult: undefined,
+        progressCallback: () => {},
+        filePathsByRoot: [
+          { rootLabel: 'root-a', files: ['file.txt'] },
+          { rootLabel: 'root-b', files: ['file.txt'] },
+        ],
+        deps: { generateOutput },
+      });
+
+      expect(result).toHaveLength(2);
+      expect(result.map((part) => getDirectoryTree(part.content))).toEqual([
+        '[root-a]/\n  file.txt',
+        '[root-b]/\n  file.txt',
+      ]);
     });
 
     it('throws error when a single indivisible file exceeds maxBytesPerPart', async () => {
