@@ -17,12 +17,12 @@
   },
   "devDependencies": {
     "@types/gtag.js": "^0.0.20",
-    "@types/node": "^24.13.3",
+    "@types/node": "^24.13.4",
     "rollup-plugin-visualizer": "^7.1.1",
     "typescript": "^7.0.2",
     "vite-plugin-pwa": "^1.3.0",
     "vitepress": "^1.6.4",
-    "vitepress-plugin-llms": "^1.13.5",
-    "wrangler": "^4.129.0"
+    "vitepress-plugin-llms": "^1.14.0",
+    "wrangler": "^4.131.1"
   }
 }
