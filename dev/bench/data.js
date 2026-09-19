@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789835530702,
+  "lastUpdate": 1789836369200,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -12548,6 +12548,51 @@ window.BENCHMARK_DATA = {
             "range": "±22",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 907ms, Q3: 929ms\nAll times: 885, 899, 899, 906, 907, 907, 910, 910, 910, 914, 917, 918, 920, 921, 929, 929, 929, 943, 944, 946ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e9532187ee87c3ae9a380eb5be132ed8d30169f6",
+          "message": "Merge pull request #1809 from Whxuan0701/fix/path-boundary-classification\n\nfix(cli): Respect directory boundaries when classifying paths",
+          "timestamp": "2026-09-20T01:44:32+09:00",
+          "tree_id": "bb175a325f3e150f28054e2453b619b1f5273205",
+          "url": "https://github.com/yamadashy/repomix/commit/e9532187ee87c3ae9a380eb5be132ed8d30169f6"
+        },
+        "date": 1789836368267,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 636,
+            "range": "±110",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 578ms, Q3: 688ms\nAll times: 560, 563, 569, 572, 574, 575, 575, 578, 585, 587, 589, 591, 593, 633, 635, 636, 638, 655, 665, 683, 685, 686, 688, 701, 706, 734, 736, 737, 754, 798ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 936,
+            "range": "±29",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 925ms, Q3: 954ms\nAll times: 916, 916, 917, 919, 922, 925, 926, 928, 928, 931, 936, 936, 937, 946, 952, 954, 959, 968, 1045, 1077ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1360,
+            "range": "±31",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1344ms, Q3: 1375ms\nAll times: 1308, 1314, 1332, 1338, 1339, 1344, 1350, 1352, 1356, 1360, 1360, 1361, 1368, 1369, 1370, 1375, 1379, 1382, 1385, 1399ms"
           }
         ]
       }
