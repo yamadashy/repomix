@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import {
+  extractRepoName,
   generateProjectName,
   generateProjectNameFromUrl,
   generateSkillDescription,
@@ -130,6 +131,16 @@ describe('skillUtils', () => {
 
     test('should handle trailing slash with .git suffix', () => {
       expect(generateProjectNameFromUrl('https://github.com/vitejs/vite.git/')).toBe('Vite');
+    });
+  });
+
+  describe('extractRepoName', () => {
+    test('should extract the repository name from a GitHub branch URL', () => {
+      expect(extractRepoName('https://github.com/yamadashy/repomix/tree/main')).toBe('repomix');
+    });
+
+    test('should extract the repository name from a GitHub commit URL', () => {
+      expect(extractRepoName('https://github.com/yamadashy/repomix/commit/abc123')).toBe('repomix');
     });
   });
 
