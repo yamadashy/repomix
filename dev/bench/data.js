@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789803197539,
+  "lastUpdate": 1789834964677,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -12458,6 +12458,51 @@ window.BENCHMARK_DATA = {
             "range": "±19",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1238ms, Q3: 1257ms\nAll times: 1221, 1232, 1234, 1234, 1235, 1238, 1238, 1238, 1239, 1241, 1244, 1247, 1251, 1251, 1253, 1257, 1258, 1260, 1261, 1271ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "23c5d67a069e5bff5e69bd4c60d8b146364129a5",
+          "message": "Merge pull request #1820 from cyphercodes/fix/truncate-base64-data-uri-params\n\nfix(core): Preserve data URI parameters when truncating base64",
+          "timestamp": "2026-09-20T01:21:09+09:00",
+          "tree_id": "58c86cd7fc847506fcf5273c4e4e6ec6bee94742",
+          "url": "https://github.com/yamadashy/repomix/commit/23c5d67a069e5bff5e69bd4c60d8b146364129a5"
+        },
+        "date": 1789834963405,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 746,
+            "range": "±166",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 670ms, Q3: 836ms\nAll times: 588, 589, 596, 610, 634, 647, 662, 670, 676, 687, 695, 697, 700, 714, 729, 746, 747, 750, 756, 771, 789, 821, 836, 837, 874, 900, 964, 972, 984, 1147ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 940,
+            "range": "±19",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 935ms, Q3: 954ms\nAll times: 924, 925, 927, 930, 932, 935, 935, 936, 936, 937, 940, 941, 946, 952, 953, 954, 957, 972, 975, 986ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 971,
+            "range": "±19",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 961ms, Q3: 980ms\nAll times: 948, 953, 957, 959, 960, 961, 962, 962, 963, 969, 971, 972, 972, 975, 977, 980, 981, 991, 1003, 1027ms"
           }
         ]
       }
