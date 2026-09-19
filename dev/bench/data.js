@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789836813701,
+  "lastUpdate": 1789838060503,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -12638,6 +12638,51 @@ window.BENCHMARK_DATA = {
             "range": "±31",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1198ms, Q3: 1229ms\nAll times: 1183, 1186, 1190, 1192, 1197, 1198, 1200, 1206, 1209, 1210, 1212, 1218, 1218, 1219, 1222, 1229, 1230, 1231, 1232, 1321ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0cb537b407d6d63aa5a32365288766540d920b51",
+          "message": "Merge pull request #1822 from Elioooon/fix/split-output-directory-tree\n\nfix(output): scope split directory trees to each part",
+          "timestamp": "2026-09-20T02:12:49+09:00",
+          "tree_id": "49638a8bf43571effd1badc1bbc52d1cc73c03d2",
+          "url": "https://github.com/yamadashy/repomix/commit/0cb537b407d6d63aa5a32365288766540d920b51"
+        },
+        "date": 1789838058858,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 583,
+            "range": "±29",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 575ms, Q3: 604ms\nAll times: 560, 561, 565, 567, 568, 572, 574, 575, 575, 576, 577, 578, 579, 581, 582, 583, 584, 585, 586, 595, 596, 601, 604, 613, 622, 641, 681, 681, 729, 743ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 957,
+            "range": "±27",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 938ms, Q3: 965ms\nAll times: 923, 928, 932, 936, 937, 938, 938, 941, 949, 949, 957, 958, 961, 961, 963, 965, 966, 973, 974, 1001ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1257,
+            "range": "±25",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1247ms, Q3: 1272ms\nAll times: 1216, 1233, 1234, 1243, 1244, 1247, 1248, 1250, 1250, 1255, 1257, 1259, 1259, 1260, 1261, 1272, 1273, 1274, 1297, 1313ms"
           }
         ]
       }
