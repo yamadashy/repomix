@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789838060503,
+  "lastUpdate": 1789838376621,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -12683,6 +12683,51 @@ window.BENCHMARK_DATA = {
             "range": "±25",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1247ms, Q3: 1272ms\nAll times: 1216, 1233, 1234, 1243, 1244, 1247, 1248, 1250, 1250, 1255, 1257, 1259, 1259, 1260, 1261, 1272, 1273, 1274, 1297, 1313ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f444a651f7cd1ce17aa290b5c0df9bc730f350ab",
+          "message": "Merge pull request #1772 from serhiizghama/fix/remote-url-leading-special-char-names\n\nfix(core): accept explicit remote URLs whose repo name starts with a dot (e.g. .github)",
+          "timestamp": "2026-09-20T02:17:29+09:00",
+          "tree_id": "94e7e8ed61cae0353d209b598141c82b0d2af8c2",
+          "url": "https://github.com/yamadashy/repomix/commit/f444a651f7cd1ce17aa290b5c0df9bc730f350ab"
+        },
+        "date": 1789838375398,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 632,
+            "range": "±86",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 607ms, Q3: 693ms\nAll times: 558, 566, 570, 590, 597, 597, 604, 607, 607, 609, 611, 625, 627, 627, 629, 632, 636, 636, 642, 652, 676, 689, 693, 708, 712, 726, 728, 731, 789, 797ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 925,
+            "range": "±20",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 913ms, Q3: 933ms\nAll times: 905, 908, 911, 912, 913, 913, 914, 916, 917, 924, 925, 925, 926, 927, 928, 933, 939, 946, 949, 951ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 718,
+            "range": "±27",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 707ms, Q3: 734ms\nAll times: 685, 703, 705, 706, 707, 707, 708, 708, 710, 718, 718, 721, 721, 722, 725, 734, 739, 742, 744, 807ms"
           }
         ]
       }
