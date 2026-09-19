@@ -19,7 +19,7 @@
     "repomix": "file:../.."
   },
   "devDependencies": {
-    "@types/node": "^24.13.3",
+    "@types/node": "^24.13.4",
     "typescript": "^7.0.2"
   },
   "engines": {
