@@ -11,7 +11,11 @@ import { reportTokenCountTree } from './reporters/tokenCountTreeReporter.js';
  * Convert an absolute path to a relative path if it's under cwd, otherwise return as-is.
  */
 export const getDisplayPath = (absolutePath: string, cwd: string): string => {
-  return absolutePath.startsWith(cwd) ? path.relative(cwd, absolutePath) : absolutePath;
+  const relativePath = path.relative(cwd, absolutePath);
+  const isWithinCwd =
+    relativePath === '' ||
+    (relativePath !== '..' && !relativePath.startsWith(`..${path.sep}`) && !path.isAbsolute(relativePath));
+  return isWithinCwd ? relativePath : absolutePath;
 };
 
 export interface ReportOptions {

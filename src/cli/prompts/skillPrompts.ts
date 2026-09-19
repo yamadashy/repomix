@@ -153,5 +153,9 @@ export const resolveAndPrepareSkillDir = async (skillOutput: string, cwd: string
  */
 export const getSkillLocation = (skillDir: string): SkillLocation => {
   const personalSkillsBase = getSkillBaseDir('', 'personal');
-  return skillDir.startsWith(personalSkillsBase) ? 'personal' : 'project';
+  const relativePath = path.relative(personalSkillsBase, skillDir);
+  const isPersonal =
+    relativePath === '' ||
+    (relativePath !== '..' && !relativePath.startsWith(`..${path.sep}`) && !path.isAbsolute(relativePath));
+  return isPersonal ? 'personal' : 'project';
 };
