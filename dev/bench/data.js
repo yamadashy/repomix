@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789834964677,
+  "lastUpdate": 1789835530702,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -12503,6 +12503,51 @@ window.BENCHMARK_DATA = {
             "range": "±19",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 961ms, Q3: 980ms\nAll times: 948, 953, 957, 959, 960, 961, 962, 962, 963, 969, 971, 972, 972, 975, 977, 980, 981, 991, 1003, 1027ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "81b3e3cc60cabb49041b21091de620da9d2387eb",
+          "message": "Merge pull request #1808 from Whxuan0701/fix/sub-byte-split-size\n\nfix(cli): Reject split sizes below one byte",
+          "timestamp": "2026-09-20T01:30:36+09:00",
+          "tree_id": "fb343d028994d5ce157673e8cd9f3a3addf624c7",
+          "url": "https://github.com/yamadashy/repomix/commit/81b3e3cc60cabb49041b21091de620da9d2387eb"
+        },
+        "date": 1789835529088,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 825,
+            "range": "±142",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 739ms, Q3: 881ms\nAll times: 648, 709, 722, 727, 728, 735, 736, 739, 747, 761, 771, 772, 792, 814, 818, 825, 827, 847, 860, 868, 875, 878, 881, 884, 899, 908, 935, 952, 956, 1007ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 942,
+            "range": "±56",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 928ms, Q3: 984ms\nAll times: 911, 914, 916, 924, 927, 928, 931, 932, 934, 941, 942, 948, 953, 964, 983, 984, 1044, 1056, 1058, 1100ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 917,
+            "range": "±22",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 907ms, Q3: 929ms\nAll times: 885, 899, 899, 906, 907, 907, 910, 910, 910, 914, 917, 918, 920, 921, 929, 929, 929, 943, 944, 946ms"
           }
         ]
       }
