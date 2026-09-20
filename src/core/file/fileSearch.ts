@@ -365,6 +365,27 @@ export const parseIgnoreContent = (content: string): string[] => {
   }, []);
 };
 
+// Git matches an exclude pattern that has no slash in it against names at any depth,
+// whereas globby matches a bare pattern only at the top level of `cwd`. Without this,
+// `secret.txt` in .git/info/exclude leaves `sub/secret.txt` packed, even though the
+// identical pattern in .gitignore is respected at depth by globby's gitignore support.
+export const gitExcludePatternToGlob = (pattern: string): string => {
+  // Negations carry the opposite polarity of everything here, so leave them alone.
+  if (pattern.startsWith('!')) {
+    return pattern;
+  }
+
+  // A leading slash anchors the pattern to the exclude file's directory, which is
+  // already globby's base, so it only needs dropping.
+  if (pattern.startsWith('/')) {
+    return pattern.slice(1);
+  }
+
+  const name = pattern.endsWith('/') ? pattern.slice(0, -1) : pattern;
+
+  return name.includes('/') ? pattern : `**/${pattern}`;
+};
+
 /**
  * Prepares ignore context including patterns and file patterns with git worktree handling.
  * This logic is shared across searchFiles, listDirectories, and listFiles.
@@ -496,7 +517,7 @@ export const getIgnorePatterns = async (rootDir: string, config: RepomixConfigMe
       const excludePatterns = parseIgnoreContent(excludeFileContent);
 
       for (const pattern of excludePatterns) {
-        ignorePatterns.add(pattern);
+        ignorePatterns.add(gitExcludePatternToGlob(pattern));
       }
     } catch (error) {
       // File might not exist or might not be accessible, which is fine
