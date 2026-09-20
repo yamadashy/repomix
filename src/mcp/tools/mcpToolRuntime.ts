@@ -3,8 +3,11 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
+import { runCli } from '../../cli/cliRun.js';
+import type { CliOptions } from '../../cli/types.js';
 import { generateTreeString } from '../../core/file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../../core/file/fileTypes.js';
+import { logger } from '../../shared/logger.js';
 import { getRepomixTmpDir } from '../../shared/tmpDir.js';
 import { PathScopeError, resolveWithinRoot, toVirtualPath } from '../pathScope.js';
 
@@ -158,6 +161,30 @@ export const createToolWorkspace = async (): Promise<string> => {
  */
 export const generateOutputId = (): string => {
   return crypto.randomBytes(8).toString('hex');
+};
+
+/**
+ * Run the CLI from an MCP tool without losing the operator's diagnostics.
+ *
+ * `runCli` drives the *shared* logger singleton to the level implied by its options
+ * (`quiet`/`stdout` => SILENT) and never restores it, because a one-shot CLI process
+ * is about to exit anyway. The MCP server is long-lived, so the change outlives the
+ * call: after a single quiet pack, every later `logger.error` from any tool is dropped
+ * for the rest of the session, leaving operator-side failures undiagnosable. Save and
+ * restore the level around the call, which is the invariant `packCodebaseTool` had
+ * already established locally; all packing tools now share it.
+ */
+export const runCliPreservingLogLevel = async (
+  directories: string[],
+  cwd: string,
+  options: CliOptions,
+): Promise<Awaited<ReturnType<typeof runCli>>> => {
+  const logLevelBefore = logger.getLogLevel();
+  try {
+    return await runCli(directories, cwd, options);
+  } finally {
+    logger.setLogLevel(logLevelBefore);
+  }
 };
 
 /**
