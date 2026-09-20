@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789889353333,
+  "lastUpdate": 1789912571203,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -12773,6 +12773,51 @@ window.BENCHMARK_DATA = {
             "range": "±62",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 715ms, Q3: 777ms\nAll times: 683, 695, 696, 710, 713, 715, 719, 730, 731, 732, 743, 747, 747, 756, 762, 777, 816, 849, 851, 867ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0aed3afb03349b0b22fb00a2bdc4583f8c7a94cd",
+          "message": "Merge pull request #1752 from serhiizghama/fix/shell-yaml-hash-comment-boundary\n\nfix(core): don't strip shell/YAML # unless it starts a comment",
+          "timestamp": "2026-09-20T22:54:27+09:00",
+          "tree_id": "d91318664b7a101187f8a2605990eb6f11f1cf0b",
+          "url": "https://github.com/yamadashy/repomix/commit/0aed3afb03349b0b22fb00a2bdc4583f8c7a94cd"
+        },
+        "date": 1789912569920,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 988,
+            "range": "±263",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 812ms, Q3: 1075ms\nAll times: 714, 767, 769, 784, 791, 793, 803, 812, 816, 829, 870, 889, 902, 953, 970, 988, 1012, 1013, 1014, 1030, 1047, 1067, 1075, 1129, 1141, 1174, 1189, 1191, 1238, 1359ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 615,
+            "range": "±34",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 608ms, Q3: 642ms\nAll times: 596, 598, 601, 601, 602, 608, 609, 611, 611, 613, 615, 622, 624, 631, 637, 642, 660, 674, 676, 698ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1314,
+            "range": "±30",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1301ms, Q3: 1331ms\nAll times: 1294, 1294, 1295, 1298, 1299, 1301, 1305, 1306, 1310, 1311, 1314, 1324, 1325, 1325, 1326, 1331, 1337, 1337, 1340, 1376ms"
           }
         ]
       }
