@@ -401,6 +401,14 @@ describe('mcpToolRuntime', () => {
   describe('runCliPreservingLogLevel', () => {
     const cliOptions = {} as CliOptions;
 
+    const deferred = () => {
+      let release = (): void => {};
+      const promise = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return { promise, resolve: () => release() };
+    };
+
     const cliSilencesTheLogger = () => {
       vi.mocked(runCli).mockImplementation(async () => {
         // What runCli does for { quiet: true } / stdout mode: repoint the shared
@@ -429,6 +437,33 @@ describe('mcpToolRuntime', () => {
       await expect(runCliPreservingLogLevel(['.'], '/repo', cliOptions)).rejects.toThrow('pack failed');
 
       expect(logger.getLogLevel()).toBe(repomixLogLevels.INFO);
+    });
+
+    it('should restore the level only when the last overlapping pack finishes', async () => {
+      // The MCP SDK does not wait for a running tool handler before starting the next
+      // one, so two quiet packs genuinely overlap.
+      logger.setLogLevel(repomixLogLevels.DEBUG);
+      const gates = [deferred(), deferred()];
+      let started = 0;
+      vi.mocked(runCli).mockImplementation(async () => {
+        const gate = gates[started++];
+        logger.setLogLevel(repomixLogLevels.SILENT);
+        await gate.promise;
+        return undefined;
+      });
+
+      const first = runCliPreservingLogLevel(['.'], '/repo', cliOptions);
+      const second = runCliPreservingLogLevel(['.'], '/repo', cliOptions);
+
+      expect(logger.getLogLevel()).toBe(repomixLogLevels.SILENT);
+
+      gates[0].resolve();
+      await first;
+      expect(logger.getLogLevel()).toBe(repomixLogLevels.SILENT);
+
+      gates[1].resolve();
+      await second;
+      expect(logger.getLogLevel()).toBe(repomixLogLevels.DEBUG);
     });
 
     it('should pass the CLI result straight through', async () => {
