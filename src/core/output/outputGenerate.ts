@@ -425,7 +425,13 @@ export const buildOutputGeneratorContext = async (
   // Generate tree string - use multi-root format if filePathsByRoot is provided
   // generateTreeStringWithRoots handles single root case internally
   let treeString: string;
-  if (filePathsByRoot) {
+  if (shouldUseFullTree) {
+    // Full-tree mode already merged every repo file (included + the rest) and every
+    // directory into filePathsForTree/directoryPathsForTree above. Render those directly:
+    // filePathsByRoot only carries the included files, so it would drop the non-included
+    // ones and defeat the purpose of --include-full-directory-structure.
+    treeString = generateTreeString(filePathsForTree, directoryPathsForTree);
+  } else if (filePathsByRoot) {
     treeString = generateTreeStringWithRoots(filePathsByRoot, directoryPathsForTree);
   } else {
     // Fallback for when root info is not available
