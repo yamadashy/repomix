@@ -972,6 +972,108 @@ next: value`,
   nested: value`,
     },
     {
+      name: 'Shell command substitution, case pattern, and escaped hash are not comments',
+      ext: '.sh',
+      input: `x=$(ls | grep -v "#")  # real comment
+case $x in
+  a) echo "#1" ;;  # real comment
+esac
+echo \\# literal  # real comment
+f() {
+  echo "\${1:-#}"  # real comment
+}`,
+      expected: `x=$(ls | grep -v "#")
+case $x in
+  a) echo "#1" ;;
+esac
+echo \\# literal
+f() {
+  echo "\${1:-#}"
+}`,
+    },
+    {
+      name: 'Shell herestring and ANSI-C quoting are not treated as heredoc or comment',
+      ext: '.sh',
+      input: `cat <<< "#not heredoc"  # real comment
+printf $'a#b\\n'  # real comment
+echo done  # real comment`,
+      expected: `cat <<< "#not heredoc"
+printf $'a#b\\n'
+echo done`,
+    },
+    {
+      name: 'Shell heredoc with <<- strips leading tabs when matching the delimiter',
+      ext: '.sh',
+      input: `cat <<-EOF
+\t# body
+\tEOF
+echo done  # real comment`,
+      expected: `cat <<-EOF
+\t# body
+\tEOF
+echo done`,
+    },
+    {
+      name: 'Shell double-quoted string spanning lines keeps hash inside',
+      ext: '.sh',
+      input: `x="a
+b # not a comment"  # real comment
+echo $x  # real comment`,
+      expected: `x="a
+b # not a comment"
+echo $x`,
+    },
+    {
+      name: 'YAML doubled single quote escape does not break quote tracking',
+      ext: '.yaml',
+      input: `a: 'It''s ok'  # real comment
+b: 1  # real comment`,
+      expected: `a: 'It''s ok'
+b: 1`,
+    },
+    {
+      name: 'YAML flow collections and quoted keys keep hash inside',
+      ext: '.yaml',
+      input: `a: [1, 2]  # real comment
+b: {x: "#y"}  # real comment
+"k#1": v  # real comment
+c: &anc !!str v  # real comment`,
+      expected: `a: [1, 2]
+b: {x: "#y"}
+"k#1": v
+c: &anc !!str v`,
+    },
+    {
+      name: 'YAML folded scalar and nested list block scalar end at dedent',
+      ext: '.yaml',
+      input: `a: >
+  line # kept
+b: 2  # real comment
+x:
+  - |
+    # kept
+  - y  # real comment`,
+      expected: `a: >
+  line # kept
+b: 2
+x:
+  - |
+    # kept
+  - y`,
+    },
+    {
+      name: 'YAML document markers and multi-line double-quoted scalar',
+      ext: '.yaml',
+      input: `---  # real comment
+a: "x
+  y"  # real comment
+...  # real comment`,
+      expected: `---
+a: "x
+  y"
+...`,
+    },
+    {
       name: 'Vue file comment removal',
       ext: '.vue',
       input: `
