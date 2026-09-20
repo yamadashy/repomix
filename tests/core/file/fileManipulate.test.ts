@@ -1037,11 +1037,11 @@ b: 1`,
       input: `a: [1, 2]  # real comment
 b: {x: "#y"}  # real comment
 "k#1": v  # real comment
-c: &anc !!str v  # real comment`,
+c: &base !!str v  # real comment`,
       expected: `a: [1, 2]
 b: {x: "#y"}
 "k#1": v
-c: &anc !!str v`,
+c: &base !!str v`,
     },
     {
       name: 'YAML folded scalar and nested list block scalar end at dedent',
