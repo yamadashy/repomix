@@ -110,6 +110,34 @@ describe('logger', () => {
     logger.info('Multiple', 'arguments', 123);
     expect(console.log).toHaveBeenCalledWith('CYAN:Multiple arguments 123');
   });
+
+  describe('output stream', () => {
+    const levels = ['warn', 'success', 'info', 'log', 'note', 'debug', 'trace'] as const;
+
+    beforeEach(() => {
+      logger.setLogLevel(repomixLogLevels.DEBUG);
+      logger.setOutputStream('stderr');
+    });
+
+    it('sends every level but error to the chosen stream', () => {
+      for (const level of levels) {
+        logger[level](`${level} message`);
+      }
+
+      for (const level of levels) {
+        expect(console.error).toHaveBeenCalledWith(expect.stringContaining(`${level} message`));
+      }
+      expect(console.log).not.toHaveBeenCalled();
+    });
+
+    it('writes to stdout again after init()', () => {
+      logger.init();
+      logger.info('Info message');
+
+      expect(console.log).toHaveBeenCalledWith('CYAN:Info message');
+      expect(console.error).not.toHaveBeenCalled();
+    });
+  });
 });
 
 describe('setLogLevelByWorkerData', () => {
