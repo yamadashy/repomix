@@ -228,4 +228,36 @@ def hello():
     expect(result.content).toBeNull();
     expect(result.skippedReason).toBe('binary-content');
   });
+
+  // Filler shapes: a replayed byte cycle has no control bytes at all, so
+  // `isbinaryfile` calls it binary and the detector scores the decode highly —
+  // 0xB0 0xA1 repeated reads as EUC-KR at 0.99. What gives it away is that the
+  // decode is one character repeated, not an alphabet.
+  test.each([
+    ['a replayed EUC-KR byte pair', Buffer.alloc(2048, Buffer.from([0xb0, 0xa1]))],
+    ['a 0xFF padded tail', Buffer.alloc(4096, 0xff)],
+  ])('should not read %s as legacy-encoded text', async (_label, bytes) => {
+    const filePath = path.join(testDir, 'filler.data');
+    await fs.writeFile(filePath, bytes);
+
+    const result = await readRawFile(filePath, 1024 * 1024);
+
+    expect(result.content).toBeNull();
+    expect(result.skippedReason).toBe('binary-content');
+  });
+
+  // CJK prose uses no word separators and often carries no ASCII at all, so the
+  // separator signal alone would drop it. It stays distinguishable from filler
+  // because it uses many characters.
+  test('should read separator-free CJK prose', async () => {
+    const iconv = await import('iconv-lite');
+    const text = '中华人民共和国万岁'.repeat(20);
+    const filePath = path.join(testDir, 'prose.txt');
+    await fs.writeFile(filePath, iconv.encode(text, 'GBK'));
+
+    const result = await readRawFile(filePath, 1024 * 1024);
+
+    expect(result.skippedReason).toBeUndefined();
+    expect(result.content).toBe(text);
+  });
 });
