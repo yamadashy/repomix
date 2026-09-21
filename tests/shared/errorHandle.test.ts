@@ -266,4 +266,35 @@ describe('handleError', () => {
 
     expect(errorSpy).toHaveBeenCalledWith('✖ An unknown error occurred');
   });
+
+  it('writes the message to stderr at SILENT, which --quiet and --stdout set', () => {
+    // The documented contract of --quiet is "suppress all console output except errors",
+    // and --stdout shares the level, so a failing pack must still say why it exited 1.
+    logger.setLogLevel(repomixLogLevels.SILENT);
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
+
+    handleError(new RepomixError('config invalid'));
+
+    expect(errorSpy).not.toHaveBeenCalled();
+    expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('✖ config invalid'));
+  });
+
+  it('keeps unexpected errors visible at SILENT', () => {
+    logger.setLogLevel(repomixLogLevels.SILENT);
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
+
+    handleError(new Error('something broke'));
+
+    expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('✖ Unexpected error: something broke'));
+  });
+
+  it('goes through the logger as soon as the level allows errors', () => {
+    logger.setLogLevel(repomixLogLevels.ERROR);
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
+
+    handleError(new RepomixError('config invalid'));
+
+    expect(errorSpy).toHaveBeenCalledWith('✖ config invalid');
+    expect(stderrSpy).not.toHaveBeenCalled();
+  });
 });
