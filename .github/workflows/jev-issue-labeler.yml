@@ -22,12 +22,21 @@ jobs:
         with:
           api-key: ${{ secrets.TYPESAFE_API_KEY }}
           dry-run: true
-          labels: |
-            bug
-            enhancement
-            documentation
-            question
-          # Conditions measured in a backtest on this repository's past issues.
+          # Every repository label that has a description is considered. Excluded:
+          # maintainer decisions (the action's defaults) and labels that describe
+          # pull requests rather than issues.
+          exclude-labels: |
+            duplicate
+            invalid
+            wontfix
+            good first issue
+            help wanted
+            renovate
+            dependencies
+            javascript
+            github_actions
+          # These override the GitHub descriptions with conditions measured in a backtest
+          # on this repository's past issues. Other labels use their description as is.
           criteria: |
             bug: "The author is reporting that the tool misbehaves: it crashes, prints an error, produces wrong or missing output, or does not do what its documentation says it does."
             enhancement: "The author is asking for something the tool does not do yet: a new feature, a new option or flag, wider support, or a behaviour change that adds capability."
