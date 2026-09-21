@@ -18,7 +18,7 @@ jobs:
       issues: read
     steps:
       - name: Evaluate labels
-        uses: yamadashy/jev-labeler-action@7234c1bc9d9bf4967c356ed4aee75c3ba26a884a # main
+        uses: yamadashy/jev-labeler-action@7234c1bc9d9bf4967c356ed4aee75c3ba26a884a # v0.1.0
         with:
           api-key: ${{ secrets.TYPESAFE_API_KEY }}
           dry-run: true
