@@ -62,6 +62,45 @@ const hasTextBom = (buffer: Buffer): boolean => {
 };
 
 /**
+ * Share of control characters above which decoded bytes are treated as binary
+ * rather than text. Legacy-encoded source carries none beyond TAB/LF/CR, while
+ * binary payloads decoded through a single-byte codepage are dense in them.
+ */
+const MAX_CONTROL_CHAR_RATIO = 0.05;
+
+/**
+ * Decide whether a decoded string is plausibly text.
+ *
+ * `isbinaryfile` cannot answer this for legacy encodings: it looks at at most
+ * 512 bytes and counts every byte above 127 that is not part of a UTF-8
+ * sequence as suspicious, so double-byte text (Shift-JIS, EUC-KR, GBK) and
+ * single-byte codepages score ~100% suspicious and always come back binary.
+ * The decoded text is the discriminator instead — real binaries either fail to
+ * decode (U+FFFD, handled by the caller) or keep the control bytes that text
+ * does not have.
+ */
+const looksLikeText = (content: string): boolean => {
+  if (content.length === 0) {
+    return true;
+  }
+
+  let controlCharCount = 0;
+  for (let i = 0; i < content.length; i++) {
+    const code = content.charCodeAt(i);
+    // C0 controls except TAB/LF/CR, plus DEL and the C1 range.
+    const isControl =
+      (code < 0x20 && code !== 0x09 && code !== 0x0a && code !== 0x0d) ||
+      code === 0x7f ||
+      (code >= 0x80 && code < 0xa0);
+    if (isControl) {
+      controlCharCount++;
+    }
+  }
+
+  return controlCharCount / content.length <= MAX_CONTROL_CHAR_RATIO;
+};
+
+/**
  * Read a file and return its text content
  * @param filePath Path to the file
  * @param maxFileSize Maximum file size in bytes
@@ -123,13 +162,16 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
       // Not valid UTF-8, fall through to binary check + encoding detection
     }
 
-    // Buffer is not valid UTF-8. Run the full `isBinaryFile` check now to
-    // distinguish real binaries (PE/ELF/PNG/etc.) from legacy-encoded text
-    // (Shift-JIS, EUC-KR, GBK, …) that should still reach the slow path.
-    if (await isBinaryFile(buffer)) {
-      logger.debug(`Skipping binary file (content check): ${filePath}`);
-      return { content: null, skippedReason: 'binary-content' };
-    }
+    // Buffer is not valid UTF-8. It is either a real binary (PE/ELF/PNG/…) or
+    // legacy-encoded text (Shift-JIS, EUC-KR, GBK, windows-1252, …).
+    //
+    // `isBinaryFile` cannot tell those apart: it inspects at most 512 bytes and
+    // counts every non-UTF-8 byte above 127 as suspicious, so any double-byte
+    // or codepage text scores ~100% suspicious and is reported binary. Its
+    // verdict is therefore only used as a hint here — the decision is made from
+    // the decoded text below, which separates the cases (a real binary either
+    // decodes with U+FFFD or stays dense in control characters).
+    const flaggedBinary = await isBinaryFile(buffer);
 
     // Slow path: Detect encoding with jschardet for non-UTF-8 files (e.g., Shift-JIS, EUC-KR)
     const encodingDeps = await getEncodingDeps();
@@ -139,8 +181,21 @@ export const readRawFile = async (filePath: string, maxFileSize: number): Promis
     const content = encodingDeps.iconv.decode(buffer, encoding, { stripBOM: true });
 
     if (content.includes('\uFFFD')) {
+      // Undecodable bytes: binary when `isBinaryFile` agrees, a broken text
+      // file otherwise (the existing `encoding-error` contract).
+      if (flaggedBinary) {
+        logger.debug(`Skipping binary file (content check): ${filePath}`);
+        return { content: null, skippedReason: 'binary-content' };
+      }
       logger.debug(`Skipping file due to encoding errors (detected: ${encoding}): ${filePath}`);
       return { content: null, skippedReason: 'encoding-error' };
+    }
+
+    // Decoded cleanly but `isBinaryFile` objected: accept it only if the text
+    // itself looks like text. This is the Shift-JIS/EUC-KR/GBK case.
+    if (flaggedBinary && !looksLikeText(content)) {
+      logger.debug(`Skipping binary file (content check): ${filePath}`);
+      return { content: null, skippedReason: 'binary-content' };
     }
 
     return { content };
