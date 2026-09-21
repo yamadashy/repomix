@@ -1,0 +1,44 @@
+name: Jev Issue Labeler
+
+# Labels newly opened issues. Jev returns only probabilities for the questions
+# below and cannot emit text, so the untrusted issue body has no channel to post
+# anything or steer a tool. That is why this is a single step, where the Claude
+# triage it replaces needed a read-only classify job isolated from the job that
+# held the write token. The action only ever adds labels.
+on:
+  issues:
+    types: [opened]
+
+permissions: {}
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Label the issue
+        uses: yamadashy/jev-labeler-action@7234c1bc9d9bf4967c356ed4aee75c3ba26a884a # v0.1.0
+        with:
+          api-key: ${{ secrets.TYPESAFE_API_KEY }}
+          # Every repository label that has a description is considered. Excluded:
+          # maintainer decisions (the action's defaults) and labels that describe
+          # pull requests rather than issues.
+          exclude-labels: |
+            duplicate
+            invalid
+            wontfix
+            good first issue
+            help wanted
+            renovate
+            dependencies
+            javascript
+            github_actions
+          # These override the GitHub descriptions with conditions measured in a backtest
+          # on this repository's past issues. Other labels use their description as is.
+          criteria: |
+            bug: "The author is reporting that the tool misbehaves: it crashes, prints an error, produces wrong or missing output, or does not do what its documentation says it does."
+            enhancement: "The author is asking for something the tool does not do yet: a new feature, a new option or flag, wider support, or a behaviour change that adds capability."
+            documentation: What this issue asks to change is documentation — the README, the website, guides, examples, help text or translations — rather than the behaviour of the program itself.
+            question: The author is asking how to do something with the tool, or asking the maintainers to clarify existing behaviour, rather than reporting a defect or requesting a change.
