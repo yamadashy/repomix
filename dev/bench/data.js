@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789981579552,
+  "lastUpdate": 1789991694089,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -13088,6 +13088,51 @@ window.BENCHMARK_DATA = {
             "range": "±22",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1336ms, Q3: 1358ms\nAll times: 1299, 1320, 1325, 1326, 1327, 1336, 1340, 1341, 1342, 1343, 1343, 1345, 1345, 1351, 1354, 1358, 1358, 1361, 1369, 1381ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c4d690d74f04899d5595783f0c33e064c2433389",
+          "message": "Merge pull request #1887 from yamadashy/ci/jev-issue-labeler-dry-run\n\nci(workflows): Label issues with Jev and retire the Claude triage workflow",
+          "timestamp": "2026-09-21T20:53:25+09:00",
+          "tree_id": "5e5eb8c3da722eab236d2223cc0a7b6a7cbe0667",
+          "url": "https://github.com/yamadashy/repomix/commit/c4d690d74f04899d5595783f0c33e064c2433389"
+        },
+        "date": 1789991692764,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 539,
+            "range": "±26",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 531ms, Q3: 557ms\nAll times: 515, 517, 520, 524, 525, 526, 530, 531, 532, 532, 535, 536, 537, 538, 539, 539, 542, 544, 548, 550, 550, 556, 557, 558, 562, 562, 564, 571, 616, 737ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 888,
+            "range": "±26",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 877ms, Q3: 903ms\nAll times: 861, 872, 872, 876, 876, 877, 877, 879, 881, 885, 888, 896, 897, 899, 901, 903, 904, 914, 1045, 1132ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 948,
+            "range": "±20",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 941ms, Q3: 961ms\nAll times: 929, 937, 938, 939, 940, 941, 943, 944, 947, 948, 948, 949, 952, 954, 957, 961, 968, 970, 975, 976ms"
           }
         ]
       }
