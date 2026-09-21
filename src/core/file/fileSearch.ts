@@ -353,6 +353,34 @@ export const searchFiles = async (
   }
 };
 
+/**
+ * Translate one `.git/info/exclude` line into a glob with the same reach git gives it.
+ *
+ * Git anchors a pattern to the file's directory only when the pattern contains a slash
+ * somewhere other than at its end; otherwise the pattern matches at any depth. The globs
+ * handed to globby's `ignore` option are plain cwd-relative globs, so an unanchored line
+ * has to be rewritten as `**\/<pattern>` to keep that reach, and a leading slash has to be
+ * dropped because it would otherwise read as an absolute path that matches nothing.
+ *
+ * Negations are passed through untouched: globby's `ignore` has no re-inclusion, so there
+ * is nothing useful to translate them into.
+ */
+export const convertGitExcludePatternToGlob = (pattern: string): string => {
+  if (pattern.startsWith('!')) {
+    return pattern;
+  }
+
+  const withoutTrailingSlash = pattern.endsWith('/') ? pattern.slice(0, -1) : pattern;
+  const isAnchored = withoutTrailingSlash.includes('/');
+
+  if (isAnchored) {
+    // A leading slash anchors to the repository root, which is already globby's cwd.
+    return pattern.startsWith('/') ? pattern.slice(1) : pattern;
+  }
+
+  return `**/${pattern}`;
+};
+
 export const parseIgnoreContent = (content: string): string[] => {
   if (!content) return [];
 
@@ -496,7 +524,7 @@ export const getIgnorePatterns = async (rootDir: string, config: RepomixConfigMe
       const excludePatterns = parseIgnoreContent(excludeFileContent);
 
       for (const pattern of excludePatterns) {
-        ignorePatterns.add(pattern);
+        ignorePatterns.add(convertGitExcludePatternToGlob(pattern));
       }
     } catch (error) {
       // File might not exist or might not be accessible, which is fine

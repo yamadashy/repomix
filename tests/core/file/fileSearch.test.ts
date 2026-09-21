@@ -279,9 +279,10 @@ temp-files/
 
       const patterns = await getIgnorePatterns('/mock/root', mockConfig);
 
-      // Only test for the exclude file patterns
-      expect(patterns).toContain('*.ignored');
-      expect(patterns).toContain('temp-files/');
+      // Only test for the exclude file patterns. Both lines are slash-less, so git
+      // matches them at any depth and they are recorded as `**/`-prefixed globs.
+      expect(patterns).toContain('**/*.ignored');
+      expect(patterns).toContain('**/temp-files/');
     });
 
     test('should use POSIX separators for a nested output file path (Windows)', async () => {
