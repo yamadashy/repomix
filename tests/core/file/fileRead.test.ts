@@ -194,4 +194,38 @@ def hello():
     expect(result.skippedReason).toBeUndefined();
     expect(result.content).toBe('Hello\n');
   });
+
+  // `isbinaryfile` rates these as binary from their high-byte ratio (double-byte
+  // text is almost entirely bytes above 0x7F), so they only get packed if that
+  // verdict can be overturned by the encoding detector that exists for them.
+  test.each([
+    ['Shift-JIS', 'デ', 'Shift_JIS'],
+    ['EUC-KR', '한', 'EUC-KR'],
+    ['GBK', '中', 'GBK'],
+  ])('should read %s text that the binary content check rejects', async (_label, char, encoding) => {
+    const iconv = await import('iconv-lite');
+    const text = `${char}${char.repeat(60)}\n`;
+    const filePath = path.join(testDir, 'legacy.txt');
+    await fs.writeFile(filePath, iconv.encode(text, encoding));
+
+    const result = await readRawFile(filePath, 1024 * 1024);
+
+    expect(result.skippedReason).toBeUndefined();
+    expect(result.content).toContain(text);
+  });
+
+  test('should still reject a high-byte buffer that does not decode as text', async () => {
+    const iconv = await import('iconv-lite');
+    // All above 0x7F apart from two control bytes, so nothing here is UTF-8 and
+    // `isbinaryfile` calls it binary. The decode is clean enough that only the
+    // control-character check can keep it out of the pack.
+    const bytes = Buffer.concat([iconv.encode('ÈÊÌÎÐÒÔÖØÚÜÞàâä', 'ISO-8859-1'), Buffer.from([0x10, 0x15])]);
+    const filePath = path.join(testDir, 'highbytes.data');
+    await fs.writeFile(filePath, bytes);
+
+    const result = await readRawFile(filePath, 1024 * 1024);
+
+    expect(result.content).toBeNull();
+    expect(result.skippedReason).toBe('binary-content');
+  });
 });
