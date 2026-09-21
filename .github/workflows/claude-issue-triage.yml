@@ -68,7 +68,9 @@ jobs:
             2. Choose the labels from labels.json that best describe the issue. Only use label names that appear in labels.json. Choose at most 5. Avoid duplicating labels the issue already has.
             3. If no label clearly applies, return an empty array.
 
-            Common categories for Repomix: bug, enhancement, question, documentation, needs investigation, needs more information, needs discussion, good first issue, idea.
+            Common categories for Repomix: bug, enhancement, question, documentation, needs investigation, needs more information, needs discussion, idea.
+
+            Never choose "good first issue" or "help wanted". Those are set by the maintainer after deciding an issue is ready for contributors, which cannot be judged from the report alone.
 
             Return your answer using the provided JSON schema: an object with a "labels" array of label-name strings. Do not write any files, run any commands, or post anything.
 
@@ -105,7 +107,11 @@ jobs:
           gh label list --repo "$REPO" --limit 200 --json name --jq '.[].name' | sort -u > valid.txt
 
           # Keep only requested labels that actually exist, capped at 5.
-          grep -Fxf valid.txt requested.txt | head -n 5 > apply.txt || true
+          # "good first issue" and "help wanted" are maintainer decisions, never
+          # applied by triage even if the classifier asks for them.
+          grep -Fxf valid.txt requested.txt \
+            | grep -Fxv -e 'good first issue' -e 'help wanted' \
+            | head -n 5 > apply.txt || true
 
           if [ ! -s apply.txt ]; then
             echo "No requested labels matched existing repository labels."
