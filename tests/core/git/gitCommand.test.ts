@@ -1,7 +1,9 @@
+import { execFile, execFileSync } from 'node:child_process';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { promisify } from 'node:util';
+import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   execGitDiff,
   execGitLog,
@@ -46,10 +48,18 @@ file2.ts
       const result = await execGitLogFilenames('/test/dir', 5, { execFileAsync: mockFileExecAsync });
 
       expect(result).toEqual(['file1.ts', 'file2.ts', 'file1.ts', 'file3.ts', 'file2.ts']);
+      // core.fsmonitor=, --no-show-signature and the diff-driver flags neutralize
+      // executable keys the target directory's own .git/config could set (see
+      // gitCommand.ts).
       expect(mockFileExecAsync).toHaveBeenCalledWith('git', [
         '-C',
         '/test/dir',
+        '-c',
+        'core.fsmonitor=',
         'log',
+        '--no-show-signature',
+        '--no-ext-diff',
+        '--no-textconv',
         '--pretty=format:',
         '--name-only',
         '-n',
@@ -75,7 +85,19 @@ file2.ts
       const result = await execGitDiff('/test/dir', [], { execFileAsync: mockFileExecAsync });
 
       expect(result).toBe(mockDiff);
-      expect(mockFileExecAsync).toHaveBeenCalledWith('git', ['-C', '/test/dir', 'diff', '--no-color']);
+      // core.fsmonitor=, --no-ext-diff and --no-textconv neutralize executable
+      // keys the target directory's own .git/config could set (see gitCommand.ts).
+      // The hardening flags come after the caller's options so they always win.
+      expect(mockFileExecAsync).toHaveBeenCalledWith('git', [
+        '-C',
+        '/test/dir',
+        '-c',
+        'core.fsmonitor=',
+        'diff',
+        '--no-color',
+        '--no-ext-diff',
+        '--no-textconv',
+      ]);
     });
 
     test('should throw error when git diff fails', async () => {
@@ -115,7 +137,16 @@ file2.ts
       const result = await execGitRevParse('/test/dir', { execFileAsync: mockFileExecAsync });
 
       expect(result).toBe(mockOutput);
-      expect(mockFileExecAsync).toHaveBeenCalledWith('git', ['-C', '/test/dir', 'rev-parse', '--is-inside-work-tree']);
+      // The repository probe also runs in the target directory, so it carries the
+      // core.fsmonitor= override (see gitCommand.ts).
+      expect(mockFileExecAsync).toHaveBeenCalledWith('git', [
+        '-C',
+        '/test/dir',
+        '-c',
+        'core.fsmonitor=',
+        'rev-parse',
+        '--is-inside-work-tree',
+      ]);
     });
 
     test('should throw error when git rev-parse fails', async () => {
@@ -358,7 +389,12 @@ test/feature.test.ts`;
       expect(mockFileExecAsync).toHaveBeenCalledWith('git', [
         '-C',
         '/test/dir',
+        '-c',
+        'core.fsmonitor=',
         'log',
+        '--no-show-signature',
+        '--no-ext-diff',
+        '--no-textconv',
         '--pretty=format:%x00%ad|%s',
         '--date=iso',
         '--name-only',
@@ -379,7 +415,12 @@ file1.txt`;
       expect(mockFileExecAsync).toHaveBeenCalledWith('git', [
         '-C',
         '/test/dir',
+        '-c',
+        'core.fsmonitor=',
         'log',
+        '--no-show-signature',
+        '--no-ext-diff',
+        '--no-textconv',
         `--pretty=format:${customSeparator}%ad|%s`,
         '--date=iso',
         '--name-only',
@@ -409,7 +450,12 @@ file.txt`;
       expect(mockFileExecAsync).toHaveBeenCalledWith('git', [
         '-C',
         '/test/dir',
+        '-c',
+        'core.fsmonitor=',
         'log',
+        '--no-show-signature',
+        '--no-ext-diff',
+        '--no-textconv',
         `--pretty=format:${separator}%ad|%s`,
         '--date=iso',
         '--name-only',
@@ -505,3 +551,141 @@ c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8\trefs/tags/v1.0.0
     });
   });
 });
+
+// End-to-end, nothing mocked: a real repository carrying a malicious .git/config
+// is built and pushed through the real git subprocess. git honors a repository's
+// own config, so without the hardening args a plain `git log` here would run the
+// configured gpg.program. This proves the hardening holds against real git,
+// including whichever executable-config behaviors the installed git version has.
+//
+// POSIX-only: the payload is a `#!/bin/sh` script and the config sets
+// gpg.program to an absolute path, which on Windows contains backslashes that
+// git's config parser reads as escape sequences. The cross-platform guarantee
+// is covered by the exact-argument assertions above; this block proves the
+// on-disk execution behavior where it can actually run.
+describe.skipIf(process.platform === 'win32')(
+  'gitCommand — an untrusted repository cannot execute code through git',
+  () => {
+    const realExec = promisify(execFile);
+    let workDir: string;
+    let markerPath: string;
+
+    beforeAll(async () => {
+      workDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-git-untrusted-'));
+    });
+
+    afterAll(async () => {
+      await fs.rm(workDir, { recursive: true, force: true });
+    });
+
+    // A repository whose own config runs `markerPath`'s writer when git verifies a
+    // signature, plus a commit crafted with a gpgsig header so a signature exists to
+    // verify. `git log` alone then invokes gpg.program.
+    const buildMaliciousRepo = async (repoDir: string, marker: string): Promise<void> => {
+      const git = (...args: string[]) => execFileSync('git', ['-C', repoDir, ...args], { stdio: 'pipe' });
+      await fs.mkdir(repoDir, { recursive: true });
+      execFileSync('git', ['init', '-q', repoDir], { stdio: 'pipe' });
+      git('config', 'user.email', 'a@b.c');
+      git('config', 'user.name', 'a');
+      await fs.writeFile(path.join(repoDir, 'f.txt'), 'hi\n');
+      git('add', 'f.txt');
+      git('commit', '-q', '-m', 'init');
+      const tree = git('write-tree').toString().trim();
+
+      const payload = path.join(repoDir, 'pwn.sh');
+      await fs.writeFile(payload, `#!/bin/sh\ntouch "${marker}"\necho '[GNUPG:] GOODSIG fake' 1>&2\nexit 0\n`);
+      await fs.chmod(payload, 0o755);
+      await fs.appendFile(
+        path.join(repoDir, '.git', 'config'),
+        `\n[log]\n\tshowSignature = true\n[gpg]\n\tprogram = ${payload}\n`,
+      );
+
+      const raw =
+        `tree ${tree}\n` +
+        'author a <a@b.c> 1700000000 +0000\n' +
+        'committer a <a@b.c> 1700000000 +0000\n' +
+        'gpgsig -----BEGIN PGP SIGNATURE-----\n \n fake\n -----END PGP SIGNATURE-----\n\nsigned\n';
+      const rawPath = path.join(repoDir, 'rawc');
+      await fs.writeFile(rawPath, raw);
+      const commit = execFileSync('git', ['-C', repoDir, 'hash-object', '-t', 'commit', '-w', 'rawc'])
+        .toString()
+        .trim();
+      git('update-ref', 'refs/heads/main', commit);
+      git('symbolic-ref', 'HEAD', 'refs/heads/main');
+      await fs.rm(rawPath, { force: true });
+    };
+
+    const exists = async (filePath: string): Promise<boolean> => {
+      try {
+        await fs.access(filePath);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    test('execGitLogFilenames does not run gpg.program from the repo .git/config', async () => {
+      const repoDir = await fs.mkdtemp(path.join(workDir, 'repo-'));
+      markerPath = path.join(workDir, `marker-log-${path.basename(repoDir)}`);
+      await buildMaliciousRepo(repoDir, markerPath);
+
+      // Uses the real execFileAsync (no deps override), so this exercises the
+      // hardened argument list against the installed git.
+      const files = await execGitLogFilenames(repoDir, 100, { execFileAsync: realExec });
+
+      expect(await exists(markerPath)).toBe(false);
+      // The command still works — it lists the repository's files, it just does
+      // not honor the malicious signature-verification config.
+      expect(files).toContain('f.txt');
+    });
+
+    test('the same repo does execute when git runs with its config honored', async () => {
+      // Positive control: proves the payload is live and reachable by `git log` on
+      // this host, so the assertion above is testing the hardening and not a
+      // payload that quietly stopped working on this git version.
+      const repoDir = await fs.mkdtemp(path.join(workDir, 'control-'));
+      const controlMarker = path.join(workDir, `marker-control-${path.basename(repoDir)}`);
+      await buildMaliciousRepo(repoDir, controlMarker);
+
+      await realExec('git', ['-C', repoDir, 'log', '--pretty=format:', '--name-only', '-n', '100']);
+
+      expect(await exists(controlMarker)).toBe(true);
+    });
+
+    // A repository whose config runs a diff.external driver, plus an unstaged edit
+    // so `git diff` produces a diff and reaches the driver.
+    const buildMaliciousDiffRepo = async (repoDir: string, marker: string): Promise<void> => {
+      const git = (...args: string[]) => execFileSync('git', ['-C', repoDir, ...args], { stdio: 'pipe' });
+      await fs.mkdir(repoDir, { recursive: true });
+      execFileSync('git', ['init', '-q', repoDir], { stdio: 'pipe' });
+      git('config', 'user.email', 'a@b.c');
+      git('config', 'user.name', 'a');
+      await fs.writeFile(path.join(repoDir, 'pwn.sh'), `#!/bin/sh\ntouch "${marker}"\nexit 0\n`);
+      await fs.chmod(path.join(repoDir, 'pwn.sh'), 0o755);
+      await fs.writeFile(path.join(repoDir, 'f.txt'), 'one\n');
+      git('add', 'f.txt', 'pwn.sh');
+      git('commit', '-q', '-m', 'init');
+      // git runs diff.external through a shell, so a relative ./pwn.sh keeps the
+      // command space-free even when the repo sits under a path with spaces (the
+      // gpg.program vector above is exec'd directly, so it is not affected).
+      await fs.appendFile(path.join(repoDir, '.git', 'config'), '\n[diff]\n\texternal = ./pwn.sh\n');
+      await fs.writeFile(path.join(repoDir, 'f.txt'), 'one\ntwo\n'); // unstaged edit
+    };
+
+    test('execGitDiff does not run diff.external from the repo .git/config', async () => {
+      const repoDir = await fs.mkdtemp(path.join(workDir, 'diff-'));
+      const marker = path.join(workDir, `marker-diff-${path.basename(repoDir)}`);
+      await buildMaliciousDiffRepo(repoDir, marker);
+
+      await execGitDiff(repoDir, [], { execFileAsync: realExec });
+      expect(await exists(marker)).toBe(false);
+
+      // Positive control: the same repo does fire the driver when git honors its
+      // config, so the assertion above tests the hardening, not a dead payload.
+      const controlMarker = path.join(workDir, `marker-diff-control-${path.basename(repoDir)}`);
+      await fs.writeFile(path.join(repoDir, 'pwn.sh'), `#!/bin/sh\ntouch "${controlMarker}"\nexit 0\n`);
+      await realExec('git', ['-C', repoDir, 'diff']);
+      expect(await exists(controlMarker)).toBe(true);
+    });
+  },
+);
