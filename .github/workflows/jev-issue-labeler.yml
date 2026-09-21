@@ -1,9 +1,10 @@
-name: Jev Issue Labeler (dry run)
+name: Jev Issue Labeler
 
-# Runs next to claude-issue-triage.yml without touching the issue, so the two
-# can be compared on real issues before deciding whether to switch. Jev returns
-# only probabilities for questions written below, so the untrusted issue body
-# has no channel to post anything; no two-phase isolation is needed.
+# Labels newly opened issues. Jev returns only probabilities for the questions
+# below and cannot emit text, so the untrusted issue body has no channel to post
+# anything or steer a tool. That is why this is a single step, where the Claude
+# triage it replaces needed a read-only classify job isolated from the job that
+# held the write token. The action only ever adds labels.
 on:
   issues:
     types: [opened]
@@ -15,13 +16,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
-      issues: read
+      issues: write
     steps:
-      - name: Evaluate labels
+      - name: Label the issue
         uses: yamadashy/jev-labeler-action@7234c1bc9d9bf4967c356ed4aee75c3ba26a884a # v0.1.0
         with:
           api-key: ${{ secrets.TYPESAFE_API_KEY }}
-          dry-run: true
           # Every repository label that has a description is considered. Excluded:
           # maintainer decisions (the action's defaults) and labels that describe
           # pull requests rather than issues.
