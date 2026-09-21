@@ -515,9 +515,13 @@ export const getIgnorePatterns = async (rootDir: string, config: RepomixConfigMe
     try {
       const excludeFileContent = await fs.readFile(excludeFilePath, 'utf8');
       const excludePatterns = parseIgnoreContent(excludeFileContent);
+      // globby's `ignore` list has no re-inclusion: every entry excludes, so a negation there
+      // is inert and only hides files. Lifting positives to any depth next to such a negation
+      // would hide a nested file Git packs, so keep the previous patterns for those rule sets.
+      const hasNegation = excludePatterns.some((pattern) => pattern.startsWith('!'));
 
       for (const pattern of excludePatterns) {
-        ignorePatterns.add(gitExcludePatternToGlob(pattern));
+        ignorePatterns.add(hasNegation ? pattern : gitExcludePatternToGlob(pattern));
       }
     } catch (error) {
       // File might not exist or might not be accessible, which is fine
