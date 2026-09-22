@@ -87,12 +87,16 @@ const looksLikeText = (content: string): boolean => {
   let controlCharCount = 0;
   for (let i = 0; i < content.length; i++) {
     const code = content.charCodeAt(i);
-    // C0 controls except TAB/LF/CR, plus DEL and the C1 range.
-    const isControl =
-      (code < 0x20 && code !== 0x09 && code !== 0x0a && code !== 0x0d) ||
-      code === 0x7f ||
-      (code >= 0x80 && code < 0xa0);
-    if (isControl) {
+    // C0 controls other than TAB/LF/CR are unrepresentable in XML 1.0, the
+    // same reason the NULL-byte probe rejects U+0000 outright. A single one
+    // would survive the ratio below and end up unescaped in the packed
+    // output, so reject the file as soon as one shows up.
+    if (code < 0x20 && code !== 0x09 && code !== 0x0a && code !== 0x0d) {
+      return false;
+    }
+    // DEL and the C1 range are valid XML 1.0 characters but stay a useful
+    // density signal for binaries decoded through a single-byte codepage.
+    if (code === 0x7f || (code >= 0x80 && code < 0xa0)) {
       controlCharCount++;
     }
   }

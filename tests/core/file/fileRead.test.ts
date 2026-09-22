@@ -236,6 +236,21 @@ def hello():
     expect(result.skippedReason).toBe('binary-content');
   });
 
+  test('should skip legacy-encoded text carrying an XML-invalid C0 control', async () => {
+    // U+0001 is unrepresentable in XML 1.0, just like the NULL byte the earlier
+    // probe rejects. A single one is far below any density threshold, so it has
+    // to be rejected outright rather than averaged away, otherwise it reaches
+    // the default XML output unescaped and breaks downstream parsers.
+    const filePath = path.join(testDir, 'sjis-with-control.txt');
+    const text = `${'こんにちは世界、これはテストです。\n'.repeat(20)}\u0001`;
+    await fs.writeFile(filePath, iconv.encode(text, 'shift_jis'));
+
+    const result = await readRawFile(filePath, 1024 * 1024);
+
+    expect(result.content).toBeNull();
+    expect(result.skippedReason).toBe('binary-content');
+  });
+
   test('should decode UTF-16 LE BOM file despite embedded NULL bytes', async () => {
     // Regression: the cheap NULL-byte binary probe ahead of the UTF-8 try
     // would misclassify UTF-16/UTF-32 text files (whose ASCII characters
