@@ -22,9 +22,9 @@ jobs:
         uses: yamadashy/jev-labeler-action@0c90211a8873cb11913ef43ff13171c0afd74287 # v0.3.1
         with:
           api-key: ${{ secrets.TYPESAFE_API_KEY }}
-          # Every repository label that has a description is considered. Excluded:
-          # maintainer decisions (the action's defaults) and labels that describe
-          # pull requests rather than issues.
+          # Every repository label is considered, by its description or, without one,
+          # by its name. Excluded: maintainer decisions and labels that describe pull
+          # requests rather than issues.
           exclude-labels: |
             duplicate
             invalid
