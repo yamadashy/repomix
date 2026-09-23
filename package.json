@@ -30,6 +30,7 @@
     "lint-secretlint": "secretlint \"**/*\" --secretlintignore .gitignore",
     "test": "vitest",
     "test-coverage": "vitest run --coverage",
+    "test-e2e": "vitest run --config e2e/vitest.config.ts",
     "repomix": "node --run build && node --enable-source-maps --trace-warnings bin/repomix.cjs",
     "repomix-src": "node --run repomix -- --include 'src,tests'",
     "repomix-website": "node --run repomix -- --include 'website'",
@@ -127,5 +128,8 @@
   "engines": {
     "node": ">=22.0.0",
     "yarn": ">=1.22.22"
+  },
+  "optionalDependencies": {
+    "@landstrip/landstrip": "0.17.37"
   }
 }

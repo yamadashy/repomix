@@ -23,7 +23,14 @@ function bytesToMB(bytes: number): number {
  * Get current memory usage statistics in MB
  */
 export function getMemoryStats(): MemoryStats {
-  const usage = process.memoryUsage();
+  let usage: NodeJS.MemoryUsage;
+  try {
+    usage = process.memoryUsage();
+  } catch {
+    // Reads /proc/self, which a kernel sandbox can deny. These are trace-level
+    // diagnostics — degrade to zeros rather than abort the operation being measured.
+    return { heapUsed: 0, heapTotal: 0, external: 0, rss: 0, heapUsagePercent: 0 };
+  }
 
   const heapUsed = bytesToMB(usage.heapUsed);
   const heapTotal = bytesToMB(usage.heapTotal);

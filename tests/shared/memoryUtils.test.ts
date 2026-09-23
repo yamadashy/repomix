@@ -31,6 +31,20 @@ describe('memoryUtils', () => {
     expect(stats.heapUsagePercent).toBeLessThanOrEqual(100);
   });
 
+  test('getMemoryStats degrades to zeros when process.memoryUsage throws (denied /proc under a sandbox)', () => {
+    const spy = vi.spyOn(process, 'memoryUsage').mockImplementation((() => {
+      throw Object.assign(new Error('EACCES: permission denied, uv_resident_set_memory'), { code: 'EACCES' });
+    }) as unknown as typeof process.memoryUsage);
+    try {
+      // Must not throw — memory stats are diagnostics; a denied /proc read cannot be
+      // allowed to abort the operation being measured (e.g. a pack under --sandbox-strict).
+      expect(getMemoryStats()).toEqual({ heapUsed: 0, heapTotal: 0, external: 0, rss: 0, heapUsagePercent: 0 });
+      expect(() => logMemoryUsage('sandboxed')).not.toThrow();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   test('logMemoryUsage emits a trace line tagged with context', () => {
     logMemoryUsage('parse');
     expect(logger.trace).toHaveBeenCalledWith(expect.stringContaining('Memory [parse]'));
