@@ -19,7 +19,7 @@ jobs:
       issues: write
     steps:
       - name: Label the issue
-        uses: yamadashy/jev-labeler-action@54cd3e3b15288c2b0805cd6d1bbf80cfe5076364 # v0.1.1
+        uses: yamadashy/jev-labeler-action@0c90211a8873cb11913ef43ff13171c0afd74287 # v0.3.1
         with:
           api-key: ${{ secrets.TYPESAFE_API_KEY }}
           # Every repository label that has a description is considered. Excluded:
