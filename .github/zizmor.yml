@@ -1,4 +1,9 @@
 rules:
+  dangerous-triggers:
+    ignore:
+      # pull_request_target so fork PRs get labeled; the job never checks out or
+      # runs PR code, only reads the payload and the changed-file list
+      - jev-pr-labeler.yml
   artipacked:
     ignore:
       # git-auto-commit-action requires persist-credentials for pushing
@@ -10,8 +15,9 @@ rules:
       - ci.yml
       - claude-code-review.yml
       - claude-issue-similar.yml
-      - claude-issue-triage.yml
       - claude.yml
+      - jev-issue-labeler.yml
+      - jev-pr-labeler.yml
   adhoc-packages:
     ignore:
       # Installing repomix at a user-specified version is this action's core function,

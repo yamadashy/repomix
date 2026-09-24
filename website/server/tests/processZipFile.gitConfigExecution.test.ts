@@ -3,15 +3,16 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { zipSync } from 'fflate';
-import { runDefaultAction } from 'repomix';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 import { processZipFile } from '../src/domains/pack/processZipFile.js';
 
 // GHSA-j7x8, second vector. repomix orders output by git change frequency
 // (output.git.sortByChanges defaults on), which runs `git log` against the pack
 // directory. git trusts a repository's own .git/config, so an uploaded .git can
-// turn that ordering pass into command execution — independent of the config
+// turn that ordering pass into command execution, independent of the config
 // loader that skipLocalConfig closes. The fix drops `.git/**` during extraction.
+// (The CLI's own git invocations are hardened separately, GHSA-4p5g; the server
+// still strips `.git` so the upload never depends on that.)
 //
 // Nothing is mocked: a real malicious git repo is built, zipped, and pushed
 // through the real pack pipeline, so this fails if the guarantee is lost
@@ -115,19 +116,14 @@ describe('processZipFile — an uploaded .git never drives git execution', () =>
   });
 
   test('the same repo does execute when git runs against it directly', async () => {
-    // Positive control: proves the payload is live and the git-sort path reaches
-    // it, so the assertion above is testing the strip and not a payload that
-    // quietly stopped working.
+    // Positive control: proves the payload is live, so the assertion above is
+    // testing the strip and not a payload that quietly stopped working. Plain
+    // `git log` honors the repo's log.showSignature / gpg.program; repomix's own
+    // git calls no longer do (GHSA-4p5g), so the control drives git directly.
     const repoDir = await fs.mkdtemp(path.join(workDir, 'control-'));
     await buildMaliciousGitRepo(repoDir, markerPath);
 
-    await runDefaultAction([repoDir], repoDir, {
-      output: path.join(workDir, 'control-out.txt'),
-      style: 'plain',
-      securityCheck: true,
-      quiet: true,
-      skipLocalConfig: true, // isolate the git vector from the config-loader one
-    });
+    execFileSync('git', ['-C', repoDir, 'log', '-n', '1'], { stdio: 'pipe' });
 
     expect(await exists(markerPath)).toBe(true);
   });
