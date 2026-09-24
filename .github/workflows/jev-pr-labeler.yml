@@ -1,0 +1,33 @@
+name: Jev PR Labeler
+
+# Labels newly opened pull requests, including ones from forks. That needs
+# pull_request_target, because pull_request gives fork runs no secrets and a
+# read-only token. It is safe here only because nothing in this job checks out,
+# builds, or runs the pull request's code: the action reads the event payload
+# and asks the API for the changed-file list. Never add a checkout of the PR head
+# to this job.
+on:
+  pull_request_target:
+    types: [opened]
+
+permissions: {}
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write # labels live on the Issues API, even for a pull request
+      pull-requests: read # to read the changed-file list
+    steps:
+      - name: Label the pull request
+        uses: yamadashy/jev-labeler-action@0c90211a8873cb11913ef43ff13171c0afd74287 # v0.3.1
+        with:
+          api-key: ${{ secrets.TYPESAFE_API_KEY }}
+          # Only the type labels. The issue-side labels (needs discussion, triage,
+          # ...) describe a request, not a change. Bot PRs (Renovate) are skipped
+          # by default.
+          labels: |
+            bug
+            enhancement
+            documentation
