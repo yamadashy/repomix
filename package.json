@@ -1,6 +1,6 @@
 {
   "name": "repomix",
-  "version": "1.18.0",
+  "version": "1.18.1",
   "description": "A tool to pack repository contents to single file for AI consumption",
   "mcpName": "io.github.yamadashy/repomix",
   "main": "./lib/index.js",
