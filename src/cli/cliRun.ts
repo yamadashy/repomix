@@ -358,6 +358,13 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
     logger.setLogLevel(repomixLogLevels.SILENT);
   }
 
+  // The stdio MCP server puts JSON-RPC frames on stdout, so every diagnostic has to leave that
+  // stream for the whole run: the trace dump below, and anything a tool call re-enters here with.
+  // Unlike stdout mode the information is still wanted, which is why it moves rather than silences.
+  if (options.mcp) {
+    logger.setOutputStream('stderr');
+  }
+
   // A positional argument can itself be a remote URL, and `options.remote` holds
   // one by definition, so both are redacted before being dumped.
   logger.trace('directories:', directories.map(redactUrl));

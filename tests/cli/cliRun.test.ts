@@ -37,12 +37,14 @@ vi.mock('../../src/shared/logger', () => ({
       logLevel = level;
     }),
     getLogLevel: vi.fn(() => logLevel),
+    setOutputStream: vi.fn(),
   },
   setLogLevelByWorkerData: vi.fn(),
 }));
 
 vi.mock('../../src/cli/actions/defaultAction');
 vi.mock('../../src/cli/actions/initAction');
+vi.mock('../../src/cli/actions/mcpAction');
 vi.mock('../../src/cli/actions/remoteAction');
 vi.mock('../../src/core/git/gitRemoteHandle');
 vi.mock('../../src/cli/actions/versionAction');
@@ -567,6 +569,37 @@ describe('cliRun', () => {
           stdout: true,
         }),
       );
+    });
+  });
+
+  describe('mcp mode', () => {
+    test('routes diagnostics to stderr because stdout carries the protocol', async () => {
+      const options: CliOptions = {
+        mcp: true,
+        verbose: true,
+      };
+
+      const setOutputStream = vi.mocked(logger.setOutputStream);
+      const trace = vi.mocked(logger.trace);
+
+      await runCli(['.'], process.cwd(), options);
+
+      expect(setOutputStream).toHaveBeenCalledWith('stderr');
+
+      // The option dump is itself diagnostics, so routing decided after it would still corrupt the
+      // first frames a client reads.
+      const dumpCall = trace.mock.calls.findIndex(([first]) => first === 'options:');
+      expect(setOutputStream.mock.invocationCallOrder[0]).toBeLessThan(trace.mock.invocationCallOrder[dumpCall]);
+    });
+
+    test('leaves the stream alone for a normal pack', async () => {
+      const options: CliOptions = {
+        verbose: true,
+      };
+
+      await runCli(['.'], process.cwd(), options);
+
+      expect(vi.mocked(logger.setOutputStream)).not.toHaveBeenCalled();
     });
   });
 });
