@@ -920,6 +920,15 @@ node_modules
       expect(normalizeGlobPattern('**/nested/folder')).toBe('**/nested/folder/**');
     });
 
+    // Appending `/**` to a rule whose last segment is a wildcard makes it match
+    // only *below* a match, so the files the rule names stop being ignored.
+    // These are the shapes used by the built-in default ignore list.
+    test('should not append /** to **/ patterns whose last segment ends with a wildcard', () => {
+      expect(normalizeGlobPattern('**/npm-debug.log*')).toBe('**/npm-debug.log*');
+      expect(normalizeGlobPattern('**/yarn-error.log*')).toBe('**/yarn-error.log*');
+      expect(normalizeGlobPattern('**/repomix-output.*')).toBe('**/repomix-output.*');
+    });
+
     test('should not convert patterns that already have /**', () => {
       expect(normalizeGlobPattern('**/folder/**')).toBe('**/folder/**');
     });
