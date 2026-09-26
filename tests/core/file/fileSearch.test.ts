@@ -9,6 +9,7 @@ import {
   escapeGlobPattern,
   getIgnoreFilePatterns,
   getIgnorePatterns,
+  gitExcludePatternToGlob,
   listDirectories,
   listFiles,
   normalizeGlobPattern,
@@ -279,9 +280,72 @@ temp-files/
 
       const patterns = await getIgnorePatterns('/mock/root', mockConfig);
 
-      // Only test for the exclude file patterns
-      expect(patterns).toContain('*.ignored');
-      expect(patterns).toContain('temp-files/');
+      // Only test for the exclude file patterns. Git matches them at any depth, so they
+      // reach globby with the depth prefix that makes that happen.
+      expect(patterns).toContain('**/*.ignored');
+      expect(patterns).toContain('**/temp-files/');
+    });
+
+    test('should not apply git depth semantics to anchored exclude patterns', async () => {
+      const mockConfig = createMockConfig({
+        ignore: {
+          useGitignore: true,
+          useDefaultPatterns: false,
+          customPatterns: [],
+        },
+      });
+
+      const mockExcludeContent = `
+/nested/secret.txt
+nested/other.txt
+`;
+
+      vi.mocked(fs.readFile).mockImplementation(async (filePath) => {
+        const excludePath = path.join('.git', 'info', 'exclude');
+        if (filePath.toString().endsWith(excludePath)) {
+          return mockExcludeContent;
+        }
+        return '';
+      });
+
+      const patterns = await getIgnorePatterns('/mock/root', mockConfig);
+
+      // Patterns carrying a slash are anchored to the repository root, so they stay as-is.
+      expect(patterns).toContain('nested/secret.txt');
+      expect(patterns).toContain('nested/other.txt');
+      expect(patterns).not.toContain('**/nested/secret.txt');
+    });
+
+    test('should leave an exclude file that contains negations untouched', async () => {
+      const mockConfig = createMockConfig({
+        ignore: {
+          useGitignore: true,
+          useDefaultPatterns: false,
+          customPatterns: [],
+        },
+      });
+
+      const mockExcludeContent = `
+*.log
+!important.log
+`;
+
+      vi.mocked(fs.readFile).mockImplementation(async (filePath) => {
+        const excludePath = path.join('.git', 'info', 'exclude');
+        if (filePath.toString().endsWith(excludePath)) {
+          return mockExcludeContent;
+        }
+        return '';
+      });
+
+      const patterns = await getIgnorePatterns('/mock/root', mockConfig);
+
+      // globby's `ignore` cannot re-include, so `!important.log` is inert today either way.
+      // Lifting `*.log` beside it would additionally hide `nested/important.log`, which Git
+      // packs, so the whole rule set keeps its current meaning instead.
+      expect(patterns).toContain('*.log');
+      expect(patterns).toContain('!important.log');
+      expect(patterns).not.toContain('**/*.log');
     });
 
     test('should use POSIX separators for a nested output file path (Windows)', async () => {
@@ -328,6 +392,24 @@ node_modules
       const patterns = parseIgnoreContent(content);
 
       expect(patterns).toEqual(['node_modules', '*.log', '.DS_Store']);
+    });
+  });
+
+  describe('gitExcludePatternToGlob', () => {
+    test('should match git by making slash-free patterns apply at any depth', () => {
+      expect(gitExcludePatternToGlob('secret.txt')).toBe('**/secret.txt');
+      expect(gitExcludePatternToGlob('*.log')).toBe('**/*.log');
+      expect(gitExcludePatternToGlob('build/')).toBe('**/build/');
+    });
+
+    test('should keep patterns that git anchors to the exclude file directory', () => {
+      expect(gitExcludePatternToGlob('nested/secret.txt')).toBe('nested/secret.txt');
+      expect(gitExcludePatternToGlob('/secret.txt')).toBe('secret.txt');
+      expect(gitExcludePatternToGlob('/nested/secret.txt')).toBe('nested/secret.txt');
+    });
+
+    test('should leave negations untouched', () => {
+      expect(gitExcludePatternToGlob('!secret.txt')).toBe('!secret.txt');
     });
   });
 
