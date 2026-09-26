@@ -113,7 +113,7 @@ jobs:
           '
 
       - name: Store benchmark result
-        uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1.22.1
+        uses: benchmark-action/github-action-benchmark@4322e5726e6334590d251fc4f92bec0efafc45dc # v1.22.2
         with:
           name: ${{ github.ref == 'refs/heads/main' && 'Repomix Performance' || 'Repomix Performance (auto-perf-tuning)' }}
           benchmark-data-dir-path: ${{ github.ref == 'refs/heads/main' && 'dev/bench' || 'dev/bench/auto-perf-tuning' }}
