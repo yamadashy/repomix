@@ -3,6 +3,9 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { runCli } from '../../../src/cli/cliRun.js';
+import type { CliOptions } from '../../../src/cli/types.js';
+import { logger, repomixLogLevels } from '../../../src/shared/logger.js';
 
 // Type guard for structured content with result property
 function hasResult(obj: unknown): obj is { result: string } {
@@ -22,12 +25,15 @@ import {
   generateOutputId,
   getOutputFilePath,
   registerOutputFile,
+  runCliPreservingLogLevel,
 } from '../../../src/mcp/tools/mcpToolRuntime.js';
 
 vi.mock('node:fs/promises');
 vi.mock('node:path');
 vi.mock('node:os');
 vi.mock('node:crypto');
+// The CLI is only observed here: runCli itself owns the log level the wrapper protects.
+vi.mock('../../../src/cli/cliRun.js');
 
 describe('mcpToolRuntime', () => {
   beforeEach(() => {
@@ -389,6 +395,90 @@ describe('mcpToolRuntime', () => {
         ],
         structuredContent: errorContent,
       });
+    });
+  });
+
+  describe('runCliPreservingLogLevel', () => {
+    const cliOptions = {} as CliOptions;
+
+    const deferred = () => {
+      let release = (): void => {};
+      const promise = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return { promise, resolve: () => release() };
+    };
+
+    const cliSilencesTheLogger = () => {
+      vi.mocked(runCli).mockImplementation(async () => {
+        // What runCli does for { quiet: true } / stdout mode: repoint the shared
+        // singleton and leave it there.
+        logger.setLogLevel(repomixLogLevels.SILENT);
+        return undefined;
+      });
+    };
+
+    it('should restore the log level the CLI overwrote for a quiet pack', async () => {
+      logger.setLogLevel(repomixLogLevels.DEBUG);
+      cliSilencesTheLogger();
+
+      await runCliPreservingLogLevel(['.'], '/repo', cliOptions);
+
+      expect(logger.getLogLevel()).toBe(repomixLogLevels.DEBUG);
+    });
+
+    it('should restore the log level when the pack fails', async () => {
+      logger.setLogLevel(repomixLogLevels.INFO);
+      vi.mocked(runCli).mockImplementation(async () => {
+        logger.setLogLevel(repomixLogLevels.SILENT);
+        throw new Error('pack failed');
+      });
+
+      await expect(runCliPreservingLogLevel(['.'], '/repo', cliOptions)).rejects.toThrow('pack failed');
+
+      expect(logger.getLogLevel()).toBe(repomixLogLevels.INFO);
+    });
+
+    it('should restore the level only when the last overlapping pack finishes', async () => {
+      // The MCP SDK does not wait for a running tool handler before starting the next
+      // one, so two quiet packs genuinely overlap.
+      logger.setLogLevel(repomixLogLevels.DEBUG);
+      const gates = [deferred(), deferred()];
+      let started = 0;
+      vi.mocked(runCli).mockImplementation(async () => {
+        const gate = gates[started++];
+        logger.setLogLevel(repomixLogLevels.SILENT);
+        await gate.promise;
+        return undefined;
+      });
+
+      const first = runCliPreservingLogLevel(['.'], '/repo', cliOptions);
+      const second = runCliPreservingLogLevel(['.'], '/repo', cliOptions);
+
+      expect(logger.getLogLevel()).toBe(repomixLogLevels.SILENT);
+
+      gates[0].resolve();
+      await first;
+      expect(logger.getLogLevel()).toBe(repomixLogLevels.SILENT);
+
+      gates[1].resolve();
+      await second;
+      expect(logger.getLogLevel()).toBe(repomixLogLevels.DEBUG);
+    });
+
+    it('should pass the CLI result straight through', async () => {
+      const cliResult = { packResult: {}, config: {} } as unknown as Awaited<ReturnType<typeof runCli>>;
+      vi.mocked(runCli).mockResolvedValue(cliResult);
+
+      await expect(runCliPreservingLogLevel(['.'], '/repo', cliOptions)).resolves.toBe(cliResult);
+    });
+
+    it('should forward directories, cwd and options to the CLI', async () => {
+      cliSilencesTheLogger();
+
+      await runCliPreservingLogLevel(['/a', '/b'], '/cwd', cliOptions);
+
+      expect(runCli).toHaveBeenCalledWith(['/a', '/b'], '/cwd', cliOptions);
     });
   });
 });

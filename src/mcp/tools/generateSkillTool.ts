@@ -3,11 +3,15 @@ import path from 'node:path';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
-import { runCli } from '../../cli/cliRun.js';
 import { getSkillBaseDir } from '../../cli/prompts/skillPrompts.js';
 import type { CliOptions } from '../../cli/types.js';
 import { generateDefaultSkillName, validateSkillName } from '../../core/skill/skillUtils.js';
-import { buildMcpToolErrorResponse, buildMcpToolSuccessResponse, convertErrorToJson } from './mcpToolRuntime.js';
+import {
+  buildMcpToolErrorResponse,
+  buildMcpToolSuccessResponse,
+  convertErrorToJson,
+  runCliPreservingLogLevel,
+} from './mcpToolRuntime.js';
 
 const generateSkillInputSchema = z.object({
   directory: z.string().describe('Directory to pack (Absolute path)'),
@@ -127,7 +131,7 @@ Example Path:
           quiet: true,
         } as CliOptions;
 
-        const result = await runCli(['.'], directory, cliOptions);
+        const result = await runCliPreservingLogLevel(['.'], directory, cliOptions);
         if (!result) {
           return buildMcpToolErrorResponse({
             errorMessage: 'Failed to generate skill',
