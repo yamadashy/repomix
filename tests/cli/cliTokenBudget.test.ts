@@ -20,6 +20,10 @@ describe('validateTokenBudget', () => {
   });
 
   test('includes the actual and budget token counts in the message', () => {
-    expect(() => validateTokenBudget(243512, 180000)).toThrow(/243,512 > 180,000 tokens/);
+    // The message formats the counts with toLocaleString(), so the separators depend on the
+    // machine's locale (en-IN prints 2,43,512).
+    expect(() => validateTokenBudget(243512, 180000)).toThrow(
+      `${(243512).toLocaleString()} > ${(180000).toLocaleString()} tokens`,
+    );
   });
 });
