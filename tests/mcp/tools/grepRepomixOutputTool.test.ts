@@ -306,19 +306,19 @@ describe('grepRepomixOutputTool', () => {
     it('should format results with equal before and after context lines', () => {
       const result = formatSearchResults(lines, matches, 1, 1);
 
-      expect(result).toEqual(['1-line 1', '2:pattern match', '3-line 3', '--', '4:another pattern', '5-line 5']);
+      expect(result).toEqual(['1-line 1', '2:pattern match', '3-line 3', '4:another pattern', '5-line 5']);
     });
 
     it('should format results with different before and after context lines', () => {
       const result = formatSearchResults(lines, matches, 1, 0);
 
-      expect(result).toEqual(['1-line 1', '2:pattern match', '--', '3-line 3', '4:another pattern']);
+      expect(result).toEqual(['1-line 1', '2:pattern match', '3-line 3', '4:another pattern']);
     });
 
     it('should format results with only after context lines', () => {
       const result = formatSearchResults(lines, matches, 0, 1);
 
-      expect(result).toEqual(['2:pattern match', '3-line 3', '--', '4:another pattern', '5-line 5']);
+      expect(result).toEqual(['2:pattern match', '3-line 3', '4:another pattern', '5-line 5']);
     });
 
     it('should format results with more before than after context lines', () => {
@@ -330,14 +330,46 @@ describe('grepRepomixOutputTool', () => {
 
       const result = formatSearchResults(extendedLines, extendedMatches, 2, 1);
 
+      expect(result).toEqual(['1-line 0', '2-line 1', '3:pattern match', '4-line 3', '5:another pattern', '6-line 5']);
+    });
+
+    it('should separate only groups with lines between them', () => {
+      const spacedLines = ['line 1', 'pattern match', 'line 3', 'line 4', 'another pattern'];
+      const spacedMatches = [
+        { lineNumber: 2, line: 'pattern match', matchedText: 'pattern' },
+        { lineNumber: 5, line: 'another pattern', matchedText: 'pattern' },
+      ];
+
+      const result = formatSearchResults(spacedLines, spacedMatches, 0, 1);
+
+      expect(result).toEqual(['2:pattern match', '3-line 3', '--', '5:another pattern']);
+    });
+
+    it('should not separate context blocks that overlap each other', () => {
+      const denseLines = Array.from({ length: 44 }, (_, index) => `line ${index + 1}`);
+      const denseMatches = [
+        { lineNumber: 2, line: 'line 2', matchedText: 'line 2' },
+        { lineNumber: 40, line: 'line 40', matchedText: 'line 40' },
+        { lineNumber: 41, line: 'line 41', matchedText: 'line 41' },
+      ];
+
+      const result = formatSearchResults(denseLines, denseMatches, 3, 3);
+
       expect(result).toEqual([
-        '1-line 0',
-        '2-line 1',
-        '3:pattern match',
-        '4-line 3',
+        '1-line 1',
+        '2:line 2',
+        '3-line 3',
+        '4-line 4',
+        '5-line 5',
         '--',
-        '5:another pattern',
-        '6-line 5',
+        '37-line 37',
+        '38-line 38',
+        '39-line 39',
+        '40:line 40',
+        '41:line 41',
+        '42-line 42',
+        '43-line 43',
+        '44-line 44',
       ]);
     });
 
@@ -354,8 +386,8 @@ describe('grepRepomixOutputTool', () => {
 
       const result = formatSearchResults(lines, closeMatches, 1, 1);
 
-      // Should not duplicate lines and should merge overlapping contexts
-      expect(result).toEqual(['1-line 1', '2:pattern match', '3-line 3', '4-another pattern']);
+      // Should not duplicate lines and should merge overlapping contexts, keeping `:` on matches.
+      expect(result).toEqual(['1-line 1', '2:pattern match', '3:line 3', '4-another pattern']);
     });
   });
 
@@ -669,8 +701,9 @@ describe('grepRepomixOutputTool', () => {
       expect(parsedResult.description).toContain('Found 4 match(es)');
       const formattedOutputString = parsedResult.formattedOutput.join('\n');
       expect(formattedOutputString).toContain('1:English line');
-      expect(formattedOutputString).toContain('2-日本語とEnglish混在');
-      expect(formattedOutputString).toContain('3-中文和English混合');
+      expect(formattedOutputString).toContain('2:日本語とEnglish混在');
+      expect(formattedOutputString).toContain('3:中文和English混合');
+      expect(formattedOutputString).toContain('4-🌟 mixed content');
       expect(formattedOutputString).toContain('5:नमस्ते English');
     });
 
