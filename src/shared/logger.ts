@@ -14,6 +14,7 @@ export type RepomixLogLevel = (typeof repomixLogLevels)[keyof typeof repomixLogL
 
 class RepomixLogger {
   private level: RepomixLogLevel = repomixLogLevels.INFO;
+  private outputLevel: 'stdout' | 'stderr' = 'stdout';
 
   constructor() {
     this.init();
@@ -21,6 +22,7 @@ class RepomixLogger {
 
   init() {
     this.setLogLevel(repomixLogLevels.INFO);
+    this.setOutputStream('stdout');
   }
 
   setLogLevel(level: RepomixLogLevel) {
@@ -31,6 +33,23 @@ class RepomixLogger {
     return this.level;
   }
 
+  /**
+   * Where everything except {@link RepomixLogger.error} is written. stdout carries the stdio MCP
+   * server's JSON-RPC frames, so that server points this at stderr to keep diagnostics from being
+   * parsed as protocol.
+   */
+  setOutputStream(stream: 'stdout' | 'stderr') {
+    this.outputLevel = stream;
+  }
+
+  private write(message: string) {
+    if (this.outputLevel === 'stderr') {
+      console.error(message);
+    } else {
+      console.log(message);
+    }
+  }
+
   error(...args: unknown[]) {
     if (this.level >= repomixLogLevels.ERROR) {
       console.error(pc.red(this.formatArgs(args)));
@@ -39,43 +58,43 @@ class RepomixLogger {
 
   warn(...args: unknown[]) {
     if (this.level >= repomixLogLevels.WARN) {
-      console.log(pc.yellow(this.formatArgs(args)));
+      this.write(pc.yellow(this.formatArgs(args)));
     }
   }
 
   success(...args: unknown[]) {
     if (this.level >= repomixLogLevels.INFO) {
-      console.log(pc.green(this.formatArgs(args)));
+      this.write(pc.green(this.formatArgs(args)));
     }
   }
 
   info(...args: unknown[]) {
     if (this.level >= repomixLogLevels.INFO) {
-      console.log(pc.cyan(this.formatArgs(args)));
+      this.write(pc.cyan(this.formatArgs(args)));
     }
   }
 
   log(...args: unknown[]) {
     if (this.level >= repomixLogLevels.INFO) {
-      console.log(this.formatArgs(args));
+      this.write(this.formatArgs(args));
     }
   }
 
   note(...args: unknown[]) {
     if (this.level >= repomixLogLevels.INFO) {
-      console.log(pc.dim(this.formatArgs(args)));
+      this.write(pc.dim(this.formatArgs(args)));
     }
   }
 
   debug(...args: unknown[]) {
     if (this.level >= repomixLogLevels.DEBUG) {
-      console.log(pc.blue(this.formatArgs(args)));
+      this.write(pc.blue(this.formatArgs(args)));
     }
   }
 
   trace(...args: unknown[]) {
     if (this.level >= repomixLogLevels.DEBUG) {
-      console.log(pc.gray(this.formatArgs(args)));
+      this.write(pc.gray(this.formatArgs(args)));
     }
   }
 
