@@ -67,7 +67,8 @@ export interface CliOptions extends OptionValues {
 
   // MCP
   mcp?: boolean;
-  sandbox?: boolean | string;
+  sandbox?: boolean | string; // --sandbox: software path guard only (portable).
+  sandboxStrict?: boolean | string; // --sandbox-strict: software guard + REQUIRED OS kernel sandbox (fail-closed).
 
   // Skill Generation
   skillGenerate?: string | boolean;

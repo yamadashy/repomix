@@ -1,4 +1,5 @@
 import { logger } from '../../shared/logger.js';
+import { isSandboxedProcess } from '../../shared/sandboxEnv.js';
 import { execGitLogFilenames, execGitRevParse, execGitVersion } from './gitCommand.js';
 
 export const getFileChangeCount = async (
@@ -30,6 +31,8 @@ export const isGitRepository = async (
     execGitRevParse,
   },
 ): Promise<boolean> => {
+  // Second git choke point (diffs/logs reach git through here, not isGitInstalled).
+  if (isSandboxedProcess()) return false;
   try {
     await deps.execGitRevParse(directory);
     return true;
@@ -43,6 +46,9 @@ export const isGitInstalled = async (
     execGitVersion,
   },
 ): Promise<boolean> => {
+  // A git child hangs under Windows AppContainer, and git is out of scope for a
+  // confined single-workspace pack — report it unavailable so callers skip it.
+  if (isSandboxedProcess()) return false;
   try {
     const result = await deps.execGitVersion();
     return !result.includes('error') && result.includes('git version');
