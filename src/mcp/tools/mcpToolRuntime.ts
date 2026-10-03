@@ -3,8 +3,11 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
+import { runCli } from '../../cli/cliRun.js';
+import type { CliOptions } from '../../cli/types.js';
 import { generateTreeString } from '../../core/file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../../core/file/fileTypes.js';
+import { logger, type RepomixLogLevel } from '../../shared/logger.js';
 import { getRepomixTmpDir } from '../../shared/tmpDir.js';
 import { PathScopeError, resolveWithinRoot, toVirtualPath } from '../pathScope.js';
 
@@ -158,6 +161,47 @@ export const createToolWorkspace = async (): Promise<string> => {
  */
 export const generateOutputId = (): string => {
   return crypto.randomBytes(8).toString('hex');
+};
+
+/**
+ * Level the MCP server was running at before the first in-flight pack changed it, and how
+ * many packs are in flight. See {@link runCliPreservingLogLevel}.
+ */
+let logLevelBeforePacks: RepomixLogLevel | undefined;
+let activePacks = 0;
+
+/**
+ * Run the CLI from an MCP tool without losing the operator's diagnostics.
+ *
+ * `runCli` drives the *shared* logger singleton to the level implied by its options
+ * (`quiet`/`stdout` => SILENT) and never restores it, because a one-shot CLI process
+ * is about to exit anyway. The MCP server is long-lived, so the change outlives the
+ * call: after a single quiet pack, every later `logger.error` from any tool is dropped
+ * for the rest of the session, leaving operator-side failures undiagnosable.
+ *
+ * The level is therefore saved once and put back only by the *last* pack still standing.
+ * Restoring per call would be wrong: the MCP SDK starts each tool handler without
+ * waiting for the previous one, so two overlapping quiet packs would have the second
+ * saving the SILENT level the first one just installed, and restoring *that* on the way
+ * out would re-blind the session. Packing stays serialized on the log level this way —
+ * no pack can raise it while another one still expects silence.
+ */
+export const runCliPreservingLogLevel = async (
+  directories: string[],
+  cwd: string,
+  options: CliOptions,
+): Promise<Awaited<ReturnType<typeof runCli>>> => {
+  if (activePacks === 0) logLevelBeforePacks = logger.getLogLevel();
+  activePacks++;
+  try {
+    return await runCli(directories, cwd, options);
+  } finally {
+    activePacks--;
+    if (activePacks === 0 && logLevelBeforePacks !== undefined) {
+      logger.setLogLevel(logLevelBeforePacks);
+      logLevelBeforePacks = undefined;
+    }
+  }
 };
 
 /**
