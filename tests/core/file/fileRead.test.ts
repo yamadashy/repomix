@@ -1,6 +1,7 @@
 import * as fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import iconv from 'iconv-lite';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { readRawFile } from '../../../src/core/file/fileRead.js';
 
@@ -175,6 +176,79 @@ def hello():
 
     expect(result.skippedReason).toBeUndefined();
     expect(result.content).toBe('\0A');
+  });
+
+  test('should read Shift-JIS source instead of dropping it as binary (Issue #1878)', async () => {
+    // `isbinaryfile` decides from at most 512 bytes and counts every high byte
+    // that is not part of a UTF-8 sequence as suspicious, so double-byte text
+    // scores ~100% suspicious and always comes back binary. Legacy-encoded
+    // source must still reach the jschardet + iconv path and be packed decoded.
+    const filePath = path.join(testDir, 'Big.java');
+    const text = `// こんにちは世界\n${'// データベース接続を初期化して、クエリを実行します。\npublic void processOrder(int id){ repo.save(new Order(id, "注文")); }\n'.repeat(30)}`;
+    await fs.writeFile(filePath, iconv.encode(text, 'shift_jis'));
+
+    const result = await readRawFile(filePath, 1024 * 1024);
+
+    expect(result.skippedReason).toBeUndefined();
+    expect(result.content).toBe(text);
+  });
+
+  test('should read EUC-KR text instead of dropping it as binary (Issue #1878)', async () => {
+    const filePath = path.join(testDir, 'euckr.txt');
+    const text = '안녕하세요 세계\n'.repeat(10);
+    await fs.writeFile(filePath, iconv.encode(text, 'euc-kr'));
+
+    const result = await readRawFile(filePath, 1024 * 1024);
+
+    expect(result.skippedReason).toBeUndefined();
+    expect(result.content).toBe(text);
+  });
+
+  test('should read GBK text instead of dropping it as binary (Issue #1878)', async () => {
+    const filePath = path.join(testDir, 'gbk.txt');
+    const text = '你好世界，这是一个测试文件\n'.repeat(10);
+    await fs.writeFile(filePath, iconv.encode(text, 'gbk'));
+
+    const result = await readRawFile(filePath, 1024 * 1024);
+
+    expect(result.skippedReason).toBeUndefined();
+    expect(result.content).toBe(text);
+  });
+
+  test('should still skip a real binary whose bytes decode without U+FFFD', async () => {
+    // Counterpart to the legacy-encoding tests: accepting decoded text must not
+    // let binaries through. A single-byte codepage maps every byte to some
+    // character, so this payload decodes "cleanly" and is rejected only by the
+    // control-character density of the decoded text.
+    const filePath = path.join(testDir, 'payload.data');
+    // No NULL byte (that is handled by the earlier probe) and not valid UTF-8,
+    // so classification happens entirely on the slow path. jschardet settles on
+    // windows-1252, which maps every byte, so the decode produces no U+FFFD —
+    // only the control-character density of the decoded text rejects it.
+    const binary = Buffer.from(
+      Array.from({ length: 800 }, (_, i) => (i % 2 ? 0xc0 + (i % 0x30) : ((i * 5) % 0x1f) + 1)),
+    );
+    await fs.writeFile(filePath, binary);
+
+    const result = await readRawFile(filePath, 1024 * 1024);
+
+    expect(result.content).toBeNull();
+    expect(result.skippedReason).toBe('binary-content');
+  });
+
+  test('should skip legacy-encoded text carrying an XML-invalid C0 control', async () => {
+    // U+0001 is unrepresentable in XML 1.0, just like the NULL byte the earlier
+    // probe rejects. A single one is far below any density threshold, so it has
+    // to be rejected outright rather than averaged away, otherwise it reaches
+    // the default XML output unescaped and breaks downstream parsers.
+    const filePath = path.join(testDir, 'sjis-with-control.txt');
+    const text = `${'こんにちは世界、これはテストです。\n'.repeat(20)}\u0001`;
+    await fs.writeFile(filePath, iconv.encode(text, 'shift_jis'));
+
+    const result = await readRawFile(filePath, 1024 * 1024);
+
+    expect(result.content).toBeNull();
+    expect(result.skippedReason).toBe('binary-content');
   });
 
   test('should decode UTF-16 LE BOM file despite embedded NULL bytes', async () => {
