@@ -23,6 +23,6 @@
     "vite-plugin-pwa": "^1.3.0",
     "vitepress": "^1.6.4",
     "vitepress-plugin-llms": "^1.14.0",
-    "wrangler": "^4.141.0"
+    "wrangler": "^4.147.0"
   }
 }
