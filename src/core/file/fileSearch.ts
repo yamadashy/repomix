@@ -455,6 +455,128 @@ export const getIgnoreFilePatterns = async (config: RepomixConfigMerged): Promis
   return ignoreFilePatterns;
 };
 
+/**
+ * Walk up the directory tree from rootDir, collecting patterns from ancestor
+ * `.ignore` and `.repomixignore` files. `.gitignore` is intentionally excluded —
+ * globby already walks parents for it via its gitignore option.
+ *
+ * Mirrors git's own behavior: the walk stops at the filesystem root, OR at the
+ * git repo boundary if one is found above rootDir (so we don't leak ignore
+ * rules from an unrelated repo the user happens to be nested in).
+ *
+ * Pattern translation (rebased against rootDir):
+ *   - "secret.txt" (no slash) — matches at any depth below the file's
+ *     directory. Since rootDir is a descendant of that directory, this is
+ *     the same as "at any depth below rootDir", so we use a glob of the form '**<slash><pattern>'.
+ *   - "/secret.txt" (rooted) — anchored to the file's directory, which is
+ *     above rootDir. Targets files outside rootDir's subtree. Skipped.
+ *   - "src/secret.txt" (relative) — targets files under the file's
+ *     `src/` subdirectory. Mostly outside rootDir's subtree; the only case
+ *     where it would apply is when rootDir itself lives under that
+ *     subdirectory, which is a niche enough case to skip here — users can
+ *     write a more explicit rule for it. Skipped.
+ *   - Negation patterns ("!...") are kept and passed through.
+ *
+ * Files that can't be read are skipped silently — the same way globby
+ * handles unreadable .gitignore files.
+ */
+const collectAncestorIgnoreFilePatterns = async (
+  rootDir: string,
+  enabledFileNames: ReadonlySet<string>,
+): Promise<string[]> => {
+  if (enabledFileNames.size === 0) {
+    return [];
+  }
+
+  const absoluteRoot = path.resolve(rootDir);
+  const collected: string[] = [];
+
+  // Walk up to find the git root (if any). We bound the walk there, the same way
+  // globby bounds its parent .gitignore search — beyond a repo boundary the
+  // .ignore / .repomixignore files belong to a different project.
+  let gitRoot: string | undefined;
+  let cursor = path.dirname(absoluteRoot);
+  while (true) {
+    const gitPath = path.join(cursor, '.git');
+    try {
+      const stat = await fs.stat(gitPath);
+      if (stat.isDirectory() || stat.isFile()) {
+        gitRoot = cursor;
+        break;
+      }
+    } catch {
+      // .git not present here; keep walking
+    }
+    const parent = path.dirname(cursor);
+    if (parent === cursor) {
+      break;
+    }
+    cursor = parent;
+  }
+
+  const walkRoot = gitRoot ? path.dirname(gitRoot) : path.dirname(path.parse(absoluteRoot).root);
+  cursor = path.dirname(absoluteRoot);
+  while (cursor.length >= walkRoot.length && cursor !== walkRoot) {
+    for (const fileName of enabledFileNames) {
+      const filePath = path.join(cursor, fileName);
+      try {
+        const content = await fs.readFile(filePath, 'utf8');
+        const patterns = parseIgnoreContent(content);
+        for (const pattern of patterns) {
+          const translated = translateAncestorPattern(pattern);
+          if (translated !== null) {
+            collected.push(translated);
+          }
+        }
+      } catch {
+        // File doesn't exist or can't be read — skip silently.
+      }
+    }
+    const parent = path.dirname(cursor);
+    if (parent === cursor) {
+      break;
+    }
+    cursor = parent;
+  }
+
+  return collected;
+};
+
+/**
+ * Translate a single gitignore-style pattern from an ancestor ignore file
+ * into a globby-compatible pattern rebased against the current rootDir.
+ *
+ * Returns null if the pattern targets files outside rootDir's subtree
+ * (rooted or relative patterns from an ancestor directory).
+ *
+ * `base` is the path from rootDir to the directory holding the ignore file,
+ * already in POSIX form (may be empty if the file is in rootDir itself).
+ */
+const translateAncestorPattern = (pattern: string): string | null => {
+  const isNegative = pattern.startsWith('!');
+  const cleanPattern = isNegative ? pattern.slice(1) : pattern;
+  if (!cleanPattern) {
+    return null;
+  }
+
+  const slashIndex = cleanPattern.indexOf('/');
+  const hasNonTrailingSlash = slashIndex !== -1 && slashIndex !== cleanPattern.length - 1;
+
+  let result: string | null;
+  if (!hasNonTrailingSlash) {
+    // Matches at any depth below the file's directory. Since rootDir is a
+    // descendant of that directory, the same set of files matches at any
+    // depth below rootDir — so a `<two-asterisks>/<pattern>` glob works for all cases.
+    result = `**/${cleanPattern}`;
+  } else {
+    // Rooted ("/foo") or relative ("src/foo") patterns target files outside
+    // rootDir's subtree. Skip them — they're not relevant to this run.
+    result = null;
+  }
+
+  return result !== null && isNegative ? `!${result}` : result;
+};
+
 export const getIgnorePatterns = async (rootDir: string, config: RepomixConfigMerged): Promise<string[]> => {
   const ignorePatterns = new Set<string>();
 
@@ -485,6 +607,21 @@ export const getIgnorePatterns = async (rootDir: string, config: RepomixConfigMe
     for (const pattern of config.ignore.customPatterns) {
       ignorePatterns.add(pattern);
     }
+  }
+
+  // Add patterns from ancestor .ignore / .repomixignore files. Globby's
+  // `ignoreFiles` option does not walk parents, so we collect ancestor
+  // patterns here and feed them as globs to globby's `ignore` option.
+  // `.gitignore` is excluded — globby handles its ancestor walk via the
+  // gitignore option.
+  const ancestorFileNames = new Set<string>();
+  if (config.ignore.useDotIgnore) {
+    ancestorFileNames.add('.ignore');
+  }
+  ancestorFileNames.add('.repomixignore');
+  const ancestorPatterns = await collectAncestorIgnoreFilePatterns(rootDir, ancestorFileNames);
+  for (const pattern of ancestorPatterns) {
+    ignorePatterns.add(pattern);
   }
 
   // Add patterns from .git/info/exclude if useGitignore is enabled
