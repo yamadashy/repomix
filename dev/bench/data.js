@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791007633850,
+  "lastUpdate": 1791007754998,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -13538,6 +13538,51 @@ window.BENCHMARK_DATA = {
             "range": "±19",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1220ms, Q3: 1239ms\nAll times: 1210, 1214, 1214, 1214, 1220, 1220, 1222, 1225, 1227, 1228, 1228, 1232, 1234, 1236, 1237, 1239, 1242, 1252, 1255, 1312ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8d6429121e98ed178e4d3a975c2bdbbecc958c4a",
+          "message": "Merge pull request #1908 from yamadashy/dependabot/npm_and_yarn/npm_and_yarn-856e5501c7\n\nchore(deps): bump the npm_and_yarn group across 2 directories with 1 update",
+          "timestamp": "2026-10-03T15:05:16+09:00",
+          "tree_id": "c47f5f081a9134bdd88672226e914425361d54f9",
+          "url": "https://github.com/yamadashy/repomix/commit/8d6429121e98ed178e4d3a975c2bdbbecc958c4a"
+        },
+        "date": 1791007753789,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 622,
+            "range": "±86",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 565ms, Q3: 651ms\nAll times: 544, 547, 551, 553, 561, 562, 563, 565, 572, 574, 575, 576, 577, 578, 594, 622, 624, 629, 629, 638, 642, 647, 651, 664, 669, 671, 677, 681, 752, 777ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 738,
+            "range": "±20",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 730ms, Q3: 750ms\nAll times: 710, 727, 727, 729, 729, 730, 730, 732, 733, 735, 738, 741, 743, 744, 749, 750, 769, 771, 780, 826ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 979,
+            "range": "±20",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 967ms, Q3: 987ms\nAll times: 944, 955, 960, 966, 967, 967, 967, 976, 977, 978, 979, 980, 984, 985, 986, 987, 989, 992, 994, 1001ms"
           }
         ]
       }
