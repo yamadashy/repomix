@@ -1,0 +1,21 @@
+{
+  "name": "repomix-placeholder-cli",
+  "version": "1.0.0",
+  "description": "Placeholder for repomix CLI for packaging test.",
+  "main": "bin/repomix_placeholder.js",
+  "bin": {
+    "repomix-placeholder": "bin/repomix_placeholder.js"
+  },
+  "scripts": {
+    "start": "node bin/repomix_placeholder.js"
+  },
+  "dependencies": {
+    "minimist": "^1.2.5" 
+  },
+  "pkg": {
+    "scripts": "bin/repomix_placeholder.js",
+    "targets": ["node18-win-x64", "node18-macos-x64", "node18-linux-x64"],
+    "outputPath": "dist"
+  },
+  "license": "MIT"
+}
