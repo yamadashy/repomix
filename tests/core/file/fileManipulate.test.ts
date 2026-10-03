@@ -192,6 +192,24 @@ describe('fileManipulate', () => {
 `,
     },
     {
+      name: 'CSS unquoted URL is not treated as a line comment',
+      ext: '.css',
+      input: `
+        @import url(https://fonts.example.com/css?family=Inter);
+        .logo {
+          background: url(http://example.com/logo.png); /* Logo */
+          content: "/* not a comment */";
+        }
+      `,
+      expected: `
+        @import url(https://fonts.example.com/css?family=Inter);
+        .logo {
+          background: url(http://example.com/logo.png);
+          content: "/* not a comment */";
+        }
+`,
+    },
+    {
       name: 'HTML comment removal',
       ext: '.html',
       input: '<div><!-- Comment -->Content</div>',
