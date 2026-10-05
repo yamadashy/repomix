@@ -284,6 +284,25 @@ temp-files/
       expect(patterns).toContain('temp-files/');
     });
 
+    test('should ignore numbered split output files without excluding similarly named files', async () => {
+      const mockConfig = createMockConfig({
+        cwd: '/mock/root',
+        output: { filePath: 'docs/mycustom.xml', splitOutput: 9216 },
+        ignore: {
+          useGitignore: true,
+          useDefaultPatterns: false,
+          customPatterns: [],
+        },
+      });
+
+      const patterns = await getIgnorePatterns('/mock/root', mockConfig);
+      const splitPartPattern = patterns.find((pattern) => minimatch('docs/mycustom.1.xml', pattern));
+
+      expect(splitPartPattern).toBeDefined();
+      if (!splitPartPattern) return;
+      expect(minimatch('docs/mycustom.notes.xml', splitPartPattern)).toBe(false);
+    });
+
     test('should use POSIX separators for a nested output file path (Windows)', async () => {
       const mockConfig = createMockConfig({
         cwd: '/mock/root',
