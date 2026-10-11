@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791733116376,
+  "lastUpdate": 1791734047809,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -13763,6 +13763,51 @@ window.BENCHMARK_DATA = {
             "range": "±14",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 963ms, Q3: 977ms\nAll times: 955, 956, 957, 959, 960, 963, 963, 963, 964, 964, 969, 971, 971, 972, 974, 977, 978, 979, 989, 1147ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4d0103922570c7be3bfac4ca4bca9cd9e360a31c",
+          "message": "Merge pull request #1919 from yamadashy/renovate/major-root-major-dependencies\n\nfix(deps): update dependency jschardet to v4",
+          "timestamp": "2026-10-12T00:52:32+09:00",
+          "tree_id": "23430cbdf45a6eb521cc41e1bbab03bc99e479e7",
+          "url": "https://github.com/yamadashy/repomix/commit/4d0103922570c7be3bfac4ca4bca9cd9e360a31c"
+        },
+        "date": 1791734046672,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 883,
+            "range": "±389",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 658ms, Q3: 1047ms\nAll times: 580, 599, 620, 622, 626, 632, 649, 658, 679, 751, 809, 819, 831, 865, 878, 883, 904, 932, 1009, 1013, 1021, 1037, 1047, 1049, 1059, 1072, 1122, 1131, 1257, 1388ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 948,
+            "range": "±7",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 944ms, Q3: 951ms\nAll times: 919, 922, 925, 932, 932, 944, 944, 944, 945, 947, 948, 949, 949, 950, 950, 951, 957, 958, 965, 982ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1095,
+            "range": "±10",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1090ms, Q3: 1100ms\nAll times: 1077, 1081, 1084, 1084, 1087, 1090, 1091, 1092, 1093, 1093, 1095, 1098, 1098, 1098, 1099, 1100, 1103, 1103, 1106, 1136ms"
           }
         ]
       }
