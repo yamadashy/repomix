@@ -305,6 +305,142 @@ temp-files/
       expect(patterns).toContain('docs/repomix-output.xml');
       expect(patterns).not.toContain('docs\\repomix-output.xml');
     });
+
+    test.runIf(!isWindows)('should rebase ancestor .repomixignore patterns relative to rootDir', async () => {
+      // Reproduces yamadashy/repomix#1872: when repomix is pointed at a
+      // subdirectory, an ancestor `.repomixignore` was silently dropped. With
+      // the fix, `repomix packages/foo` honors the project's root
+      // `.repomixignore` — the pattern rebases against rootDir so globby
+      // matches `packages/foo/secret.txt`, not the literal string from
+      // elsewhere on disk.
+      const mockConfig = createMockConfig({
+        ignore: {
+          useGitignore: false,
+          useDotIgnore: false,
+          useDefaultPatterns: false,
+          customPatterns: [],
+        },
+      });
+
+      // /parent/.repomixignore holds the rule; we're invoking getIgnorePatterns
+      // with rootDir = /parent/sub, so the file is one directory above us.
+      vi.mocked(fs.stat).mockImplementation(async () => {
+        throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+      });
+      vi.mocked(fs.readFile).mockImplementation(async (filePath) => {
+        if (filePath.toString().endsWith('/parent/.repomixignore')) {
+          return 'secret.txt\n';
+        }
+        throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+      });
+
+      const patterns = await getIgnorePatterns('/parent/sub', mockConfig);
+
+      // `secret.txt` (no slash) matches at any depth below the file's
+      // directory. The file lives at /parent, rootDir is /parent/sub, so the
+      // rebased pattern should match any secret.txt below rootDir.
+      expect(patterns).toContain('**/secret.txt');
+    });
+
+    test.runIf(!isWindows)('should anchor leading-slash ancestor .ignore patterns to the file directory', async () => {
+      // `/secret.txt` (leading slash) is anchored to the directory holding
+      // the .ignore file — it should NOT descend below it. With rootDir one
+      // level below, the rebased pattern must be `sub/secret.txt`, not
+      // `sub/**/secret.txt`.
+      const mockConfig = createMockConfig({
+        ignore: {
+          useGitignore: false,
+          useDotIgnore: true,
+          useDefaultPatterns: false,
+          customPatterns: [],
+        },
+      });
+
+      vi.mocked(fs.stat).mockImplementation(async () => {
+        throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+      });
+      vi.mocked(fs.readFile).mockImplementation(async (filePath) => {
+        if (filePath.toString().endsWith('/parent/.ignore')) {
+          return '/secret.txt\n';
+        }
+        throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+      });
+
+      const patterns = await getIgnorePatterns('/parent/sub', mockConfig);
+
+      // Anchored patterns target files outside rootDir's subtree, so they're
+      // skipped entirely — they don't end up in the returned list.
+      expect(patterns).not.toContain('**/secret.txt');
+      expect(patterns).not.toContain('sub/secret.txt');
+    });
+
+    test.runIf(!isWindows)('should not collect ancestor .ignore patterns when useDotIgnore is false', async () => {
+      // Sanity check: turning off useDotIgnore should also stop the
+      // ancestor walk for .ignore files. .repomixignore stays on by default.
+      const mockConfig = createMockConfig({
+        ignore: {
+          useGitignore: false,
+          useDotIgnore: false,
+          useDefaultPatterns: false,
+          customPatterns: [],
+        },
+      });
+
+      vi.mocked(fs.stat).mockImplementation(async () => {
+        throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+      });
+      vi.mocked(fs.readFile).mockImplementation(async (filePath) => {
+        if (filePath.toString().endsWith('/parent/.ignore')) {
+          return 'ignored.txt\n';
+        }
+        if (filePath.toString().endsWith('/parent/.repomixignore')) {
+          return 'secret.txt\n';
+        }
+        throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+      });
+
+      const patterns = await getIgnorePatterns('/parent/sub', mockConfig);
+
+      expect(patterns).toContain('**/secret.txt');
+      expect(patterns).not.toContain('**/ignored.txt');
+    });
+
+    test.runIf(!isWindows)('should stop ancestor walk at the git repo boundary', async () => {
+      // The walk must not leak into a different repo's ignore files. If
+      // /parent happens to be inside an unrelated git repo, we should stop
+      // at /parent's parent, not at /parent's own boundary.
+      const mockConfig = createMockConfig({
+        ignore: {
+          useGitignore: false,
+          useDotIgnore: false,
+          useDefaultPatterns: false,
+          customPatterns: [],
+        },
+      });
+
+      vi.mocked(fs.stat).mockImplementation(async (filePath) => {
+        if (filePath.toString().endsWith('/.git')) {
+          // Pretend a .git directory lives at /parent — the walk stops one
+          // level above it, so /grandparent is the bound.
+          return { isDirectory: () => true, isFile: () => false } as Stats;
+        }
+        throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+      });
+      vi.mocked(fs.readFile).mockImplementation(async (filePath) => {
+        if (filePath.toString().endsWith('/parent/.repomixignore')) {
+          return 'inside.txt\n';
+        }
+        if (filePath.toString().endsWith('/grandparent/.repomixignore')) {
+          return 'outside.txt\n';
+        }
+        throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+      });
+
+      const patterns = await getIgnorePatterns('/parent/sub', mockConfig);
+
+      expect(patterns).toContain('**/inside.txt');
+      expect(patterns).not.toContain('STAR-STAR/outside.txt');
+    });
   });
 
   describe('parseIgnoreContent', () => {
