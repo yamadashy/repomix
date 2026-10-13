@@ -477,6 +477,13 @@ export const getIgnorePatterns = async (rootDir: string, config: RepomixConfigMe
     logger.trace('Adding output file to ignore patterns:', relativeToTargetPath);
 
     ignorePatterns.add(relativeToTargetPath);
+
+    if (config.output.splitOutput) {
+      const extension = path.posix.extname(relativeToTargetPath);
+      const outputBasePath = extension ? relativeToTargetPath.slice(0, -extension.length) : relativeToTargetPath;
+      const splitOutputPattern = `${escapeGlobPattern(outputBasePath)}.+([0-9])${escapeGlobPattern(extension)}`;
+      ignorePatterns.add(splitOutputPattern);
+    }
   }
 
   // Add custom ignore patterns
