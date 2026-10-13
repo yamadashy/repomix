@@ -288,24 +288,31 @@ export const formatSearchResults = (
 
   const resultLines: string[] = [];
   const addedLines = new Set<number>();
+  const matchedLineNumbers = new Set(matches.map((match) => match.lineNumber));
+
+  // `--` means "lines are missing here", so the gap has to be measured against the block emitted
+  // just before, not against the first line of the whole output.
+  let lastBlockEnd = -1;
 
   for (const match of matches) {
     const start = Math.max(0, match.lineNumber - 1 - beforeLines);
     const end = Math.min(lines.length - 1, match.lineNumber - 1 + afterLines);
 
-    // Add separator if there's a gap between previous and current context
-    if (resultLines.length > 0 && start > Math.min(...addedLines) + 1) {
+    if (resultLines.length > 0 && start > lastBlockEnd + 1) {
       resultLines.push('--');
     }
 
     for (let i = start; i <= end; i++) {
       if (!addedLines.has(i)) {
         const lineNum = i + 1;
-        const prefix = i === match.lineNumber - 1 ? `${lineNum}:` : `${lineNum}-`;
+        // A match keeps its `:` prefix even when an earlier match's context emitted the line first.
+        const prefix = matchedLineNumbers.has(lineNum) ? `${lineNum}:` : `${lineNum}-`;
         resultLines.push(`${prefix}${lines[i]}`);
         addedLines.add(i);
       }
     }
+
+    lastBlockEnd = Math.max(lastBlockEnd, end);
   }
 
   return resultLines;
