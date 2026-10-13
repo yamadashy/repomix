@@ -81,8 +81,12 @@ export const normalizeGlobPattern = (pattern: string): string => {
     return pattern.slice(0, -1);
   }
 
-  // Convert **/folder to **/folder/** for consistent ignore pattern behavior
-  if (pattern.startsWith('**/') && !pattern.includes('/**')) {
+  // Convert **/folder to **/folder/** for consistent ignore pattern behavior.
+  // Only for directory-shaped patterns: appending `/**` to a rule whose last
+  // segment is a wildcard (`**/npm-debug.log*`) turns it into a rule that
+  // requires something *below* the match, so the file it names stops matching
+  // and the ignore silently stops working.
+  if (pattern.startsWith('**/') && !pattern.includes('/**') && !pattern.endsWith('*')) {
     return `${pattern}/**`;
   }
 
