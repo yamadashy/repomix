@@ -4,6 +4,7 @@ import { lintSource } from '@secretlint/core';
 import { creator } from '@secretlint/secretlint-rule-preset-recommend';
 import type { SecretLintCoreConfig } from '@secretlint/types';
 import { logger, setLogLevelByWorkerData } from '../../../shared/logger.js';
+import { isSandboxedProcess } from '../../../shared/sandboxEnv.js';
 
 // Initialize logger configuration from workerData at module load time
 // This must be called before any logging operations in the worker
@@ -33,7 +34,7 @@ setLogLevelByWorkerData();
 // Replacing `performance.mark` with a no-op therefore neutralizes both (or
 // any number of) copies simultaneously without dependence on module layout.
 //
-// Why the `isMainThread` guard:
+// Why the `isMainThread` guard (and the sandbox exception):
 // This module is also imported from `src/mcp/tools/fileSystemReadFileTool.ts`
 // (for `createSecretLintConfig` / `runSecretLint`), which runs in the MCP
 // server's main process — not a worker thread. Applying the patch there
@@ -45,13 +46,18 @@ setLogLevelByWorkerData();
 // are linted per call, so leaving the profiler active there has no
 // measurable cost.
 //
+// EXCEPTION — the sandboxed MCP server runs the scan inline on the main thread, so
+// it lints the whole repo here and needs the patch too; that server is a dedicated
+// confined process, so no-op'ing `performance.mark` process-wide is harmless.
+//
 // The assignment creates an own property on the `perf_hooks.performance`
 // instance that shadows `Performance.prototype.mark`; the prototype is
 // deliberately left alone so no other `Performance` instance in the worker
 // is affected. The `try/catch` protects against a future Node.js version
 // making the property non-configurable — the optimization would silently
 // skip in that case, but the security check itself keeps working.
-if (!isMainThread) {
+const runningSandboxedInline = isSandboxedProcess();
+if (!isMainThread || runningSandboxedInline) {
   try {
     Object.defineProperty(perf_hooks.performance, 'mark', {
       value: () => undefined,
