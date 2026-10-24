@@ -26,6 +26,11 @@ const execFileAsync = promisify(execFile);
 // a later change adds patch output, so the guarantee does not depend on the exact
 // log arguments. Both are verified to leave legitimate output unchanged.
 const GIT_UNTRUSTED_CONFIG_ARGS = ['-c', 'core.fsmonitor='];
+// git C-quotes bytes outside ASCII by default (core.quotePath=true), so a UTF-8
+// filename comes back as "\346\227\245...". Repomix prints those paths in the
+// git-logs section and uses them as the keys for output.git.sortByChanges, while
+// every other section uses the raw name, so ask git for the raw form.
+const GIT_RAW_PATH_ARGS = ['-c', 'core.quotePath=false'];
 const GIT_LOG_HARDENING_ARGS = ['--no-show-signature', '--no-ext-diff', '--no-textconv'];
 const GIT_DIFF_HARDENING_ARGS = ['--no-ext-diff', '--no-textconv'];
 
@@ -51,6 +56,7 @@ export const execGitLogFilenames = async (
       '-C',
       directory,
       ...GIT_UNTRUSTED_CONFIG_ARGS,
+      ...GIT_RAW_PATH_ARGS,
       'log',
       ...GIT_LOG_HARDENING_ARGS,
       '--pretty=format:',
@@ -242,6 +248,7 @@ export const execGitLog = async (
       '-C',
       directory,
       ...GIT_UNTRUSTED_CONFIG_ARGS,
+      ...GIT_RAW_PATH_ARGS,
       'log',
       ...GIT_LOG_HARDENING_ARGS,
       `--pretty=format:${gitSeparator}%ad|%s`,
