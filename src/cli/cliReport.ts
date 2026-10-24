@@ -43,7 +43,9 @@ export const reportResults = (
     logger.log('');
   }
 
-  if (config.output.tokenCountTree) {
+  // 0 is a valid threshold ("show files with >= 0 tokens"); only `false` or
+  // an unset value disables the tree.
+  if (config.output.tokenCountTree !== false && config.output.tokenCountTree !== undefined) {
     reportTokenCountTree(packResult.processedFiles, packResult.fileTokenCounts, config);
     logger.log('');
   }
