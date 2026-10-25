@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792909935091,
+  "lastUpdate": 1792911440663,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -14393,6 +14393,51 @@ window.BENCHMARK_DATA = {
             "range": "±24",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1255ms, Q3: 1279ms\nAll times: 1231, 1241, 1252, 1252, 1255, 1255, 1256, 1259, 1266, 1268, 1268, 1269, 1271, 1273, 1274, 1279, 1282, 1285, 1286, 1288ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6cd4d18f326ea1d8af5a394f1af71b9a4f91f440",
+          "message": "Merge pull request #1955 from yamadashy/feat/mcp-progress\n\nfeat(mcp): Send progress notifications from long-running pack tools",
+          "timestamp": "2026-10-25T15:55:42+09:00",
+          "tree_id": "6632459024c4937a318a7d432d5bff064ed7faf0",
+          "url": "https://github.com/yamadashy/repomix/commit/6cd4d18f326ea1d8af5a394f1af71b9a4f91f440"
+        },
+        "date": 1792911439076,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1236,
+            "range": "±184",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1147ms, Q3: 1331ms\nAll times: 864, 971, 973, 1020, 1027, 1108, 1130, 1147, 1148, 1169, 1174, 1177, 1204, 1219, 1221, 1236, 1245, 1251, 1257, 1266, 1285, 1314, 1331, 1376, 1389, 1398, 1414, 1444, 1458, 1461ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 941,
+            "range": "±22",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 936ms, Q3: 958ms\nAll times: 916, 919, 920, 921, 928, 936, 937, 938, 938, 939, 941, 941, 942, 953, 954, 958, 961, 963, 1054, 1086ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 998,
+            "range": "±62",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 983ms, Q3: 1045ms\nAll times: 971, 972, 978, 978, 980, 983, 986, 990, 994, 997, 998, 998, 1002, 1010, 1019, 1045, 1049, 1080, 1143, 1154ms"
           }
         ]
       }
