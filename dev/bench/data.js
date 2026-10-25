@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792931039454,
+  "lastUpdate": 1792934494340,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -14708,6 +14708,51 @@ window.BENCHMARK_DATA = {
             "range": "±22",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 810ms, Q3: 832ms\nAll times: 749, 769, 793, 803, 809, 810, 812, 818, 819, 819, 824, 828, 829, 831, 832, 832, 836, 837, 840, 844ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c72454e738dfddda7dd134b6ad8bd9b5f558ce3d",
+          "message": "Merge pull request #1867 from sxh313/fix/mcp-diagnostics-on-stderr\n\nfix(cli): keep --mcp diagnostics off stdout",
+          "timestamp": "2026-10-25T22:20:10+09:00",
+          "tree_id": "7232412e8d470ee5594d87f655061f7ab00ed08d",
+          "url": "https://github.com/yamadashy/repomix/commit/c72454e738dfddda7dd134b6ad8bd9b5f558ce3d"
+        },
+        "date": 1792934493062,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 623,
+            "range": "±52",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 591ms, Q3: 643ms\nAll times: 558, 567, 570, 577, 583, 586, 589, 591, 594, 600, 609, 615, 618, 618, 622, 623, 623, 625, 632, 632, 640, 642, 643, 645, 649, 656, 718, 722, 849, 903ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 960,
+            "range": "±17",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 952ms, Q3: 969ms\nAll times: 943, 946, 947, 949, 949, 952, 952, 956, 959, 960, 960, 962, 962, 964, 966, 969, 978, 978, 984, 1024ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 754,
+            "range": "±17",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 751ms, Q3: 768ms\nAll times: 720, 734, 734, 740, 743, 751, 753, 754, 754, 754, 754, 755, 757, 758, 765, 768, 774, 776, 779, 808ms"
           }
         ]
       }
