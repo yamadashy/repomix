@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792906600233,
+  "lastUpdate": 1792907646564,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -14303,6 +14303,51 @@ window.BENCHMARK_DATA = {
             "range": "±30",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1331ms, Q3: 1361ms\nAll times: 1313, 1321, 1321, 1327, 1329, 1331, 1331, 1333, 1334, 1337, 1338, 1338, 1341, 1345, 1349, 1361, 1365, 1368, 1388, 1388ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "494051be7208549e798f391b96794ac420e406c5",
+          "message": "Merge pull request #1952 from yamadashy/feat/mcp-sdk-v2\n\nfeat(mcp): Migrate to MCP TypeScript SDK v2",
+          "timestamp": "2026-10-25T14:51:50+09:00",
+          "tree_id": "4356d7561e07a49f0ad2e5671c11f6e024ffc85f",
+          "url": "https://github.com/yamadashy/repomix/commit/494051be7208549e798f391b96794ac420e406c5"
+        },
+        "date": 1792907645531,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 764,
+            "range": "±144",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 687ms, Q3: 831ms\nAll times: 580, 623, 626, 630, 640, 660, 661, 687, 715, 725, 729, 740, 748, 761, 761, 764, 766, 766, 793, 796, 801, 822, 831, 836, 855, 861, 879, 894, 940, 1024ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 945,
+            "range": "±24",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 932ms, Q3: 956ms\nAll times: 923, 925, 931, 931, 931, 932, 933, 937, 938, 944, 945, 947, 950, 952, 953, 956, 1010, 1069, 1077, 1112ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1380,
+            "range": "±26",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1368ms, Q3: 1394ms\nAll times: 1344, 1349, 1363, 1364, 1366, 1368, 1370, 1377, 1377, 1379, 1380, 1381, 1382, 1384, 1387, 1394, 1395, 1395, 1397, 1412ms"
           }
         ]
       }
