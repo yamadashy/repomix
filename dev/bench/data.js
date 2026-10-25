@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792905246277,
+  "lastUpdate": 1792905968702,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -14213,6 +14213,51 @@ window.BENCHMARK_DATA = {
             "range": "±26",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1176ms, Q3: 1202ms\nAll times: 1150, 1158, 1171, 1174, 1174, 1176, 1177, 1179, 1182, 1183, 1191, 1195, 1196, 1199, 1199, 1202, 1204, 1207, 1208, 1242ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f9e91b1cdc229e7a8d29d8a282b11356682f30df",
+          "message": "Merge pull request #1951 from yamadashy/ci/actionlint-ubuntu-26-label\n\nci(actionlint): Declare ubuntu-26.04 runner labels",
+          "timestamp": "2026-10-25T14:24:42+09:00",
+          "tree_id": "42b6ba9d527be084d9085c66257a7445d8745387",
+          "url": "https://github.com/yamadashy/repomix/commit/f9e91b1cdc229e7a8d29d8a282b11356682f30df"
+        },
+        "date": 1792905967972,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 823,
+            "range": "±57",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 800ms, Q3: 857ms\nAll times: 595, 596, 607, 615, 670, 708, 781, 800, 800, 811, 815, 815, 818, 822, 823, 823, 831, 832, 839, 846, 846, 855, 857, 862, 869, 882, 884, 899, 903, 956ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 556,
+            "range": "±24",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 547ms, Q3: 571ms\nAll times: 535, 536, 539, 544, 545, 547, 547, 548, 550, 555, 556, 557, 558, 562, 566, 571, 572, 574, 582, 583ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 984,
+            "range": "±17",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 976ms, Q3: 993ms\nAll times: 960, 962, 972, 973, 974, 976, 979, 980, 983, 984, 984, 986, 986, 988, 993, 993, 994, 995, 1001, 1001ms"
           }
         ]
       }
