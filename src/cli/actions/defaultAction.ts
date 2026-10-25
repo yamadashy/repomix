@@ -273,8 +273,11 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
       stdout: true,
     };
   }
-  // Only apply securityCheck setting if explicitly set to false
-  if (options.securityCheck === false) {
+  // Apply securityCheck whenever it is explicitly set, so a caller passing `true`
+  // (e.g. the MCP pack tools) cannot be overridden by a config file's `false`.
+  // The CLI entry point drops Commander's default `true`, so plain CLI runs still
+  // let the config file decide.
+  if (options.securityCheck !== undefined) {
     cliConfig.security = { enableSecurityCheck: options.securityCheck };
   }
   // Only apply fileSummary setting if explicitly set to false

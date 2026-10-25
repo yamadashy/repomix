@@ -1,13 +1,13 @@
 import type { Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
-import { program } from 'commander';
+import { Command, program } from 'commander';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import * as defaultAction from '../../src/cli/actions/defaultAction.js';
 import * as initAction from '../../src/cli/actions/initAction.js';
 import * as remoteAction from '../../src/cli/actions/remoteAction.js';
 import * as versionAction from '../../src/cli/actions/versionAction.js';
-import { canonicalizeSandboxRoot, run, runCli } from '../../src/cli/cliRun.js';
+import { canonicalizeSandboxRoot, commanderActionEndpoint, run, runCli } from '../../src/cli/cliRun.js';
 import type { CliOptions } from '../../src/cli/types.js';
 import * as gitRemoteHandle from '../../src/core/git/gitRemoteHandle.js';
 import type { PackResult } from '../../src/core/packager.js';
@@ -448,6 +448,38 @@ describe('cliRun', () => {
         process.cwd(),
         expect.objectContaining({
           securityCheck: true,
+        }),
+        undefined,
+      );
+    });
+
+    test('should drop Commander default securityCheck so the config file decides', async () => {
+      const command = new Command().option('--no-security-check');
+      command.parse([], { from: 'user' });
+
+      await commanderActionEndpoint(['.'], command.opts(), command);
+
+      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+        ['.'],
+        process.cwd(),
+        expect.not.objectContaining({
+          securityCheck: expect.anything(),
+        }),
+        undefined,
+      );
+    });
+
+    test('should pass securityCheck: false from the CLI entry point with --no-security-check', async () => {
+      const command = new Command().option('--no-security-check');
+      command.parse(['--no-security-check'], { from: 'user' });
+
+      await commanderActionEndpoint(['.'], command.opts(), command);
+
+      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+        ['.'],
+        process.cwd(),
+        expect.objectContaining({
+          securityCheck: false,
         }),
         undefined,
       );
