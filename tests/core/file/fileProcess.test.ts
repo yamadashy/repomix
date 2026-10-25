@@ -55,6 +55,26 @@ describe('fileProcess', () => {
       ]);
     });
 
+    it('keeps deps as the fourth positional parameter and takes the abort signal after it', async () => {
+      const seenOptions: WorkerOptions[] = [];
+      const recordingInitTaskRunner = <T, R>(options: WorkerOptions) => {
+        seenOptions.push(options);
+        return mockInitTaskRunner<T, R>(options);
+      };
+      const rawFiles: RawFile[] = [{ path: 'file1.js', content: '// comment\nconst a = 1;' }];
+      const config = createMockConfig({ output: { removeComments: true } });
+      const deps = { initTaskRunner: recordingInitTaskRunner, getFileManipulator: mockGetFileManipulator };
+      const { signal } = new AbortController();
+
+      // Pre-cancellation library call shape: (files, config, callback, deps).
+      await processFiles(rawFiles, config, () => {}, deps);
+      await processFiles(rawFiles, config, () => {}, deps, signal);
+
+      expect(seenOptions).toHaveLength(2);
+      expect(seenOptions[0].signal).toBeUndefined();
+      expect(seenOptions[1].signal).toBe(signal);
+    });
+
     it('should apply all transforms in combined worker + lightweight pipeline', async () => {
       const base64 =
         'DTJXfKHG6xA1Wn+kye4TOF2Cp8zxFjtgharP9Bk+Y4it0vccQWaLsNX6H0RpjrPY/SJHbJG22wAlSm+Uud4DKE1yl7zhBitQdZq/5AkuU3idwucMMVZ7oMXqDzRZfqPI7RI3XIGmy/AVOl+Eqc7zGD1ih6zR9htAZYqv1PkeQ2iNstf8IUZrkLXa/yRJbpO43QInTHGWu+AFKk90mb7jCC1Sd5zB5gswVXqfxOkOM1h9osfsETZbgKXK7xQ5XoOozfIXPGGGq9D1Gj9kia7T+B1CZ4yx1vsgRWqPtNn+I0htkrfcASZLcJW63wQpTnOYveIHLFF2m8DlCi9UeZ7D6A==';

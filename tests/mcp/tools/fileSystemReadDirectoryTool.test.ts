@@ -1,7 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { registerFileSystemReadDirectoryTool } from '../../../src/mcp/tools/fileSystemReadDirectoryTool.js';
 

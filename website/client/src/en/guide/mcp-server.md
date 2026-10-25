@@ -36,6 +36,9 @@ When sandbox mode is on:
 
 - **Every path is relative to the workspace root.** Absolute paths, `~`, `..`, and Windows drive/UNC paths are refused, and paths that resolve outside the root (including through symlinks) are dropped. Results and error messages are relative too, so host paths are not exposed. This applies to the `directory` and `path` arguments in the tool reference below: in sandbox mode, pass them relative to the workspace root, not as the absolute paths those tables otherwise describe.
 - **Only read-only, root-confined tools are registered:** `pack_codebase`, `read_repomix_output`, `grep_repomix_output`, `file_system_read_file`, and `file_system_read_directory`. Remote packing, skill generation, and attaching external outputs are disabled, since they reach the network, write files, or reference arbitrary paths. The two `file_system_*` tools are themselves available only in sandbox mode, where the workspace root bounds what they can reach.
+- **Config files are not loaded.** `pack_codebase` ignores both the packed directory's `repomix.config.*` and your global config.
+
+Without `--sandbox`, `pack_codebase` loads the `repomix.config.*` in the directory it packs and trusts it, the same as running `repomix` there from the command line. A config file is code: it can run when loaded and read files outside the repository (see [Security](/guide/security#why-a-config-file-is-code)). If your assistant may pack directories you don't trust, such as cloned third-party repositories, use `--sandbox`.
 
 This is an application-level confinement of the tool surface (defense in depth), not an OS-level sandbox. When hosting the server for untrusted clients, still run it under your platform's usual isolation (containers, dedicated users).
 

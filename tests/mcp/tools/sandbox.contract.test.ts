@@ -1,8 +1,7 @@
 import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { registerFileSystemReadDirectoryTool } from '../../../src/mcp/tools/fileSystemReadDirectoryTool.js';
 import { registerFileSystemReadFileTool } from '../../../src/mcp/tools/fileSystemReadFileTool.js';
@@ -24,6 +23,7 @@ import { logger, repomixLogLevels } from '../../../src/shared/logger.js';
 vi.mock('../../../src/cli/cliRun.js', () => ({ runCli: vi.fn() }));
 
 import { runCli } from '../../../src/cli/cliRun.js';
+import { structuredContentOf } from '../../testing/testUtils.js';
 
 // ── escape variants the guard MUST reject (host-aware) ────────────────────────
 // Cross-platform: absolute-by-POSIX-and-Windows, "~" home refs, and any ".."
@@ -190,8 +190,8 @@ describe('sandbox contract', () => {
       const r = await readFile({ path: name });
       expect(rejectedAsEscape(r), `${name} must not be rejected as an escape`).toBe(false);
       expect(r.isError ?? false).toBe(false);
-      expect(r.structuredContent?.content).toBe(`body:${name}`);
-      expect(r.structuredContent?.path).toBe(name); // echoed relative, not absolute
+      expect(structuredContentOf(r).content).toBe(`body:${name}`);
+      expect(structuredContentOf(r).path).toBe(name); // echoed relative, not absolute
       assertNoHostPath(r);
     });
   });
@@ -308,6 +308,40 @@ describe('sandbox contract', () => {
       expect(JSON.stringify(r)).not.toContain('fake install');
     });
 
+    test('pack progress notifications never carry a host path', async () => {
+      // Pipeline progress messages embed file paths (and could embed absolute ones,
+      // e.g. a split-output root entry). Every message the pipeline could emit is
+      // pushed through the real progress callback the tool hands to runCli.
+      const pipelineMessages = [
+        'Searching for files...',
+        `Collect file... (1/3) ${path.join(root, 'src', 'a.ts')}`,
+        `Processing file... (2/3) \u001b[2m${path.join(root, 'src', 'a.ts')}\u001b[22m`,
+        `Running security check... (3/3) ${root}/secret.env`,
+        `Generating output... (part 1) evaluating ${root}`,
+        `${root}/unexpected message without a stage head`,
+        'Processing file... (3/3) C:\\Users\\victim\\src\\a.ts',
+        'Calculating metrics... (3/3)',
+      ];
+      vi.mocked(runCli).mockImplementationOnce(async (_dirs, _cwd, _opts, progressCallback) => {
+        for (const message of pipelineMessages) progressCallback?.(message);
+        return undefined as unknown as Awaited<ReturnType<typeof runCli>>;
+      });
+      const notify = vi.fn().mockResolvedValue(undefined);
+      const ctx = { mcpReq: { _meta: { progressToken: 'tok' }, notify } };
+      await (pack as unknown as (args: Record<string, unknown>, c: unknown) => Promise<CallToolResult>)(
+        { directory: '.', compress: false, topFilesLength: 10, style: 'xml' },
+        ctx,
+      );
+
+      expect(notify).toHaveBeenCalled();
+      for (const [notification] of notify.mock.calls) {
+        const serialized = JSON.stringify(notification);
+        expect(serialized).not.toContain(root);
+        // No path separators or drive letters at all: only fixed stage strings + counters.
+        expect(notification.params.message).toMatch(/^[A-Za-z ]+\.\.\.( \(\d+\/\d+\))?$/);
+      }
+    });
+
     test('read_output / grep_output on a stale outputId leak neither the temp path nor the host', async () => {
       const readOut = capture(registerReadRepomixOutputTool, root);
       const grepOut = capture(registerGrepRepomixOutputTool, root);
@@ -327,14 +361,14 @@ describe('sandbox contract', () => {
     test('read_file returns content + a relative path', async () => {
       const r = await readFile({ path: 'src/a.ts' });
       expect(r.isError ?? false).toBe(false);
-      expect(r.structuredContent?.path).toBe('src/a.ts');
-      expect(r.structuredContent?.content).toBe('const x = 1;\n');
+      expect(structuredContentOf(r).path).toBe('src/a.ts');
+      expect(structuredContentOf(r).content).toBe('const x = 1;\n');
       assertNoHostPath(r);
     });
     test('read_directory "." lists entries with a relative path', async () => {
       const r = await readDir({ path: '.' });
       expect(r.isError ?? false).toBe(false);
-      expect(r.structuredContent?.path).toBe('.');
+      expect(structuredContentOf(r).path).toBe('.');
       expect((r.structuredContent as { contents: string[] }).contents.some((c) => c.includes('src'))).toBe(true);
       assertNoHostPath(r);
     });

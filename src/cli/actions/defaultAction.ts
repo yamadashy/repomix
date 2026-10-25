@@ -16,6 +16,7 @@ import { generateDefaultSkillName } from '../../core/skill/skillUtils.js';
 import { RepomixError, rethrowValidationErrorIfSchemaError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { splitPatterns } from '../../shared/patternUtils.js';
+import { createSafeProgressCallback } from '../../shared/progressCallback.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import { redactOptionsForLog } from '../../shared/urlRedact.js';
 import { reportResults } from '../cliReport.js';
@@ -160,21 +161,15 @@ export const runDefaultAction = async (
       skillProjectName,
       skillSourceUrl,
       confineToBaseDir: cliOptions.confineToBaseDir,
+      signal: cliOptions.signal,
     };
 
     const targetPaths = stdinFilePaths ? [cwd] : directories.map((directory) => path.resolve(cwd, directory));
 
+    const reportProgress = createSafeProgressCallback(progressCallback);
     const handleProgress: RepomixProgressCallback = (message) => {
       spinner.update(message);
-      if (progressCallback) {
-        try {
-          Promise.resolve(progressCallback(message)).catch((error) => {
-            logger.trace('progressCallback error:', error);
-          });
-        } catch (error) {
-          logger.trace('progressCallback error:', error);
-        }
-      }
+      reportProgress(message);
     };
 
     packResult = await pack(targetPaths, config, handleProgress, {}, stdinFilePaths, packOptions);
@@ -278,8 +273,11 @@ export const buildCliConfig = (options: CliOptions): RepomixConfigCli => {
       stdout: true,
     };
   }
-  // Only apply securityCheck setting if explicitly set to false
-  if (options.securityCheck === false) {
+  // Apply securityCheck whenever it is explicitly set, so a caller passing `true`
+  // (e.g. the MCP pack tools) cannot be overridden by a config file's `false`.
+  // The CLI entry point drops Commander's default `true`, so plain CLI runs still
+  // let the config file decide.
+  if (options.securityCheck !== undefined) {
     cliConfig.security = { enableSecurityCheck: options.securityCheck };
   }
   // Only apply fileSummary setting if explicitly set to false

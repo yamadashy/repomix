@@ -174,8 +174,11 @@ export const execGitShallowClone = async (
   deps = {
     execFileAsync,
   },
+  signal?: AbortSignal,
 ) => {
   validateGitUrl(url);
+  // Only the network operations take the signal: they are the slow, cancellable part.
+  const remoteOpts = signal ? { ...gitRemoteOpts, signal } : gitRemoteOpts;
 
   if (remoteBranch) {
     validateGitRef(remoteBranch);
@@ -187,7 +190,7 @@ export const execGitShallowClone = async (
       await deps.execFileAsync(
         'git',
         ['-C', directory, 'fetch', '--depth', '1', 'origin', '--end-of-options', remoteBranch],
-        gitRemoteOpts,
+        remoteOpts,
       );
       await deps.execFileAsync('git', ['-C', directory, 'checkout', 'FETCH_HEAD']);
     } catch (err: unknown) {
@@ -212,11 +215,11 @@ export const execGitShallowClone = async (
 
       // Maybe the error is due to a short SHA, let's try again
       // Can't use --depth 1 here as we need to fetch the specific commit
-      await deps.execFileAsync('git', ['-C', directory, 'fetch', 'origin'], gitRemoteOpts);
+      await deps.execFileAsync('git', ['-C', directory, 'fetch', 'origin'], remoteOpts);
       await deps.execFileAsync('git', ['-C', directory, 'checkout', '--end-of-options', remoteBranch]);
     }
   } else {
-    await deps.execFileAsync('git', ['clone', '--depth', '1', '--', url, directory], gitRemoteOpts);
+    await deps.execFileAsync('git', ['clone', '--depth', '1', '--', url, directory], remoteOpts);
   }
 
   // Drop the clone's .git. This keeps git internals out of the packed output, but

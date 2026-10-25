@@ -13,6 +13,9 @@ export interface WorkerOptions {
   workerType: WorkerType;
   runtime: WorkerRuntime;
   maxWorkerThreads?: number;
+  // Aborting destroys the pool: queued and running tasks reject and the workers are
+  // terminated, and run() refuses new tasks.
+  signal?: AbortSignal;
 }
 
 /**
@@ -67,6 +70,27 @@ export const getWorkerThreadCount = (
   };
 };
 
+// Every worker_threads worker pipes its stdout and stderr into the parent's, and each pipe
+// adds an 'error' listener there. Node lifts the listener limit only for that one add, so
+// with ~10+ live workers the next unrelated listener (e.g. the MCP stdio transport adding
+// one per message it sends) triggers a spurious MaxListenersExceededWarning. A pool raises
+// the limit by its worker count while alive, as Tinypool already does for child_process.
+const PIPED_STREAMS = [process.stdout, process.stderr];
+// Per pool, the streams whose limit was actually raised, so cleanup undoes only those.
+const reservedListeners = new WeakMap<Tinypool, Map<NodeJS.WriteStream, number>>();
+
+const raisePipedStreamMaxListeners = (amount: number): Map<NodeJS.WriteStream, number> => {
+  const raised = new Map<NodeJS.WriteStream, number>();
+  for (const stream of PIPED_STREAMS) {
+    const current = stream.getMaxListeners();
+    // 0 or Infinity means unlimited; leave it alone.
+    if (current === 0 || current === Number.POSITIVE_INFINITY) continue;
+    stream.setMaxListeners(current + amount);
+    raised.set(stream, amount);
+  }
+  return raised;
+};
+
 export const createWorkerPool = (options: WorkerOptions): Tinypool => {
   const { numOfTasks, workerType, runtime = 'child_process', maxWorkerThreads } = options;
   const { minThreads, maxThreads } = getWorkerThreadCount(numOfTasks, maxWorkerThreads);
@@ -110,6 +134,10 @@ export const createWorkerPool = (options: WorkerOptions): Tinypool => {
     }),
   });
 
+  if (runtime === 'worker_threads') {
+    reservedListeners.set(pool, raisePipedStreamMaxListeners(maxThreads));
+  }
+
   const endTime = process.hrtime.bigint();
   const initTime = Number(endTime - startTime) / 1e6; // Convert to milliseconds
 
@@ -136,6 +164,14 @@ export const cleanupWorkerPool = async (pool: Tinypool): Promise<void> => {
     logger.debug('Worker pool cleaned up successfully');
   } catch (error) {
     logger.debug('Error during worker pool cleanup:', error);
+  } finally {
+    const raised = reservedListeners.get(pool);
+    reservedListeners.delete(pool);
+    for (const [stream, amount] of raised ?? []) {
+      const current = stream.getMaxListeners();
+      if (current === 0 || current === Number.POSITIVE_INFINITY) continue;
+      stream.setMaxListeners(Math.max(1, current - amount));
+    }
   }
 };
 
@@ -146,8 +182,24 @@ export interface TaskRunner<T, R> {
 
 export const initTaskRunner = <T, R>(options: WorkerOptions): TaskRunner<T, R> => {
   const pool = createWorkerPool(options);
+  const { signal } = options;
+  // Shared so cleanup() after an abort waits for the teardown the abort started.
+  let teardown: Promise<void> | undefined;
+  const destroy = () => {
+    teardown ??= cleanupWorkerPool(pool);
+    return teardown;
+  };
+  // One listener per pool rather than Tinypool's per-task `signal` option, which would
+  // add an abort listener for every queued task.
+  const onAbort = () => {
+    void destroy();
+  };
+  signal?.addEventListener('abort', onAbort, { once: true });
   return {
-    run: (task: T) => pool.run(task),
-    cleanup: () => cleanupWorkerPool(pool),
+    run: (task: T) => (signal?.aborted ? Promise.reject(signal.reason) : pool.run(task)),
+    cleanup: async () => {
+      signal?.removeEventListener('abort', onAbort);
+      await destroy();
+    },
   };
 };

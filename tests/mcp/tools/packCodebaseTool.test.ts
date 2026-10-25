@@ -1,9 +1,12 @@
 import path from 'node:path';
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { runCli } from '../../../src/cli/cliRun.js';
-import { createToolWorkspace, formatPackToolResponse } from '../../../src/mcp/tools/mcpToolRuntime.js';
+import {
+  createToolWorkspace,
+  formatPackToolResponse,
+  removeToolWorkspace,
+} from '../../../src/mcp/tools/mcpToolRuntime.js';
 import { registerPackCodebaseTool } from '../../../src/mcp/tools/packCodebaseTool.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
@@ -15,6 +18,7 @@ vi.mock('../../../src/mcp/tools/mcpToolRuntime.js', async () => {
     ...actual,
     createToolWorkspace: vi.fn(),
     formatPackToolResponse: vi.fn(),
+    removeToolWorkspace: vi.fn(),
   };
 });
 
@@ -23,14 +27,17 @@ describe('PackCodebaseTool', () => {
     registerTool: vi.fn().mockReturnThis(),
   } as unknown as McpServer;
 
-  let toolHandler: (args: {
-    directory: string;
-    compress?: boolean;
-    includePatterns?: string;
-    ignorePatterns?: string;
-    outputPatterns?: { pattern: string; compress?: boolean; directoryStructureOnly?: boolean }[];
-    topFilesLength?: number;
-  }) => Promise<CallToolResult>;
+  let toolHandler: (
+    args: {
+      directory: string;
+      compress?: boolean;
+      includePatterns?: string;
+      ignorePatterns?: string;
+      outputPatterns?: { pattern: string; compress?: boolean; directoryStructureOnly?: boolean }[];
+      topFilesLength?: number;
+    },
+    ctx?: unknown,
+  ) => Promise<CallToolResult>;
 
   const defaultPackResult = {
     totalFiles: 10,
@@ -136,7 +143,54 @@ describe('PackCodebaseTool', () => {
         ignore: 'test/**',
         topFilesLen: 10,
       }),
+      undefined,
     );
+  });
+
+  test('forwards pipeline progress as notifications/progress when the client sent a progressToken', async () => {
+    vi.mocked(runCli).mockImplementationOnce(async (_dirs, _cwd, _opts, progressCallback) => {
+      progressCallback?.('Searching for files...');
+      return undefined as unknown as Awaited<ReturnType<typeof runCli>>;
+    });
+    const notify = vi.fn().mockResolvedValue(undefined);
+
+    await toolHandler({ directory: '/test/project' }, { mcpReq: { _meta: { progressToken: 'p1' }, notify } });
+
+    expect(notify).toHaveBeenCalledWith({
+      method: 'notifications/progress',
+      params: { progressToken: 'p1', progress: 1, message: 'Searching for files...' },
+    });
+  });
+
+  test('passes the request abort signal to runCli', async () => {
+    const { signal } = new AbortController();
+
+    await toolHandler({ directory: '/test/project' }, { mcpReq: { _meta: {}, notify: vi.fn(), signal } });
+
+    expect(runCli).toHaveBeenCalledWith(['.'], '/test/project', expect.objectContaining({ signal }), undefined);
+    expect(removeToolWorkspace).not.toHaveBeenCalled();
+  });
+
+  test('removes the tool workspace when the request is cancelled', async () => {
+    const controller = new AbortController();
+    vi.mocked(runCli).mockImplementationOnce(async () => {
+      controller.abort();
+      throw controller.signal.reason;
+    });
+
+    await toolHandler(
+      { directory: '/test/project' },
+      { mcpReq: { _meta: {}, notify: vi.fn(), signal: controller.signal } },
+    );
+
+    expect(removeToolWorkspace).toHaveBeenCalledWith('/temp/dir');
+  });
+
+  test('passes no progress callback when the client sent no progressToken', async () => {
+    const notify = vi.fn();
+    await toolHandler({ directory: '/test/project' }, { mcpReq: { _meta: {}, notify } });
+    expect(vi.mocked(runCli).mock.calls[0][3]).toBeUndefined();
+    expect(notify).not.toHaveBeenCalled();
   });
 
   test('should pass outputPatterns through to runCli', async () => {
@@ -156,6 +210,7 @@ describe('PackCodebaseTool', () => {
         compress: true,
         outputPatterns,
       }),
+      undefined,
     );
   });
 

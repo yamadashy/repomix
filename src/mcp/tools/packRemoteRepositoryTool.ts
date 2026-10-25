@@ -1,16 +1,17 @@
 import path from 'node:path';
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type { CliOptions } from '../../cli/types.js';
 import { defaultFilePathMap } from '../../config/configSchema.js';
 import { redactUrl } from '../../shared/urlRedact.js';
+import { withMcpProgress } from './mcpProgress.js';
 import {
   buildMcpToolErrorResponse,
   convertErrorToJson,
   createToolWorkspace,
   formatPackToolResponse,
   outputPatternsSchema,
+  removeToolWorkspace,
   runCliPreservingLogLevel,
 } from './mcpToolRuntime.js';
 
@@ -80,16 +81,13 @@ export const registerPackRemoteRepositoryTool = (mcpServer: McpServer) => {
         openWorldHint: true,
       },
     },
-    async ({
-      remote,
-      compress,
-      includePatterns,
-      ignorePatterns,
-      outputPatterns,
-      topFilesLength,
-      style,
-    }): Promise<CallToolResult> => {
+    async (
+      { remote, compress, includePatterns, ignorePatterns, outputPatterns, topFilesLength, style },
+      ctx,
+    ): Promise<CallToolResult> => {
       let tempDir = '';
+      // Fires on notifications/cancelled for this request or when the transport closes.
+      const signal = ctx?.mcpReq.signal;
 
       try {
         tempDir = await createToolWorkspace();
@@ -107,9 +105,12 @@ export const registerPackRemoteRepositoryTool = (mcpServer: McpServer) => {
           securityCheck: true,
           topFilesLen: topFilesLength,
           quiet: true,
+          signal,
         } as CliOptions;
 
-        const result = await runCliPreservingLogLevel(['.'], process.cwd(), cliOptions);
+        const result = await withMcpProgress(ctx, { sandboxed: false }, (progressCallback) =>
+          runCliPreservingLogLevel(['.'], process.cwd(), cliOptions, progressCallback),
+        );
         if (!result) {
           return buildMcpToolErrorResponse({
             errorMessage: 'Failed to return a result',
@@ -130,6 +131,10 @@ export const registerPackRemoteRepositoryTool = (mcpServer: McpServer) => {
         );
       } catch (error) {
         return buildMcpToolErrorResponse(convertErrorToJson(error));
+      } finally {
+        // The SDK never delivers a cancelled request's response, so nothing will read
+        // this workspace's output.
+        if (signal?.aborted && tempDir) await removeToolWorkspace(tempDir);
       }
     },
   );

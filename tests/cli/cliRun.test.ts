@@ -1,13 +1,13 @@
 import type { Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
-import { program } from 'commander';
+import { Command, program } from 'commander';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import * as defaultAction from '../../src/cli/actions/defaultAction.js';
 import * as initAction from '../../src/cli/actions/initAction.js';
 import * as remoteAction from '../../src/cli/actions/remoteAction.js';
 import * as versionAction from '../../src/cli/actions/versionAction.js';
-import { canonicalizeSandboxRoot, run, runCli } from '../../src/cli/cliRun.js';
+import { canonicalizeSandboxRoot, commanderActionEndpoint, run, runCli } from '../../src/cli/cliRun.js';
 import type { CliOptions } from '../../src/cli/types.js';
 import * as gitRemoteHandle from '../../src/core/git/gitRemoteHandle.js';
 import type { PackResult } from '../../src/core/packager.js';
@@ -37,12 +37,14 @@ vi.mock('../../src/shared/logger', () => ({
       logLevel = level;
     }),
     getLogLevel: vi.fn(() => logLevel),
+    setOutputStream: vi.fn(),
   },
   setLogLevelByWorkerData: vi.fn(),
 }));
 
 vi.mock('../../src/cli/actions/defaultAction');
 vi.mock('../../src/cli/actions/initAction');
+vi.mock('../../src/cli/actions/mcpAction');
 vi.mock('../../src/cli/actions/remoteAction');
 vi.mock('../../src/core/git/gitRemoteHandle');
 vi.mock('../../src/cli/actions/versionAction');
@@ -196,7 +198,7 @@ describe('cliRun', () => {
     test('should execute default action when no special options provided', async () => {
       await runCli(['.'], process.cwd(), {});
 
-      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(['.'], process.cwd(), expect.any(Object));
+      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(['.'], process.cwd(), expect.any(Object), undefined);
     });
 
     test('should enable verbose logging when verbose option is true', async () => {
@@ -224,21 +226,29 @@ describe('cliRun', () => {
         remote: 'yamadashy/repomix',
       });
 
-      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith('yamadashy/repomix', expect.any(Object));
+      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith('yamadashy/repomix', expect.any(Object), undefined);
       expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
     });
 
     test('should auto-detect HTTPS URL and execute remote action', async () => {
       await runCli(['https://github.com/user/repo'], process.cwd(), {});
 
-      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith('https://github.com/user/repo', expect.any(Object));
+      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith(
+        'https://github.com/user/repo',
+        expect.any(Object),
+        undefined,
+      );
       expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
     });
 
     test('should auto-detect git@ SSH URL and execute remote action', async () => {
       await runCli(['git@github.com:user/repo.git'], process.cwd(), {});
 
-      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith('git@github.com:user/repo.git', expect.any(Object));
+      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith(
+        'git@github.com:user/repo.git',
+        expect.any(Object),
+        undefined,
+      );
       expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
     });
 
@@ -248,6 +258,7 @@ describe('cliRun', () => {
       expect(remoteAction.runRemoteAction).toHaveBeenCalledWith(
         'ssh://git@github.com/user/repo.git',
         expect.any(Object),
+        undefined,
       );
       expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
     });
@@ -255,7 +266,11 @@ describe('cliRun', () => {
     test('should auto-detect git:// URL and execute remote action', async () => {
       await runCli(['git://github.com/user/repo.git'], process.cwd(), {});
 
-      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith('git://github.com/user/repo.git', expect.any(Object));
+      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith(
+        'git://github.com/user/repo.git',
+        expect.any(Object),
+        undefined,
+      );
       expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
     });
 
@@ -265,7 +280,7 @@ describe('cliRun', () => {
       await runCli(['user/repo'], process.cwd(), {});
 
       expect(gitRemoteHandle.checkRemoteRepoExists).toHaveBeenCalledWith('https://github.com/user/repo.git');
-      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith('user/repo', expect.any(Object));
+      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith('user/repo', expect.any(Object), undefined);
       expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
     });
 
@@ -275,7 +290,12 @@ describe('cliRun', () => {
       await runCli(['user/repo'], process.cwd(), {});
 
       expect(gitRemoteHandle.checkRemoteRepoExists).toHaveBeenCalledWith('https://github.com/user/repo.git');
-      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(['user/repo'], process.cwd(), expect.any(Object));
+      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+        ['user/repo'],
+        process.cwd(),
+        expect.any(Object),
+        undefined,
+      );
       expect(remoteAction.runRemoteAction).not.toHaveBeenCalled();
     });
 
@@ -287,7 +307,12 @@ describe('cliRun', () => {
       await runCli(['user/repo'], process.cwd(), {});
 
       expect(gitRemoteHandle.checkRemoteRepoExists).not.toHaveBeenCalled();
-      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(['user/repo'], process.cwd(), expect.any(Object));
+      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+        ['user/repo'],
+        process.cwd(),
+        expect.any(Object),
+        undefined,
+      );
       expect(remoteAction.runRemoteAction).not.toHaveBeenCalled();
     });
 
@@ -299,7 +324,12 @@ describe('cliRun', () => {
 
       expect(gitRemoteHandle.checkRemoteRepoExists).not.toHaveBeenCalled();
       expect(remoteAction.runRemoteAction).not.toHaveBeenCalled();
-      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(['user/repo'], process.cwd(), expect.any(Object));
+      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+        ['user/repo'],
+        process.cwd(),
+        expect.any(Object),
+        undefined,
+      );
     });
 
     test('should not treat Windows-style absolute path as shorthand', async () => {
@@ -308,7 +338,12 @@ describe('cliRun', () => {
 
       expect(gitRemoteHandle.checkRemoteRepoExists).not.toHaveBeenCalled();
       expect(remoteAction.runRemoteAction).not.toHaveBeenCalled();
-      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(['C:/project'], process.cwd(), expect.any(Object));
+      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+        ['C:/project'],
+        process.cwd(),
+        expect.any(Object),
+        undefined,
+      );
     });
 
     test('should not probe shorthand in stdin mode', async () => {
@@ -316,7 +351,12 @@ describe('cliRun', () => {
 
       expect(gitRemoteHandle.checkRemoteRepoExists).not.toHaveBeenCalled();
       expect(remoteAction.runRemoteAction).not.toHaveBeenCalled();
-      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(['user/repo'], process.cwd(), expect.any(Object));
+      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+        ['user/repo'],
+        process.cwd(),
+        expect.any(Object),
+        undefined,
+      );
     });
 
     test('should prioritize explicit --remote flag over auto-detected URL', async () => {
@@ -324,7 +364,7 @@ describe('cliRun', () => {
         remote: 'yamadashy/repomix',
       });
 
-      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith('yamadashy/repomix', expect.any(Object));
+      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith('yamadashy/repomix', expect.any(Object), undefined);
     });
   });
 
@@ -338,6 +378,7 @@ describe('cliRun', () => {
         expect.not.objectContaining({
           parsableStyle: false,
         }),
+        undefined,
       );
     });
 
@@ -350,6 +391,7 @@ describe('cliRun', () => {
         expect.objectContaining({
           parsableStyle: true,
         }),
+        undefined,
       );
     });
   });
@@ -368,6 +410,7 @@ describe('cliRun', () => {
           skillGenerate: true,
           skillProjectName: 'Repomix',
         }),
+        undefined,
       );
     });
   });
@@ -382,6 +425,7 @@ describe('cliRun', () => {
         expect.not.objectContaining({
           securityCheck: false,
         }),
+        undefined,
       );
     });
 
@@ -394,6 +438,7 @@ describe('cliRun', () => {
         expect.objectContaining({
           securityCheck: false,
         }),
+        undefined,
       );
     });
 
@@ -406,6 +451,39 @@ describe('cliRun', () => {
         expect.objectContaining({
           securityCheck: true,
         }),
+        undefined,
+      );
+    });
+
+    test('should drop Commander default securityCheck so the config file decides', async () => {
+      const command = new Command().option('--no-security-check');
+      command.parse([], { from: 'user' });
+
+      await commanderActionEndpoint(['.'], command.opts(), command);
+
+      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+        ['.'],
+        process.cwd(),
+        expect.not.objectContaining({
+          securityCheck: expect.anything(),
+        }),
+        undefined,
+      );
+    });
+
+    test('should pass securityCheck: false from the CLI entry point with --no-security-check', async () => {
+      const command = new Command().option('--no-security-check');
+      command.parse(['--no-security-check'], { from: 'user' });
+
+      await commanderActionEndpoint(['.'], command.opts(), command);
+
+      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+        ['.'],
+        process.cwd(),
+        expect.objectContaining({
+          securityCheck: false,
+        }),
+        undefined,
       );
     });
 
@@ -418,6 +496,7 @@ describe('cliRun', () => {
         expect.objectContaining({
           gitignore: false,
         }),
+        undefined,
       );
     });
 
@@ -430,6 +509,7 @@ describe('cliRun', () => {
         expect.objectContaining({
           defaultPatterns: false,
         }),
+        undefined,
       );
     });
 
@@ -444,6 +524,7 @@ describe('cliRun', () => {
         expect.objectContaining({
           headerText: 'I am a good header text',
         }),
+        undefined,
       );
     });
 
@@ -458,6 +539,7 @@ describe('cliRun', () => {
         expect.objectContaining({
           instructionFilePath: 'path/to/instruction.txt',
         }),
+        undefined,
       );
     });
 
@@ -472,6 +554,7 @@ describe('cliRun', () => {
         expect.objectContaining({
           outputFilePathStyle: 'cwd-relative',
         }),
+        undefined,
       );
     });
 
@@ -486,6 +569,7 @@ describe('cliRun', () => {
         expect.objectContaining({
           includeEmptyDirectories: true,
         }),
+        undefined,
       );
     });
   });
@@ -540,6 +624,7 @@ describe('cliRun', () => {
         expect.objectContaining({
           stdout: true,
         }),
+        undefined,
       );
     });
 
@@ -559,6 +644,7 @@ describe('cliRun', () => {
         expect.objectContaining({
           output: 'custom-output.txt',
         }),
+        undefined,
       );
       expect(defaultAction.runDefaultAction).not.toHaveBeenCalledWith(
         ['.'],
@@ -567,6 +653,37 @@ describe('cliRun', () => {
           stdout: true,
         }),
       );
+    });
+  });
+
+  describe('mcp mode', () => {
+    test('routes diagnostics to stderr because stdout carries the protocol', async () => {
+      const options: CliOptions = {
+        mcp: true,
+        verbose: true,
+      };
+
+      const setOutputStream = vi.mocked(logger.setOutputStream);
+      const trace = vi.mocked(logger.trace);
+
+      await runCli(['.'], process.cwd(), options);
+
+      expect(setOutputStream).toHaveBeenCalledWith('stderr');
+
+      // The option dump is itself diagnostics, so routing decided after it would still corrupt the
+      // first frames a client reads.
+      const dumpCall = trace.mock.calls.findIndex(([first]) => first === 'options:');
+      expect(setOutputStream.mock.invocationCallOrder[0]).toBeLessThan(trace.mock.invocationCallOrder[dumpCall]);
+    });
+
+    test('leaves the stream alone for a normal pack', async () => {
+      const options: CliOptions = {
+        verbose: true,
+      };
+
+      await runCli(['.'], process.cwd(), options);
+
+      expect(vi.mocked(logger.setOutputStream)).not.toHaveBeenCalled();
     });
   });
 });

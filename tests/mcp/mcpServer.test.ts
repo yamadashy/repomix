@@ -1,187 +1,97 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { getVersion } from '../../src/core/file/packageJsonParse.js';
+import { McpServer } from '@modelcontextprotocol/server';
+import type { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createMcpServer, runMcpServer } from '../../src/mcp/mcpServer.js';
 import { logger } from '../../src/shared/logger.js';
 
 // Use vi.hoisted for class mocks that need to work as constructors
-const { MockMcpServer, MockStdioServerTransport } = vi.hoisted(() => {
-  const createMockServerInstance = () => ({
-    tool: vi.fn().mockReturnThis(),
-    prompt: vi.fn().mockReturnThis(),
-    registerTool: vi.fn().mockReturnThis(),
-    registerPrompt: vi.fn().mockReturnThis(),
-    connect: vi.fn().mockResolvedValue(undefined),
-    close: vi.fn().mockResolvedValue(undefined),
-    // Add other required props
-    server: {},
-    _registeredResources: new Map(),
-    _registeredResourceTemplates: new Map(),
-    _registeredTools: new Map(),
-    _registeredPrompts: new Map(),
-    _registeredAgents: new Map(),
-    _registeredInstructions: new Map(),
-    _registeredRoutes: new Map(),
-    _registeredSessions: new Map(),
-    _registeredSockets: new Map(),
-    _registeredStreams: new Map(),
-    _registeredWebSockets: new Map(),
-    _registeredWorkers: new Map(),
-    _toolHandlersInitialized: false,
-    _completionHandlerInitialized: false,
-    setToolRequestHandlers: vi.fn(),
-    setCompletionRequestHandler: vi.fn(),
-    _messageHandler: vi.fn(),
-    _transport: {},
-    _connected: false,
-    _completionHandler: vi.fn(),
-    _toolHandlers: new Map(),
-    _validateHandlersInitialized: vi.fn(),
-    handlePromptCompletion: vi.fn(),
-    handleResourceCompletion: vi.fn(),
-    _resourceHandlersInitialized: false,
-    setResourceRequestHandlers: vi.fn(),
-    _resourceHandlers: new Map(),
-  });
-
-  // Wrap in vi.fn() to enable mockImplementation, using regular function for constructor
+const { MockMcpServer } = vi.hoisted(() => {
   const MockMcpServer = vi.fn().mockImplementation(function (this: unknown) {
-    const instance = createMockServerInstance();
-    Object.assign(this as object, instance);
     Object.assign(this as object, {
-      server: {},
-      _registeredResources: new Map(),
-      _registeredResourceTemplates: new Map(),
-      _registeredTools: new Map(),
-      _registeredPrompts: new Map(),
-      _registeredAgents: new Map(),
-      _registeredInstructions: new Map(),
-      _registeredRoutes: new Map(),
-      _registeredSessions: new Map(),
-      _registeredSockets: new Map(),
-      _registeredStreams: new Map(),
-      _registeredWebSockets: new Map(),
-      _registeredWorkers: new Map(),
-      _toolHandlersInitialized: false,
-      _completionHandlerInitialized: false,
-      setToolRequestHandlers: vi.fn(),
-      setCompletionRequestHandler: vi.fn(),
-      _messageHandler: vi.fn(),
-      _transport: {},
-      _connected: false,
-      _completionHandler: vi.fn(),
-      _toolHandlers: new Map(),
-      _validateHandlersInitialized: vi.fn(),
-      handlePromptCompletion: vi.fn(),
-      handleResourceCompletion: vi.fn(),
-      _resourceHandlersInitialized: false,
-      setResourceRequestHandlers: vi.fn(),
-      _resourceHandlers: new Map(),
+      registerTool: vi.fn().mockReturnThis(),
+      registerPrompt: vi.fn().mockReturnThis(),
+      connect: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
     });
     return this;
   });
-
-  const MockStdioServerTransport = vi.fn().mockImplementation(function (this: unknown) {
-    return this;
-  });
-
-  return { MockMcpServer, MockStdioServerTransport };
+  return { MockMcpServer };
 });
 
-// Mock dependencies
-vi.mock('@modelcontextprotocol/sdk/server/mcp.js', () => ({
+vi.mock('@modelcontextprotocol/server', () => ({
   McpServer: MockMcpServer,
 }));
-vi.mock('@modelcontextprotocol/sdk/server/stdio.js', () => ({
-  StdioServerTransport: MockStdioServerTransport,
-}));
-vi.mock('../../src/core/file/packageJsonParse.js');
 vi.mock('../../src/shared/logger.js');
 
+type ServeStdioArgs = Parameters<typeof import('@modelcontextprotocol/server/stdio').serveStdio>;
+
+// Minimal stand-in for StdioServerTransport: serveStdio (mocked below) installs onclose on
+// it, exactly like the real entry does, so tests can simulate stdin EOF via `close()`.
+const createFakeTransport = () => {
+  const transport = {
+    onclose: undefined as (() => void) | undefined,
+    close: vi.fn(async () => {
+      transport.onclose?.();
+    }),
+  };
+  return transport;
+};
+
+const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
 describe('MCP Server', () => {
-  let mockExit: ReturnType<typeof vi.fn<(code?: number) => never>>;
   const mockVersion = '1.0.0';
 
-  const mockLogger = {
-    trace: vi.fn(),
-    error: vi.fn(),
-  };
-
-  beforeEach(async () => {
-    vi.resetAllMocks();
-    mockExit = vi.fn();
-    vi.mocked(getVersion).mockResolvedValue(mockVersion);
-
-    // ロガーのモックを設定
-    vi.mocked(logger.trace).mockImplementation(mockLogger.trace);
-    vi.mocked(logger.error).mockImplementation(mockLogger.error);
-
-    // Reset MockMcpServer to default implementation
-    vi.mocked(McpServer).mockImplementation(function (this: unknown) {
-      Object.assign(this as object, {
-        tool: vi.fn().mockReturnThis(),
-        prompt: vi.fn().mockReturnThis(),
-        registerTool: vi.fn().mockReturnThis(),
-        registerPrompt: vi.fn().mockReturnThis(),
-        connect: vi.fn().mockResolvedValue(undefined),
-        close: vi.fn().mockResolvedValue(undefined),
-        server: {},
-        _registeredResources: new Map(),
-        _registeredResourceTemplates: new Map(),
-        _registeredTools: new Map(),
-        _registeredPrompts: new Map(),
-        _registeredAgents: new Map(),
-        _registeredInstructions: new Map(),
-        _registeredRoutes: new Map(),
-        _registeredSessions: new Map(),
-        _registeredSockets: new Map(),
-        _registeredStreams: new Map(),
-        _registeredWebSockets: new Map(),
-        _registeredWorkers: new Map(),
-        _toolHandlersInitialized: false,
-        _completionHandlerInitialized: false,
-        setToolRequestHandlers: vi.fn(),
-        setCompletionRequestHandler: vi.fn(),
-        _messageHandler: vi.fn(),
-        _transport: {},
-        _connected: false,
-        _completionHandler: vi.fn(),
-        _toolHandlers: new Map(),
-        _validateHandlersInitialized: vi.fn(),
-        handlePromptCompletion: vi.fn(),
-        handleResourceCompletion: vi.fn(),
-        _resourceHandlersInitialized: false,
-        setResourceRequestHandlers: vi.fn(),
-        _resourceHandlers: new Map(),
-      });
-      return this;
-    });
-
-    // Reset MockStdioServerTransport to default implementation
-    vi.mocked(StdioServerTransport).mockImplementation(function (this: unknown) {
-      return this;
-    });
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
   describe('createMcpServer', () => {
-    test('should create server with correct configuration', async () => {
-      const server = await createMcpServer();
+    test('should create server with correct configuration', () => {
+      const server = createMcpServer(mockVersion);
 
       expect(McpServer).toHaveBeenCalledWith(
-        {
+        expect.objectContaining({
           name: 'repomix-mcp-server',
+          title: 'Repomix',
           version: mockVersion,
-        },
-        {
+          websiteUrl: 'https://repomix.com',
+        }),
+        expect.objectContaining({
           instructions: expect.stringContaining('Repomix MCP Server provides AI-optimized codebase analysis tools'),
-        },
+        }),
       );
       expect(server).toBeDefined();
     });
 
-    test('registers the 6 packing/analysis tools by default (non-sandboxed)', async () => {
-      const server = await createMcpServer();
+    test('embeds icons as data URIs with a PNG fallback', () => {
+      createMcpServer(mockVersion);
+      const icons = vi.mocked(McpServer).mock.calls[0][0].icons ?? [];
+      expect(icons.map(({ mimeType, sizes }) => ({ mimeType, sizes }))).toEqual([
+        { mimeType: 'image/svg+xml', sizes: ['any'] },
+        { mimeType: 'image/png', sizes: ['48x48'] },
+      ]);
+      for (const icon of icons) {
+        expect(icon.src.startsWith(`data:${icon.mimeType};base64,`)).toBe(true);
+      }
+      const png = Buffer.from(icons[1].src.split(',')[1], 'base64');
+      expect(png.subarray(1, 4).toString()).toBe('PNG');
+      expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([48, 48]);
+      expect(Buffer.from(icons[0].src.split(',')[1], 'base64').toString()).toContain('<svg');
+    });
+
+    test('bounds tool input size and sets list cache hints', () => {
+      createMcpServer(mockVersion);
+      const options = vi.mocked(McpServer).mock.calls[0][1];
+      expect(options?.maxToolInputElements).toBe(10_000);
+      expect(options?.cacheHints).toEqual({
+        'tools/list': { ttlMs: 60 * 60 * 1000 },
+        'prompts/list': { ttlMs: 60 * 60 * 1000 },
+      });
+    });
+
+    test('registers the 6 packing/analysis tools by default (non-sandboxed)', () => {
+      const server = createMcpServer(mockVersion);
       const registerTool = (server as unknown as { registerTool: ReturnType<typeof vi.fn> }).registerTool;
       const names = registerTool.mock.calls.map((c) => c[0]);
       expect(names).toEqual(
@@ -199,10 +109,12 @@ describe('MCP Server', () => {
       expect(names).not.toContain('file_system_read_file');
       expect(names).not.toContain('file_system_read_directory');
       expect(names).toHaveLength(6);
+      const registerPrompt = (server as unknown as { registerPrompt: ReturnType<typeof vi.fn> }).registerPrompt;
+      expect(registerPrompt.mock.calls.map((c) => c[0])).toEqual(['pack_remote_repository']);
     });
 
-    test('registers only the 5 read-only tools when sandboxed', async () => {
-      const server = await createMcpServer({ sandboxed: true, root: '/allowed/dir' });
+    test('registers only the 5 read-only tools and no prompts when sandboxed', () => {
+      const server = createMcpServer(mockVersion, { sandboxed: true, root: '/allowed/dir' });
       const registerTool = (server as unknown as { registerTool: ReturnType<typeof vi.fn> }).registerTool;
       const names = registerTool.mock.calls.map((c) => c[0]);
       expect(names.sort()).toEqual(
@@ -214,114 +126,160 @@ describe('MCP Server', () => {
           'read_repomix_output',
         ].sort(),
       );
-      expect(names).not.toContain('pack_remote_repository');
-      expect(names).not.toContain('generate_skill');
-      expect(names).not.toContain('attach_packed_output');
+      const registerPrompt = (server as unknown as { registerPrompt: ReturnType<typeof vi.fn> }).registerPrompt;
+      expect(registerPrompt).not.toHaveBeenCalled();
     });
 
-    test('sandboxed instructions tell the agent paths are relative to the workspace root', async () => {
-      await createMcpServer({ sandboxed: true, root: '/allowed/dir' });
-      expect(McpServer).toHaveBeenCalledWith(expect.any(Object), {
-        instructions: expect.stringContaining('relative to workspace root'),
-      });
+    test('sandboxed instructions tell the agent paths are relative to the workspace root', () => {
+      createMcpServer(mockVersion, { sandboxed: true, root: '/allowed/dir' });
+      expect(McpServer).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.objectContaining({
+          instructions: expect.stringContaining('relative to workspace root'),
+        }),
+      );
     });
   });
 
   describe('runMcpServer', () => {
-    test('should connect server with stdio transport', async () => {
-      await expect(runMcpServer({ processExit: mockExit })).resolves.toBeUndefined();
+    let mockExit: ReturnType<typeof vi.fn<(code?: number) => never>>;
+    let transport: ReturnType<typeof createFakeTransport>;
+    let handle: { close: ReturnType<typeof vi.fn<() => Promise<void>>> };
+    let serveStdio: ReturnType<typeof vi.fn<(...args: ServeStdioArgs) => { close: () => Promise<void> }>>;
+    let deps: NonNullable<Parameters<typeof runMcpServer>[1]>;
+    let existingListeners: Record<'SIGINT' | 'SIGTERM', NodeJS.SignalsListener[]>;
 
-      expect(StdioServerTransport).toHaveBeenCalled();
-      // Get the mock server instance from the constructor call
-      const mockServer = vi.mocked(McpServer).mock.results[0]?.value;
-      expect(mockServer?.connect).toHaveBeenCalled();
+    beforeEach(() => {
+      existingListeners = {
+        SIGINT: process.listeners('SIGINT') as NodeJS.SignalsListener[],
+        SIGTERM: process.listeners('SIGTERM') as NodeJS.SignalsListener[],
+      };
+      mockExit = vi.fn();
+      transport = createFakeTransport();
+      handle = { close: vi.fn(async () => {}) };
+      serveStdio = vi.fn((_factory, options) => {
+        // Mirror the real entry: it takes ownership of the transport's onclose.
+        if (options?.transport) options.transport.onclose = vi.fn();
+        return handle;
+      });
+      deps = {
+        getVersion: vi.fn().mockResolvedValue(mockVersion),
+        serveStdio,
+        createStdioTransport: () => transport as unknown as StdioServerTransport,
+        shutdownTimeoutMs: 5_000,
+      };
+    });
+
+    // Drop only the handlers runMcpServer added so they do not leak into later tests.
+    afterEach(() => {
+      for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+        for (const listener of process.listeners(signal) as NodeJS.SignalsListener[]) {
+          if (!existingListeners[signal].includes(listener)) process.off(signal, listener);
+        }
+      }
+    });
+
+    test('serves stdio through serveStdio with our transport', async () => {
+      await expect(runMcpServer({ processExit: mockExit }, deps)).resolves.toBeUndefined();
+
+      expect(serveStdio).toHaveBeenCalledWith(expect.any(Function), expect.objectContaining({ transport }));
       expect(logger.trace).toHaveBeenCalledWith('Repomix MCP Server running on stdio');
     });
 
-    test('should handle connection error', async () => {
-      const error = new Error('Connection failed');
+    test('factory synchronously builds a fresh server each call with the precomputed version', async () => {
+      await runMcpServer({ processExit: mockExit, sandboxed: true, root: '/allowed/dir' }, deps);
+      const factory = serveStdio.mock.calls[0][0];
 
-      // Pre-configure the mock to reject on connect
-      const mockServerWithError = {
-        tool: vi.fn().mockReturnThis(),
-        prompt: vi.fn().mockReturnThis(),
-        registerTool: vi.fn().mockReturnThis(),
-        registerPrompt: vi.fn().mockReturnThis(),
-        connect: vi.fn().mockRejectedValue(error),
-        close: vi.fn().mockResolvedValue(undefined),
-      };
+      const first = factory({} as never);
+      const second = factory({} as never);
+      expect(first).not.toBeInstanceOf(Promise);
+      expect(first).not.toBe(second);
+      expect(deps?.getVersion).toHaveBeenCalledTimes(1);
+      expect(McpServer).toHaveBeenLastCalledWith(
+        expect.objectContaining({ name: 'repomix-mcp-server', version: mockVersion }),
+        expect.objectContaining({ instructions: expect.stringContaining('SANDBOX MODE') }),
+      );
+    });
 
-      // Override the constructor temporarily
-      vi.mocked(McpServer).mockImplementation(function (this: unknown) {
-        Object.assign(this as object, mockServerWithError);
-        return this as McpServer;
-      });
+    test('should handle startup error', async () => {
+      const error = new Error('Version lookup failed');
+      vi.mocked(deps?.getVersion as ReturnType<typeof vi.fn>).mockRejectedValue(error);
 
-      try {
-        await runMcpServer({ processExit: mockExit });
-      } catch (e) {
-        expect(e).toEqual(error);
-      }
+      await runMcpServer({ processExit: mockExit }, deps);
 
+      expect(serveStdio).not.toHaveBeenCalled();
       expect(logger.error).toHaveBeenCalledWith('Failed to start MCP server:', error);
       expect(mockExit).toHaveBeenCalledWith(1);
     });
 
-    test('should handle SIGINT signal', async () => {
-      await expect(runMcpServer({ processExit: mockExit })).resolves.toBeUndefined();
-      // Get the mock server instance from the constructor call
-      const mockServer = vi.mocked(McpServer).mock.results[0]?.value;
-      mockLogger.trace.mockClear();
-      process.emit('SIGINT');
+    test.each(['SIGINT', 'SIGTERM'] as const)('should shut down on %s', async (signal) => {
+      await runMcpServer({ processExit: mockExit }, deps);
+      process.emit(signal);
+      await flush();
 
-      // 非同期処理の完了を待つ
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
-      expect(mockServer?.close).toHaveBeenCalled();
+      expect(handle.close).toHaveBeenCalled();
       expect(logger.trace).toHaveBeenCalledWith('Repomix MCP Server shutdown complete');
       expect(mockExit).toHaveBeenCalledWith(0);
     });
 
-    test('should handle SIGTERM signal', async () => {
-      await expect(runMcpServer({ processExit: mockExit })).resolves.toBeUndefined();
-      // Get the mock server instance from the constructor call
-      const mockServer = vi.mocked(McpServer).mock.results[0]?.value;
-      mockLogger.trace.mockClear();
-      process.emit('SIGTERM');
+    test('should shut down when the client closes stdin, after the SDK teardown', async () => {
+      await runMcpServer({ processExit: mockExit }, deps);
+      await transport.close();
+      await flush();
 
-      // 非同期処理の完了を待つ
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
-      expect(mockServer?.close).toHaveBeenCalled();
-      expect(logger.trace).toHaveBeenCalledWith('Repomix MCP Server shutdown complete');
+      expect(handle.close).toHaveBeenCalledTimes(1);
+      expect(mockExit).toHaveBeenCalledTimes(1);
       expect(mockExit).toHaveBeenCalledWith(0);
+    });
+
+    test('runs the SDK onclose before shutting down and only shuts down once', async () => {
+      const order: string[] = [];
+      serveStdio.mockImplementation((_factory, options) => {
+        if (options?.transport) {
+          options.transport.onclose = () => {
+            order.push('sdk');
+          };
+        }
+        return handle;
+      });
+      handle.close.mockImplementation(async () => {
+        order.push('handle.close');
+      });
+
+      await runMcpServer({ processExit: mockExit }, deps);
+      await transport.close();
+      process.emit('SIGINT');
+      await flush();
+
+      expect(order).toEqual(['sdk', 'handle.close']);
+      expect(mockExit).toHaveBeenCalledTimes(1);
+    });
+
+    test('exits anyway when shutdown hangs past the timeout (e.g. stdout never drains)', async () => {
+      vi.useFakeTimers();
+      try {
+        handle.close.mockImplementation(() => new Promise<void>(() => {}));
+
+        await runMcpServer({ processExit: mockExit }, { ...deps, shutdownTimeoutMs: 100 });
+        process.emit('SIGTERM');
+        await vi.advanceTimersByTimeAsync(99);
+        expect(mockExit).not.toHaveBeenCalled();
+
+        await vi.advanceTimersByTimeAsync(1);
+        expect(logger.trace).toHaveBeenCalledWith('MCP server shutdown timed out, exiting');
+        expect(mockExit).toHaveBeenCalledWith(0);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     test('should handle shutdown error', async () => {
       const error = new Error('Shutdown failed');
+      handle.close.mockRejectedValue(error);
 
-      // Pre-configure the mock to reject on close
-      const mockServerWithCloseError = {
-        tool: vi.fn().mockReturnThis(),
-        prompt: vi.fn().mockReturnThis(),
-        registerTool: vi.fn().mockReturnThis(),
-        registerPrompt: vi.fn().mockReturnThis(),
-        connect: vi.fn().mockResolvedValue(undefined),
-        close: vi.fn().mockRejectedValue(error),
-      };
-
-      // Override the constructor temporarily
-      vi.mocked(McpServer).mockImplementation(function (this: unknown) {
-        Object.assign(this as object, mockServerWithCloseError);
-        return this as McpServer;
-      });
-
-      await expect(runMcpServer({ processExit: mockExit })).resolves.toBeUndefined();
-      mockLogger.error.mockClear();
+      await runMcpServer({ processExit: mockExit }, deps);
       process.emit('SIGINT');
-
-      // 非同期処理の完了を待つ
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await flush();
 
       expect(logger.error).toHaveBeenCalledWith('Error during MCP server shutdown:', error);
       expect(mockExit).toHaveBeenCalledWith(1);

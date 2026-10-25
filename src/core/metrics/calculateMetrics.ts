@@ -80,11 +80,13 @@ export const createMetricsTaskRunner = (
   rootDirs: ReadonlyArray<string>,
   numOfTasks: number,
   encoding: TokenEncoding,
+  signal?: AbortSignal,
 ): MetricsTaskRunnerWithWarmup => {
   const taskRunner = initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
     numOfTasks,
     workerType: 'calculateMetrics',
     runtime: 'worker_threads',
+    signal,
   });
 
   const { maxThreads } = getWorkerThreadCount(numOfTasks);
@@ -154,6 +156,8 @@ export const calculateMetrics = async (
   gitDiffResult: GitDiffResult | undefined,
   gitLogResult: GitLogResult | undefined,
   overrideDeps: Partial<typeof defaultDeps> = {},
+  // Only applies to the pool created here; an injected taskRunner carries its own.
+  signal?: AbortSignal,
 ): Promise<CalculateMetricsResult> => {
   const deps = { ...defaultDeps, ...overrideDeps };
 
@@ -166,6 +170,7 @@ export const calculateMetrics = async (
       numOfTasks: processedFiles.length,
       workerType: 'calculateMetrics',
       runtime: 'worker_threads',
+      signal,
     });
 
   try {

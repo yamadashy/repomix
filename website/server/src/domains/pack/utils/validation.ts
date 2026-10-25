@@ -1,5 +1,25 @@
 import path from 'node:path';
 
+// Brace patterns nested deeper than this are rejected. Real include patterns
+// rarely nest at all, while deep nesting makes the brace expansion in the glob
+// stack (braces/micromatch) build pathological regexes that can take down the
+// process. Ignore patterns cannot contain braces at all (schema charset).
+export const MAX_BRACE_DEPTH = 5;
+
+export function getMaxBraceDepth(pattern: string): number {
+  let depth = 0;
+  let maxDepth = 0;
+  for (const ch of pattern) {
+    if (ch === '{') {
+      depth++;
+      if (depth > maxDepth) maxDepth = depth;
+    } else if (ch === '}' && depth > 0) {
+      depth--;
+    }
+  }
+  return maxDepth;
+}
+
 export function sanitizePattern(patterns: string | undefined): string {
   if (!patterns) return '';
 

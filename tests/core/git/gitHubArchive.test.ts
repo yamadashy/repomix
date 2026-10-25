@@ -130,6 +130,44 @@ describe('gitHubArchive', () => {
       expect(mockPipeline).toHaveBeenCalled();
     });
 
+    test('gives the caller signal to the extraction pipeline', async () => {
+      const controller = new AbortController();
+      mockFetch.mockResolvedValue(createMockResponse());
+
+      await downloadGitHubArchive(
+        mockRepoInfo,
+        mockTargetDirectory,
+        { ...mockOptions, signal: controller.signal },
+        undefined,
+        mockDeps,
+      );
+
+      expect(mockPipeline.mock.calls[0].at(-1)).toEqual({ signal: controller.signal });
+    });
+
+    test('aborts the fetch when the caller signal fires and does not retry', async () => {
+      const controller = new AbortController();
+      mockFetch.mockImplementation((_url, init) => {
+        const fetchSignal = init?.signal as AbortSignal;
+        return new Promise((_resolve, reject) => {
+          fetchSignal.addEventListener('abort', () => reject(fetchSignal.reason), { once: true });
+          controller.abort();
+        });
+      });
+
+      await expect(
+        downloadGitHubArchive(
+          mockRepoInfo,
+          mockTargetDirectory,
+          { retries: 3, signal: controller.signal },
+          undefined,
+          mockDeps,
+        ),
+      ).rejects.toMatchObject({ name: 'AbortError' });
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
     test('should retry on network failure', async () => {
       mockFetch
         .mockRejectedValueOnce(new Error('Network error'))

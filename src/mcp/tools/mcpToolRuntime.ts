@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { runCli } from '../../cli/cliRun.js';
 import type { CliOptions } from '../../cli/types.js';
@@ -9,6 +9,7 @@ import { generateTreeString } from '../../core/file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../../core/file/fileTypes.js';
 import { logger, type RepomixLogLevel } from '../../shared/logger.js';
 import { getRepomixTmpDir } from '../../shared/tmpDir.js';
+import type { RepomixProgressCallback } from '../../shared/types.js';
 import { PathScopeError, resolveWithinRoot, toVirtualPath } from '../pathScope.js';
 
 /**
@@ -157,6 +158,14 @@ export const createToolWorkspace = async (): Promise<string> => {
 };
 
 /**
+ * Removes a tool workspace created by createToolWorkspace. Best effort: a failure is
+ * ignored because the directory lives under the repomix temp dir anyway.
+ */
+export const removeToolWorkspace = async (tempDir: string): Promise<void> => {
+  await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+};
+
+/**
  * Generate a unique output ID
  */
 export const generateOutputId = (): string => {
@@ -190,11 +199,12 @@ export const runCliPreservingLogLevel = async (
   directories: string[],
   cwd: string,
   options: CliOptions,
+  progressCallback?: RepomixProgressCallback,
 ): Promise<Awaited<ReturnType<typeof runCli>>> => {
   if (activePacks === 0) logLevelBeforePacks = logger.getLogLevel();
   activePacks++;
   try {
-    return await runCli(directories, cwd, options);
+    return await runCli(directories, cwd, options, progressCallback);
   } finally {
     activePacks--;
     if (activePacks === 0 && logLevelBeforePacks !== undefined) {

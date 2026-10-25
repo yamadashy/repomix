@@ -1,6 +1,6 @@
 import os from 'node:os';
 import { Tinypool } from 'tinypool';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   cleanupWorkerPool,
   createWorkerPool,
@@ -208,6 +208,169 @@ describe('processConcurrency', () => {
 
       await taskRunner.cleanup();
       expect(destroyMock).toHaveBeenCalled();
+    });
+
+    describe('with an abort signal', () => {
+      const setupPool = () => {
+        const runMock = vi.fn().mockResolvedValue('result');
+        const destroyMock = vi.fn().mockResolvedValue(undefined);
+        vi.mocked(Tinypool).mockImplementation(function (this: unknown) {
+          (this as Record<string, unknown>).run = runMock;
+          (this as Record<string, unknown>).destroy = destroyMock;
+          return this as Tinypool;
+        });
+        return { runMock, destroyMock };
+      };
+
+      it('destroys the pool when the signal fires and refuses new tasks', async () => {
+        const { runMock, destroyMock } = setupPool();
+        const controller = new AbortController();
+        const taskRunner = initTaskRunner<{ payload: string }, string>({
+          numOfTasks: 10,
+          workerType: 'securityCheck',
+          runtime: 'worker_threads',
+          signal: controller.signal,
+        });
+
+        controller.abort();
+
+        expect(destroyMock).toHaveBeenCalledTimes(1);
+        await expect(taskRunner.run({ payload: 'x' })).rejects.toMatchObject({ name: 'AbortError' });
+        expect(runMock).not.toHaveBeenCalled();
+      });
+
+      it('cleanup waits for the teardown started by the abort', async () => {
+        const { destroyMock } = setupPool();
+        let finishDestroy: () => void = () => {};
+        destroyMock.mockReturnValue(new Promise<void>((resolve) => (finishDestroy = resolve)));
+        const controller = new AbortController();
+        const taskRunner = initTaskRunner({
+          numOfTasks: 10,
+          workerType: 'securityCheck',
+          runtime: 'worker_threads',
+          signal: controller.signal,
+        });
+
+        controller.abort();
+        let cleanedUp = false;
+        const cleanupPromise = taskRunner.cleanup().then(() => {
+          cleanedUp = true;
+        });
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        expect(cleanedUp).toBe(false);
+
+        finishDestroy();
+        await cleanupPromise;
+        expect(cleanedUp).toBe(true);
+        expect(destroyMock).toHaveBeenCalledTimes(1);
+      });
+
+      it('stops listening once cleaned up', async () => {
+        const { destroyMock } = setupPool();
+        const controller = new AbortController();
+        const taskRunner = initTaskRunner({
+          numOfTasks: 10,
+          workerType: 'securityCheck',
+          runtime: 'worker_threads',
+          signal: controller.signal,
+        });
+
+        await taskRunner.cleanup();
+        controller.abort();
+
+        expect(destroyMock).toHaveBeenCalledTimes(1);
+      });
+    });
+  });
+
+  describe('piped stream listener limit', () => {
+    let stdoutBaseline: number;
+    let stderrBaseline: number;
+
+    beforeEach(() => {
+      stdoutBaseline = process.stdout.getMaxListeners();
+      stderrBaseline = process.stderr.getMaxListeners();
+      vi.mocked(os).availableParallelism = vi.fn().mockReturnValue(4);
+      vi.mocked(Tinypool).mockImplementation(function (this: unknown) {
+        (this as Record<string, unknown>).destroy = vi.fn().mockResolvedValue(undefined);
+        return this as Tinypool;
+      });
+    });
+
+    afterEach(() => {
+      // Keep a failed assertion from leaking a raised limit into other tests.
+      process.stdout.setMaxListeners(stdoutBaseline);
+      process.stderr.setMaxListeners(stderrBaseline);
+    });
+
+    it('restores the limit even when destroy rejects', async () => {
+      vi.mocked(Tinypool).mockImplementation(function (this: unknown) {
+        (this as Record<string, unknown>).destroy = vi.fn().mockRejectedValue(new Error('destroy failed'));
+        return this as Tinypool;
+      });
+      const pool = createWorkerPool({ numOfTasks: 1000, workerType: 'fileProcess', runtime: 'worker_threads' });
+
+      await cleanupWorkerPool(pool);
+
+      expect(process.stdout.getMaxListeners()).toBe(stdoutBaseline);
+    });
+
+    it('adds up overlapping pools and restores in any order', async () => {
+      const first = createWorkerPool({ numOfTasks: 1000, workerType: 'fileProcess', runtime: 'worker_threads' });
+      const second = createWorkerPool({ numOfTasks: 1000, workerType: 'securityCheck', runtime: 'worker_threads' });
+      expect(process.stdout.getMaxListeners()).toBe(stdoutBaseline + 8);
+
+      await cleanupWorkerPool(first);
+      expect(process.stdout.getMaxListeners()).toBe(stdoutBaseline + 4);
+      await cleanupWorkerPool(second);
+      expect(process.stdout.getMaxListeners()).toBe(stdoutBaseline);
+    });
+
+    it('does not lower a limit it never raised', async () => {
+      process.stdout.setMaxListeners(0);
+      const pool = createWorkerPool({ numOfTasks: 1000, workerType: 'fileProcess', runtime: 'worker_threads' });
+      // Something else sets a finite limit while the pool is alive.
+      process.stdout.setMaxListeners(10);
+
+      await cleanupWorkerPool(pool);
+
+      expect(process.stdout.getMaxListeners()).toBe(10);
+    });
+
+    it('raises stdout/stderr max listeners by the worker count while a worker_threads pool lives', async () => {
+      const stdoutBefore = process.stdout.getMaxListeners();
+      const stderrBefore = process.stderr.getMaxListeners();
+
+      const pool = createWorkerPool({ numOfTasks: 1000, workerType: 'fileProcess', runtime: 'worker_threads' });
+      expect(process.stdout.getMaxListeners()).toBe(stdoutBefore + 4);
+      expect(process.stderr.getMaxListeners()).toBe(stderrBefore + 4);
+
+      await cleanupWorkerPool(pool);
+      // A second cleanup must not lower the limit again.
+      await cleanupWorkerPool(pool);
+      expect(process.stdout.getMaxListeners()).toBe(stdoutBefore);
+      expect(process.stderr.getMaxListeners()).toBe(stderrBefore);
+    });
+
+    it('leaves the limit alone for child_process pools', async () => {
+      const before = process.stdout.getMaxListeners();
+      const pool = createWorkerPool({ numOfTasks: 1000, workerType: 'fileProcess', runtime: 'child_process' });
+      expect(process.stdout.getMaxListeners()).toBe(before);
+      await cleanupWorkerPool(pool);
+      expect(process.stdout.getMaxListeners()).toBe(before);
+    });
+
+    it('keeps an unlimited (0) limit unlimited', async () => {
+      const before = process.stdout.getMaxListeners();
+      process.stdout.setMaxListeners(0);
+      try {
+        const pool = createWorkerPool({ numOfTasks: 1000, workerType: 'fileProcess', runtime: 'worker_threads' });
+        expect(process.stdout.getMaxListeners()).toBe(0);
+        await cleanupWorkerPool(pool);
+        expect(process.stdout.getMaxListeners()).toBe(0);
+      } finally {
+        process.stdout.setMaxListeners(before);
+      }
     });
   });
 

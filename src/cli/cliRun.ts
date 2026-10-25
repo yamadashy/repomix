@@ -1,13 +1,14 @@
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
-import { Option, program } from 'commander';
+import { type Command, Option, program } from 'commander';
 import pc from 'picocolors';
 import { getVersion } from '../core/file/packageJsonParse.js';
 import { isExplicitRemoteUrl, isValidShorthand } from '../core/git/gitRemoteUrl.js';
 import { handleError, RepomixError } from '../shared/errorHandle.js';
 import { logger, repomixLogLevels } from '../shared/logger.js';
 import { parseHumanSizeToBytes } from '../shared/sizeParse.js';
+import type { RepomixProgressCallback } from '../shared/types.js';
 import { redactOptionsForLog, redactUrl } from '../shared/urlRedact.js';
 import type { CliOptions } from './types.js';
 
@@ -251,11 +252,19 @@ export const run = async () => {
   }
 };
 
-const commanderActionEndpoint = async (directories: string[], options: CliOptions = {}) => {
+export const commanderActionEndpoint = async (directories: string[], options: CliOptions = {}, command?: Command) => {
+  // `--no-security-check` makes Commander fill `securityCheck: true` even when the
+  // flag is absent. buildCliConfig treats any defined value as an explicit override,
+  // so drop the default here to let the config file's `security.enableSecurityCheck` apply.
+  const cliOptions: CliOptions = { ...options };
+  if (command?.getOptionValueSource('securityCheck') === 'default') {
+    delete cliOptions.securityCheck;
+  }
+
   // Auto-enable file processors for real CLI invocations only. Library callers
   // (`runCli`/`pack`) and MCP tools bypass this endpoint, so they default to OFF.
   // Remote runs downgrade this based on --remote-trust-config in runRemoteAction.
-  await runCli(directories, process.cwd(), { enableFileProcessors: true, ...options });
+  await runCli(directories, process.cwd(), { enableFileProcessors: true, ...cliOptions });
 };
 
 /**
@@ -333,7 +342,16 @@ export const canonicalizeSandboxRoot = async (
   }
 };
 
-export const runCli = async (directories: string[], cwd: string, options: CliOptions) => {
+/**
+ * @param progressCallback Optional listener for pipeline progress messages (used by the
+ *   MCP tools to emit progress notifications). The CLI itself passes none.
+ */
+export const runCli = async (
+  directories: string[],
+  cwd: string,
+  options: CliOptions,
+  progressCallback?: RepomixProgressCallback,
+) => {
   // Detect stdout mode
   // NOTE: For compatibility, currently not detecting pipe mode
   const isForceStdoutMode = options.output === '-';
@@ -356,6 +374,13 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
   // In stdout mode, set log level to SILENT
   if (options.stdout) {
     logger.setLogLevel(repomixLogLevels.SILENT);
+  }
+
+  // The stdio MCP server puts JSON-RPC frames on stdout, so every diagnostic has to leave that
+  // stream for the whole run: the trace dump below, and anything a tool call re-enters here with.
+  // Unlike stdout mode the information is still wanted, which is why it moves rather than silences.
+  if (options.mcp) {
+    logger.setOutputStream('stderr');
   }
 
   // A positional argument can itself be a remote URL, and `options.remote` holds
@@ -401,14 +426,14 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
 
   if (options.remote) {
     const { runRemoteAction } = await import('./actions/remoteAction.js');
-    return await runRemoteAction(options.remote, options);
+    return await runRemoteAction(options.remote, options, progressCallback);
   }
 
   // Auto-detect explicit remote URLs (https://, git@, ssh://, git://) in positional arguments
   if (directories.length === 1 && isExplicitRemoteUrl(directories[0])) {
     logger.trace(`Auto-detected remote URL from positional argument: ${redactUrl(directories[0])}`);
     const { runRemoteAction } = await import('./actions/remoteAction.js');
-    return await runRemoteAction(directories[0], options);
+    return await runRemoteAction(directories[0], options, progressCallback);
   }
 
   if (options.watch) {
@@ -439,12 +464,12 @@ export const runCli = async (directories: string[], cwd: string, options: CliOpt
           ),
         );
         const { runRemoteAction } = await import('./actions/remoteAction.js');
-        return await runRemoteAction(directories[0], options);
+        return await runRemoteAction(directories[0], options, progressCallback);
       }
       logger.trace(`Argument matches owner/repo shorthand but is not a reachable GitHub repository: ${directories[0]}`);
     }
   }
 
   const { runDefaultAction } = await import('./actions/defaultAction.js');
-  return await runDefaultAction(directories, cwd, options);
+  return await runDefaultAction(directories, cwd, options, progressCallback);
 };
