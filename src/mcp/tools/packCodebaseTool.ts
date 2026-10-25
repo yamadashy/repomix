@@ -3,10 +3,8 @@ import path from 'node:path';
 import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import { braceExpand } from 'minimatch';
 import { z } from 'zod';
-import { runCli } from '../../cli/cliRun.js';
 import type { CliOptions } from '../../cli/types.js';
 import { defaultFilePathMap } from '../../config/configSchema.js';
-import { logger } from '../../shared/logger.js';
 import { splitPatterns } from '../../shared/patternUtils.js';
 import type { McpServerConfig } from '../mcpServer.js';
 import { isEscapingPath, resolveWithinRoot } from '../pathScope.js';
@@ -19,6 +17,7 @@ import {
   formatPackToolResponse,
   outputPatternsSchema,
   removeToolWorkspace,
+  runCliPreservingLogLevel,
 } from './mcpToolRuntime.js';
 
 /**
@@ -181,19 +180,12 @@ export const registerPackCodebaseTool = (
             : {}),
         } as CliOptions;
 
-        // cliOptions.quiet makes runCli set the SHARED logger to SILENT and never
-        // restore it — which would permanently blind the operator's stderr error
-        // logging for the rest of the MCP session. Save + restore around the call.
-        const logLevelBeforePack = logger.getLogLevel();
-        let result: Awaited<ReturnType<typeof runCli>>;
-        try {
-          // Sandbox: progress messages are reduced to fixed stage strings (see mcpProgress).
-          result = await withMcpProgress(ctx, { sandboxed: config.sandboxed }, (progressCallback) =>
-            runCli(['.'], targetDirectory, cliOptions, progressCallback),
-          );
-        } finally {
-          logger.setLogLevel(logLevelBeforePack);
-        }
+        // Quiet packing must not leave the shared logger SILENT for the rest of the MCP
+        // session, so it goes through the save/restore wrapper all packing tools share.
+        // Sandbox: progress messages are reduced to fixed stage strings (see mcpProgress).
+        const result = await withMcpProgress(ctx, { sandboxed: config.sandboxed }, (progressCallback) =>
+          runCliPreservingLogLevel(['.'], targetDirectory, cliOptions, progressCallback),
+        );
         if (!result) {
           return buildMcpToolErrorResponse({
             errorMessage: 'Failed to return a result',

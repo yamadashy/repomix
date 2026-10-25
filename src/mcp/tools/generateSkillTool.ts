@@ -2,12 +2,16 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
-import { runCli } from '../../cli/cliRun.js';
 import { getSkillBaseDir } from '../../cli/prompts/skillPrompts.js';
 import type { CliOptions } from '../../cli/types.js';
 import { generateDefaultSkillName, validateSkillName } from '../../core/skill/skillUtils.js';
 import { withMcpProgress } from './mcpProgress.js';
-import { buildMcpToolErrorResponse, buildMcpToolSuccessResponse, convertErrorToJson } from './mcpToolRuntime.js';
+import {
+  buildMcpToolErrorResponse,
+  buildMcpToolSuccessResponse,
+  convertErrorToJson,
+  runCliPreservingLogLevel,
+} from './mcpToolRuntime.js';
 
 const generateSkillInputSchema = z.object({
   directory: z.string().describe('Directory to pack (Absolute path)'),
@@ -139,7 +143,7 @@ Example Path:
         } as CliOptions;
 
         const result = await withMcpProgress(ctx, { sandboxed: false }, (progressCallback) =>
-          runCli(['.'], directory, cliOptions, progressCallback),
+          runCliPreservingLogLevel(['.'], directory, cliOptions, progressCallback),
         );
         if (!result) {
           return buildMcpToolErrorResponse({

@@ -1,7 +1,6 @@
 import path from 'node:path';
 import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
-import { runCli } from '../../cli/cliRun.js';
 import type { CliOptions } from '../../cli/types.js';
 import { defaultFilePathMap } from '../../config/configSchema.js';
 import { redactUrl } from '../../shared/urlRedact.js';
@@ -13,6 +12,7 @@ import {
   formatPackToolResponse,
   outputPatternsSchema,
   removeToolWorkspace,
+  runCliPreservingLogLevel,
 } from './mcpToolRuntime.js';
 
 const packRemoteRepositoryInputSchema = z.object({
@@ -109,7 +109,7 @@ export const registerPackRemoteRepositoryTool = (mcpServer: McpServer) => {
         } as CliOptions;
 
         const result = await withMcpProgress(ctx, { sandboxed: false }, (progressCallback) =>
-          runCli(['.'], process.cwd(), cliOptions, progressCallback),
+          runCliPreservingLogLevel(['.'], process.cwd(), cliOptions, progressCallback),
         );
         if (!result) {
           return buildMcpToolErrorResponse({
