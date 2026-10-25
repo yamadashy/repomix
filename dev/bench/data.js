@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792911440663,
+  "lastUpdate": 1792912808930,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -14438,6 +14438,51 @@ window.BENCHMARK_DATA = {
             "range": "±62",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 983ms, Q3: 1045ms\nAll times: 971, 972, 978, 978, 980, 983, 986, 990, 994, 997, 998, 998, 1002, 1010, 1019, 1045, 1049, 1080, 1143, 1154ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b249b015f96998951b9e857e995be37f76c30f26",
+          "message": "Merge pull request #1957 from yamadashy/feat/mcp-icons\n\nfeat(mcp): Advertise server title, website and icons",
+          "timestamp": "2026-10-25T16:18:13+09:00",
+          "tree_id": "e4b3b0c35dfaba4443cb80f39856302d34e89b2c",
+          "url": "https://github.com/yamadashy/repomix/commit/b249b015f96998951b9e857e995be37f76c30f26"
+        },
+        "date": 1792912807632,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 854,
+            "range": "±165",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 769ms, Q3: 934ms\nAll times: 708, 728, 746, 751, 760, 762, 764, 769, 775, 781, 796, 810, 814, 821, 830, 854, 855, 856, 861, 876, 906, 930, 934, 935, 938, 940, 955, 988, 991, 1187ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 966,
+            "range": "±24",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 961ms, Q3: 985ms\nAll times: 935, 956, 957, 957, 958, 961, 963, 964, 964, 964, 966, 967, 969, 970, 972, 985, 985, 987, 993, 1051ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1290,
+            "range": "±40",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1277ms, Q3: 1317ms\nAll times: 1260, 1262, 1267, 1268, 1270, 1277, 1278, 1278, 1279, 1287, 1290, 1298, 1300, 1302, 1304, 1317, 1319, 1321, 1326, 1343ms"
           }
         ]
       }
