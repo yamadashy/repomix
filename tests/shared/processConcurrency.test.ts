@@ -239,6 +239,32 @@ describe('processConcurrency', () => {
         expect(runMock).not.toHaveBeenCalled();
       });
 
+      it('cleanup waits for the teardown started by the abort', async () => {
+        const { destroyMock } = setupPool();
+        let finishDestroy: () => void = () => {};
+        destroyMock.mockReturnValue(new Promise<void>((resolve) => (finishDestroy = resolve)));
+        const controller = new AbortController();
+        const taskRunner = initTaskRunner({
+          numOfTasks: 10,
+          workerType: 'securityCheck',
+          runtime: 'worker_threads',
+          signal: controller.signal,
+        });
+
+        controller.abort();
+        let cleanedUp = false;
+        const cleanupPromise = taskRunner.cleanup().then(() => {
+          cleanedUp = true;
+        });
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        expect(cleanedUp).toBe(false);
+
+        finishDestroy();
+        await cleanupPromise;
+        expect(cleanedUp).toBe(true);
+        expect(destroyMock).toHaveBeenCalledTimes(1);
+      });
+
       it('stops listening once cleaned up', async () => {
         const { destroyMock } = setupPool();
         const controller = new AbortController();

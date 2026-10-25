@@ -150,17 +150,23 @@ export interface TaskRunner<T, R> {
 export const initTaskRunner = <T, R>(options: WorkerOptions): TaskRunner<T, R> => {
   const pool = createWorkerPool(options);
   const { signal } = options;
+  // Shared so cleanup() after an abort waits for the teardown the abort started.
+  let teardown: Promise<void> | undefined;
+  const destroy = () => {
+    teardown ??= cleanupWorkerPool(pool);
+    return teardown;
+  };
   // One listener per pool rather than Tinypool's per-task `signal` option, which would
   // add an abort listener for every queued task.
   const onAbort = () => {
-    void cleanupWorkerPool(pool);
+    void destroy();
   };
   signal?.addEventListener('abort', onAbort, { once: true });
   return {
     run: (task: T) => (signal?.aborted ? Promise.reject(signal.reason) : pool.run(task)),
     cleanup: async () => {
       signal?.removeEventListener('abort', onAbort);
-      await cleanupWorkerPool(pool);
+      await destroy();
     },
   };
 };

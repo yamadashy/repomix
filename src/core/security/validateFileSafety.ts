@@ -16,11 +16,11 @@ export const validateFileSafety = async (
   config: RepomixConfigMerged,
   gitDiffResult?: GitDiffResult,
   gitLogResult?: GitLogResult,
-  signal?: AbortSignal,
   deps = {
     runSecurityCheck,
     filterOutUntrustedFiles,
   },
+  signal?: AbortSignal,
 ) => {
   let suspiciousFilesResults: SuspiciousFileResult[] = [];
   let suspiciousGitDiffResults: SuspiciousFileResult[] = [];
@@ -28,7 +28,14 @@ export const validateFileSafety = async (
 
   if (config.security.enableSecurityCheck) {
     progressCallback('Running security check...');
-    const allResults = await deps.runSecurityCheck(rawFiles, progressCallback, gitDiffResult, gitLogResult, signal);
+    const allResults = await deps.runSecurityCheck(
+      rawFiles,
+      progressCallback,
+      gitDiffResult,
+      gitLogResult,
+      undefined,
+      signal,
+    );
 
     // Separate Git diff and Git log results from regular file results
     suspiciousFilesResults = allResults.filter((result) => result.type === 'file');

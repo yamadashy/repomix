@@ -77,9 +77,9 @@ const runPack = async (rootDir: string, config: RepomixConfigMerged) =>
     // runSecurityCheck (how rawFiles + gitDiff/gitLog items are batched and
     // dispatched) is still the production code path under test.
     validateFileSafety: (rawFiles, progressCallback, cfg, gitDiff, gitLog) =>
-      validateFileSafety(rawFiles, progressCallback, cfg, gitDiff, gitLog, undefined, {
+      validateFileSafety(rawFiles, progressCallback, cfg, gitDiff, gitLog, {
         runSecurityCheck: (files, progress, diff, log) =>
-          runSecurityCheck(files, progress, diff, log, undefined, {
+          runSecurityCheck(files, progress, diff, log, {
             initTaskRunner: (() =>
               inlineSecurityTaskRunner()) as typeof import('../../../src/shared/processConcurrency.js').initTaskRunner,
             getProcessConcurrency: () => 1,

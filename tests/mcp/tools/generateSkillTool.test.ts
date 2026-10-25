@@ -50,6 +50,9 @@ describe('GenerateSkillTool', () => {
     vi.mocked(path.basename).mockImplementation((p: string) => p.split('/').pop() || '');
     vi.mocked(path.resolve).mockImplementation((...args: string[]) => args.join('/'));
     vi.mocked(path.normalize).mockImplementation((p: string) => p);
+    vi.mocked(path.dirname).mockImplementation((p: string) => p.split('/').slice(0, -1).join('/'));
+    vi.mocked(fs.mkdir).mockResolvedValue(undefined);
+    vi.mocked(fs.rm).mockResolvedValue(undefined);
 
     // Default: directory doesn't exist (for skill dir check)
     vi.mocked(fs.access).mockRejectedValue(new Error('ENOENT'));
@@ -123,10 +126,11 @@ describe('GenerateSkillTool', () => {
 
   test('should reject when skill directory already exists', async () => {
     vi.mocked(path.isAbsolute).mockReturnValue(true);
-    // First access check (directory) succeeds
-    vi.mocked(fs.access)
-      .mockResolvedValueOnce(undefined) // Directory exists
-      .mockResolvedValueOnce(undefined); // Skill directory also exists
+    vi.mocked(fs.access).mockResolvedValueOnce(undefined); // Directory exists
+    // Claiming the skill directory fails because it already exists
+    vi.mocked(fs.mkdir)
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(Object.assign(new Error('EEXIST'), { code: 'EEXIST' }));
 
     const result = await toolHandler({
       directory: '/test/project',
@@ -138,6 +142,49 @@ describe('GenerateSkillTool', () => {
     expect(content.type).toBe('text');
     const parsedResult = JSON.parse((content as { type: 'text'; text: string }).text);
     expect(parsedResult.errorMessage).toContain('already exists');
+    expect(runCli).not.toHaveBeenCalled();
+    expect(fs.rm).not.toHaveBeenCalled();
+  });
+
+  test("a concurrent same-name call is refused and never removes the first call's skill", async () => {
+    vi.mocked(fs.access).mockResolvedValue(undefined);
+    const created = new Set<string>();
+    vi.mocked(fs.mkdir).mockImplementation(async (dir, options) => {
+      const target = String(dir);
+      if (!(options as { recursive?: boolean } | undefined)?.recursive) {
+        if (created.has(target)) throw Object.assign(new Error('EEXIST'), { code: 'EEXIST' });
+        created.add(target);
+      }
+      return undefined;
+    });
+    let releaseFirst: () => void = () => {};
+    vi.mocked(runCli).mockImplementationOnce(async (_directories, cwd, opts = {}) => {
+      await new Promise<void>((resolve) => (releaseFirst = resolve));
+      return { packResult: defaultPackResult, config: createMockConfig({ cwd, skillGenerate: opts.skillGenerate }) };
+    });
+
+    const first = toolHandler({ directory: '/test/project', skillName: 'shared-skill' });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const second = await toolHandler({ directory: '/test/project', skillName: 'shared-skill' });
+    releaseFirst();
+    const firstResult = await first;
+
+    expect(second.isError).toBe(true);
+    expect((second.content[0] as { text: string }).text).toContain('already exists');
+    expect(firstResult.isError).toBeUndefined();
+    expect(runCli).toHaveBeenCalledTimes(1);
+    expect(fs.rm).not.toHaveBeenCalled();
+  });
+
+  test('removes the claimed skill directory when the run fails', async () => {
+    vi.mocked(fs.access).mockResolvedValueOnce(undefined);
+    vi.mocked(runCli).mockRejectedValueOnce(new Error('pack failed'));
+
+    const result = await toolHandler({ directory: '/test/project', skillName: 'my-skill' });
+
+    expect(result.isError).toBe(true);
+    expect(fs.mkdir).toHaveBeenCalledWith('/test/project/.claude/skills/my-skill');
+    expect(fs.rm).toHaveBeenCalledWith('/test/project/.claude/skills/my-skill', { recursive: true, force: true });
   });
 
   test('should generate skill with custom name', async () => {
@@ -236,7 +283,6 @@ describe('GenerateSkillTool', () => {
 
   test('removes the partially generated skill directory when the request is cancelled', async () => {
     vi.mocked(fs.access).mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('ENOENT'));
-    vi.mocked(fs.rm).mockResolvedValue(undefined);
     const controller = new AbortController();
     vi.mocked(runCli).mockImplementationOnce(async () => {
       controller.abort();

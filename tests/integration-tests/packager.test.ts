@@ -111,7 +111,7 @@ describe.runIf(!isWindows)('packager integration', () => {
             workTreeDiffContent: '',
             stagedDiffContent: '',
           };
-          return validateFileSafety(rawFiles, progressCallback, config, gitDiffMock, undefined, undefined, {
+          return validateFileSafety(rawFiles, progressCallback, config, gitDiffMock, undefined, {
             runSecurityCheck: async () => [],
             filterOutUntrustedFiles,
           });

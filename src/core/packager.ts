@@ -245,11 +245,11 @@ export const pack = async (
     // After both complete, filter out any suspicious files from the processed results.
     const [validationResult, allProcessedFiles] = await Promise.all([
       withMemoryLogging('Security Check', () =>
-        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, signal),
+        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, undefined, signal),
       ),
       withMemoryLogging('Process Files', () => {
         progressCallback('Processing files...');
-        return deps.processFiles(rawFiles, config, progressCallback, signal);
+        return deps.processFiles(rawFiles, config, progressCallback, undefined, signal);
       }),
     ]);
 

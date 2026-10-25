@@ -44,7 +44,7 @@ describe('fileProcess', () => {
         },
       });
 
-      const result = await processFiles(mockRawFiles, config, () => {}, undefined, {
+      const result = await processFiles(mockRawFiles, config, () => {}, {
         initTaskRunner: mockInitTaskRunner,
         getFileManipulator: mockGetFileManipulator,
       });
@@ -53,6 +53,26 @@ describe('fileProcess', () => {
         { path: 'file1.js', content: 'const a = 1;' },
         { path: 'file2.js', content: 'const b = 2;' },
       ]);
+    });
+
+    it('keeps deps as the fourth positional parameter and takes the abort signal after it', async () => {
+      const seenOptions: WorkerOptions[] = [];
+      const recordingInitTaskRunner = <T, R>(options: WorkerOptions) => {
+        seenOptions.push(options);
+        return mockInitTaskRunner<T, R>(options);
+      };
+      const rawFiles: RawFile[] = [{ path: 'file1.js', content: '// comment\nconst a = 1;' }];
+      const config = createMockConfig({ output: { removeComments: true } });
+      const deps = { initTaskRunner: recordingInitTaskRunner, getFileManipulator: mockGetFileManipulator };
+      const { signal } = new AbortController();
+
+      // Pre-cancellation library call shape: (files, config, callback, deps).
+      await processFiles(rawFiles, config, () => {}, deps);
+      await processFiles(rawFiles, config, () => {}, deps, signal);
+
+      expect(seenOptions).toHaveLength(2);
+      expect(seenOptions[0].signal).toBeUndefined();
+      expect(seenOptions[1].signal).toBe(signal);
     });
 
     it('should apply all transforms in combined worker + lightweight pipeline', async () => {
@@ -73,7 +93,7 @@ describe('fileProcess', () => {
         },
       });
 
-      const result = await processFiles(mockRawFiles, config, () => {}, undefined, {
+      const result = await processFiles(mockRawFiles, config, () => {}, {
         initTaskRunner: mockInitTaskRunner,
         getFileManipulator: mockGetFileManipulator,
       });
@@ -99,7 +119,7 @@ describe('fileProcess', () => {
         },
       });
 
-      const result = await processFiles(mockRawFiles, config, () => {}, undefined, {
+      const result = await processFiles(mockRawFiles, config, () => {}, {
         initTaskRunner: mockInitTaskRunner,
         getFileManipulator: mockGetFileManipulator,
       });
@@ -273,7 +293,7 @@ describe('fileProcess', () => {
         output: { removeComments: true, removeEmptyLines: true },
       });
 
-      const result = await processFiles(rawFiles, config, () => {}, undefined, {
+      const result = await processFiles(rawFiles, config, () => {}, {
         initTaskRunner: mockInitTaskRunner,
         getFileManipulator: mockGetFileManipulator,
       });
@@ -294,7 +314,7 @@ describe('fileProcess', () => {
         output: { removeComments: true, removeEmptyLines: false },
       });
 
-      const result = await processFiles(rawFiles, config, () => {}, undefined, {
+      const result = await processFiles(rawFiles, config, () => {}, {
         initTaskRunner: mockInitTaskRunner,
         getFileManipulator: mockGetFileManipulator,
       });
@@ -319,19 +339,13 @@ describe('fileProcess', () => {
         });
 
       // Lightweight path (removeComments=false → main thread)
-      const lightweightResult = await processFiles(
-        rawFiles,
-        baseConfig({ removeComments: false }),
-        () => {},
-        undefined,
-        {
-          initTaskRunner: mockInitTaskRunner,
-          getFileManipulator: mockGetFileManipulator,
-        },
-      );
+      const lightweightResult = await processFiles(rawFiles, baseConfig({ removeComments: false }), () => {}, {
+        initTaskRunner: mockInitTaskRunner,
+        getFileManipulator: mockGetFileManipulator,
+      });
 
       // Worker path (removeComments=true → worker, but no comments in input → no change)
-      const workerResult = await processFiles(rawFiles, baseConfig({ removeComments: true }), () => {}, undefined, {
+      const workerResult = await processFiles(rawFiles, baseConfig({ removeComments: true }), () => {}, {
         initTaskRunner: mockInitTaskRunner,
         getFileManipulator: mockGetFileManipulator,
       });

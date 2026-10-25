@@ -55,7 +55,7 @@ const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
 
 describe('runSecurityCheck', () => {
   it('should identify files with security issues', async () => {
-    const result = await runSecurityCheck(mockFiles, () => {}, undefined, undefined, undefined, {
+    const result = await runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
       initTaskRunner: mockInitTaskRunner,
       getProcessConcurrency: mockGetProcessConcurrency,
     });
@@ -68,7 +68,7 @@ describe('runSecurityCheck', () => {
   it('should call progress callback for each batch', async () => {
     const progressCallback = vi.fn();
 
-    await runSecurityCheck(mockFiles, progressCallback, undefined, undefined, undefined, {
+    await runSecurityCheck(mockFiles, progressCallback, undefined, undefined, {
       initTaskRunner: mockInitTaskRunner,
       getProcessConcurrency: mockGetProcessConcurrency,
     });
@@ -94,7 +94,7 @@ describe('runSecurityCheck', () => {
     };
 
     await expect(
-      runSecurityCheck(mockFiles, () => {}, undefined, undefined, undefined, {
+      runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
         initTaskRunner: mockErrorTaskRunner,
         getProcessConcurrency: mockGetProcessConcurrency,
       }),
@@ -104,7 +104,7 @@ describe('runSecurityCheck', () => {
   });
 
   it('should handle empty file list', async () => {
-    const result = await runSecurityCheck([], () => {}, undefined, undefined, undefined, {
+    const result = await runSecurityCheck([], () => {}, undefined, undefined, {
       initTaskRunner: mockInitTaskRunner,
       getProcessConcurrency: mockGetProcessConcurrency,
     });
@@ -113,7 +113,7 @@ describe('runSecurityCheck', () => {
   });
 
   it('should log performance metrics in trace mode', async () => {
-    await runSecurityCheck(mockFiles, () => {}, undefined, undefined, undefined, {
+    await runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
       initTaskRunner: mockInitTaskRunner,
       getProcessConcurrency: mockGetProcessConcurrency,
     });
@@ -125,7 +125,7 @@ describe('runSecurityCheck', () => {
   it('should process files in parallel', async () => {
     const startTime = Date.now();
 
-    await runSecurityCheck(mockFiles, () => {}, undefined, undefined, undefined, {
+    await runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
       initTaskRunner: mockInitTaskRunner,
       getProcessConcurrency: mockGetProcessConcurrency,
     });
@@ -140,7 +140,7 @@ describe('runSecurityCheck', () => {
   it('should not modify original files', async () => {
     const originalFiles = JSON.parse(JSON.stringify(mockFiles));
 
-    await runSecurityCheck(mockFiles, () => {}, undefined, undefined, undefined, {
+    await runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
       initTaskRunner: mockInitTaskRunner,
       getProcessConcurrency: mockGetProcessConcurrency,
     });
@@ -167,7 +167,7 @@ describe('runSecurityCheck', () => {
     };
 
     const progressCallback = vi.fn();
-    const result = await runSecurityCheck(mockFiles, progressCallback, gitDiffResult, undefined, undefined, {
+    const result = await runSecurityCheck(mockFiles, progressCallback, gitDiffResult, undefined, {
       initTaskRunner: mockInitTaskRunner,
       getProcessConcurrency: mockGetProcessConcurrency,
     });
@@ -186,7 +186,7 @@ describe('runSecurityCheck', () => {
     };
 
     const progressCallback = vi.fn();
-    await runSecurityCheck(mockFiles, progressCallback, gitDiffResult, undefined, undefined, {
+    await runSecurityCheck(mockFiles, progressCallback, gitDiffResult, undefined, {
       initTaskRunner: mockInitTaskRunner,
       getProcessConcurrency: mockGetProcessConcurrency,
     });
@@ -202,7 +202,7 @@ describe('runSecurityCheck', () => {
     };
 
     const progressCallback = vi.fn();
-    await runSecurityCheck(mockFiles, progressCallback, gitDiffResult, undefined, undefined, {
+    await runSecurityCheck(mockFiles, progressCallback, gitDiffResult, undefined, {
       initTaskRunner: mockInitTaskRunner,
       getProcessConcurrency: mockGetProcessConcurrency,
     });
@@ -218,7 +218,7 @@ describe('runSecurityCheck', () => {
     };
 
     const progressCallback = vi.fn();
-    await runSecurityCheck(mockFiles, progressCallback, gitDiffResult, undefined, undefined, {
+    await runSecurityCheck(mockFiles, progressCallback, gitDiffResult, undefined, {
       initTaskRunner: mockInitTaskRunner,
       getProcessConcurrency: mockGetProcessConcurrency,
     });

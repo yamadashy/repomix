@@ -26,11 +26,11 @@ export const runSecurityCheck = async (
   progressCallback: RepomixProgressCallback = () => {},
   gitDiffResult?: GitDiffResult,
   gitLogResult?: GitLogResult,
-  signal?: AbortSignal,
   deps = {
     initTaskRunner,
     getProcessConcurrency: defaultGetProcessConcurrency,
   },
+  signal?: AbortSignal,
 ): Promise<SuspiciousFileResult[]> => {
   const gitDiffItems: SecurityCheckItem[] = [];
   const gitLogItems: SecurityCheckItem[] = [];

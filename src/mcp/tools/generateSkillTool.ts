@@ -77,9 +77,10 @@ Example Path:
     async ({ directory, skillName, compress, includePatterns, ignorePatterns }, ctx): Promise<CallToolResult> => {
       // Fires on notifications/cancelled for this request or when the transport closes.
       const signal = ctx?.mcpReq.signal;
-      // Set only once the skill directory is known not to exist, so cancellation never
-      // removes a directory this call did not create.
+      // Set only after this call created the skill directory, so cleanup never removes a
+      // directory another call (or the user) owns.
       let createdSkillDir: string | undefined;
+      let succeeded = false;
       try {
         // Validate directory is an absolute path
         if (!path.isAbsolute(directory)) {
@@ -111,14 +112,17 @@ Example Path:
         const actualSkillName = skillName ? validateSkillName(skillName) : generateDefaultSkillName([directory]);
         const skillDir = path.join(getSkillBaseDir(directory, 'project'), actualSkillName);
 
-        // Check if skill directory already exists (MCP cannot prompt for overwrite)
+        // Claim the skill directory atomically (MCP cannot prompt for overwrite): a
+        // non-recursive mkdir fails with EEXIST if it already exists, so of two
+        // concurrent same-name calls only one owns the directory.
+        await fs.mkdir(path.dirname(skillDir), { recursive: true });
         try {
-          await fs.access(skillDir);
+          await fs.mkdir(skillDir);
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
           return buildMcpToolErrorResponse({
             errorMessage: `Skill directory already exists: ${skillDir}. Please remove it first or use a different skill name.`,
           });
-        } catch {
-          // Directory doesn't exist - this is expected
         }
         createdSkillDir = skillDir;
 
@@ -144,6 +148,7 @@ Example Path:
         }
 
         const { packResult } = result;
+        succeeded = true;
 
         return buildMcpToolSuccessResponse({
           skillPath: skillDir,
@@ -155,9 +160,9 @@ Example Path:
       } catch (error) {
         return buildMcpToolErrorResponse(convertErrorToJson(error));
       } finally {
-        // A cancelled run may have left a partial skill; remove it so a retry is not
-        // refused with "Skill directory already exists".
-        if (signal?.aborted && createdSkillDir) {
+        // A failed or cancelled run may have left an empty or partial skill; remove it so
+        // a retry is not refused with "Skill directory already exists".
+        if (!succeeded && createdSkillDir) {
           await fs.rm(createdSkillDir, { recursive: true, force: true }).catch(() => {});
         }
       }

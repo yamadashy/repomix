@@ -454,5 +454,57 @@ describe('packSkill', () => {
       // generateDefaultSkillName SHOULD be called since config.skillGenerate is boolean
       expect(mockDeps.generateDefaultSkillName).toHaveBeenCalledWith(['/test/project']);
     });
+
+    test('passes the abort signal to metrics and does not write the skill once aborted', async () => {
+      const mockConfig = createMockConfig({ skillGenerate: 'test-skill' });
+      const mockFiles = createMockProcessedFiles();
+      const controller = new AbortController();
+      const params: PackSkillParams = {
+        rootDirs: ['/test/project'],
+        config: mockConfig,
+        options: { skillName: 'test-skill', skillDir: '/test/.claude/skills/test-skill', signal: controller.signal },
+        processedFiles: mockFiles,
+        allFilePaths: ['src/index.ts'],
+        gitDiffResult: undefined,
+        gitLogResult: undefined,
+        suspiciousFilesResults: [],
+        suspiciousGitDiffResults: [],
+        suspiciousGitLogResults: [],
+        safeFilePaths: ['src/index.ts'],
+        skippedFiles: [],
+        progressCallback: vi.fn(),
+      };
+      const mockDeps = {
+        buildOutputGeneratorContext: vi.fn().mockResolvedValue({
+          config: mockConfig,
+          generationDate: new Date().toISOString(),
+          treeString: 'src/\n  index.ts',
+          processedFiles: mockFiles,
+          instruction: '',
+        }),
+        sortOutputFiles: vi.fn().mockResolvedValue(mockFiles),
+        // Cancellation arrives while metrics are being calculated.
+        calculateMetrics: vi.fn().mockImplementation(async () => {
+          controller.abort();
+          return { totalFiles: 3, totalCharacters: 500, totalTokens: 100 };
+        }),
+        writeSkillOutput: vi.fn(),
+        generateDefaultSkillName: vi.fn(),
+      };
+
+      await expect(packSkill(params, mockDeps)).rejects.toMatchObject({ name: 'AbortError' });
+
+      expect(mockDeps.calculateMetrics).toHaveBeenCalledWith(
+        mockFiles,
+        expect.any(Promise),
+        params.progressCallback,
+        mockConfig,
+        undefined,
+        undefined,
+        {},
+        controller.signal,
+      );
+      expect(mockDeps.writeSkillOutput).not.toHaveBeenCalled();
+    });
   });
 });

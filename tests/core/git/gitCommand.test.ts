@@ -172,7 +172,7 @@ file2.ts
       await fs.writeFile(path.join(directory, '.git', 'config'), '[log]\n\tshowSignature = true\n');
 
       try {
-        await execGitShallowClone('https://github.com/user/repo.git', directory, undefined, undefined, {
+        await execGitShallowClone('https://github.com/user/repo.git', directory, undefined, {
           execFileAsync: mockFileExecAsync,
         });
 
@@ -188,7 +188,7 @@ file2.ts
       const directory = '/tmp/repo';
       const remoteBranch = undefined;
 
-      await execGitShallowClone(url, directory, remoteBranch, undefined, { execFileAsync: mockFileExecAsync });
+      await execGitShallowClone(url, directory, remoteBranch, { execFileAsync: mockFileExecAsync });
 
       expect(mockFileExecAsync).toHaveBeenCalledWith(
         'git',
@@ -203,8 +203,8 @@ file2.ts
       const directory = '/tmp/repo';
       const { signal } = new AbortController();
 
-      await execGitShallowClone(url, directory, undefined, signal, { execFileAsync: mockFileExecAsync });
-      await execGitShallowClone(url, directory, 'main', signal, { execFileAsync: mockFileExecAsync });
+      await execGitShallowClone(url, directory, undefined, { execFileAsync: mockFileExecAsync }, signal);
+      await execGitShallowClone(url, directory, 'main', { execFileAsync: mockFileExecAsync }, signal);
 
       expect(mockFileExecAsync).toHaveBeenCalledWith(
         'git',
@@ -225,7 +225,7 @@ file2.ts
       const remoteBranch = undefined;
 
       await expect(
-        execGitShallowClone(url, directory, remoteBranch, undefined, { execFileAsync: mockFileExecAsync }),
+        execGitShallowClone(url, directory, remoteBranch, { execFileAsync: mockFileExecAsync }),
       ).rejects.toThrow('Authentication failed');
 
       expect(mockFileExecAsync).toHaveBeenCalledWith(
@@ -242,7 +242,7 @@ file2.ts
       const directory = '/tmp/repo';
       const remoteBranch = 'main';
 
-      await execGitShallowClone(url, directory, remoteBranch, undefined, { execFileAsync: mockFileExecAsync });
+      await execGitShallowClone(url, directory, remoteBranch, { execFileAsync: mockFileExecAsync });
 
       expect(mockFileExecAsync).toHaveBeenCalledTimes(4);
       expect(mockFileExecAsync).toHaveBeenNthCalledWith(1, 'git', ['-C', directory, 'init']);
@@ -276,7 +276,7 @@ file2.ts
       const remoteBranch = 'b188a6cb39b512a9c6da7235b880af42c78ccd0d';
 
       await expect(
-        execGitShallowClone(url, directory, remoteBranch, undefined, { execFileAsync: mockFileExecAsync }),
+        execGitShallowClone(url, directory, remoteBranch, { execFileAsync: mockFileExecAsync }),
       ).rejects.toThrow('Authentication failed');
       expect(mockFileExecAsync).toHaveBeenCalledTimes(3);
       expect(mockFileExecAsync).toHaveBeenNthCalledWith(1, 'git', ['-C', directory, 'init']);
@@ -310,7 +310,7 @@ file2.ts
           ),
         );
 
-      await execGitShallowClone(url, directory, shortSha, undefined, { execFileAsync: mockFileExecAsync });
+      await execGitShallowClone(url, directory, shortSha, { execFileAsync: mockFileExecAsync });
 
       expect(mockFileExecAsync).toHaveBeenCalledTimes(5);
       expect(mockFileExecAsync).toHaveBeenNthCalledWith(1, 'git', ['-C', directory, 'init']);
@@ -357,7 +357,7 @@ file2.ts
         .mockRejectedValueOnce(new Error(errMessage));
 
       await expect(
-        execGitShallowClone(url, directory, remoteBranch, undefined, { execFileAsync: mockFileExecAsync }),
+        execGitShallowClone(url, directory, remoteBranch, { execFileAsync: mockFileExecAsync }),
       ).rejects.toThrow(errMessage);
       expect(mockFileExecAsync).toHaveBeenCalledTimes(3);
       expect(mockFileExecAsync).toHaveBeenNthCalledWith(1, 'git', ['-C', directory, 'init']);
@@ -387,7 +387,7 @@ file2.ts
       const directory = '/tmp/repo';
 
       await expect(
-        execGitShallowClone(url, directory, remoteBranch, undefined, { execFileAsync: mockFileExecAsync }),
+        execGitShallowClone(url, directory, remoteBranch, { execFileAsync: mockFileExecAsync }),
       ).rejects.toThrow("Invalid branch or ref name. Name must not start with '-'");
 
       expect(mockFileExecAsync).not.toHaveBeenCalled();
@@ -498,7 +498,7 @@ file.txt`;
       const remoteBranch = undefined;
 
       await expect(
-        execGitShallowClone(url, directory, remoteBranch, undefined, { execFileAsync: mockFileExecAsync }),
+        execGitShallowClone(url, directory, remoteBranch, { execFileAsync: mockFileExecAsync }),
       ).rejects.toThrow('Invalid repository URL. URL contains potentially dangerous parameters');
 
       expect(mockFileExecAsync).not.toHaveBeenCalled();

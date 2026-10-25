@@ -262,10 +262,10 @@ const performGitClone = async (
       parsedFields.repoUrl,
       tempDirPath,
       cliOptions.remoteBranch || parsedFields.remoteBranch,
-      cliOptions.signal,
       {
         execGitShallowClone: deps.execGitShallowClone,
       },
+      cliOptions.signal,
     );
 
     spinner.succeed('Repository cloned successfully!');
@@ -286,16 +286,16 @@ export const cloneRepository = async (
   url: string,
   directory: string,
   remoteBranch?: string,
-  signal?: AbortSignal,
   deps = {
     execGitShallowClone,
   },
+  signal?: AbortSignal,
 ): Promise<void> => {
   logger.log(`Clone repository: ${redactUrl(url)} to temporary directory. ${pc.dim(`path: ${directory}`)}`);
   logger.log('');
 
   try {
-    await deps.execGitShallowClone(url, directory, remoteBranch, signal);
+    await deps.execGitShallowClone(url, directory, remoteBranch, undefined, signal);
   } catch (error) {
     signal?.throwIfAborted();
     throw new RepomixError(`Failed to clone repository: ${redactErrorMessage(error)}`);

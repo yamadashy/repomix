@@ -417,7 +417,13 @@ describe('remoteAction functions', () => {
         confirmRemoteConfigTrust: vi.fn(),
       });
 
-      expect(execGitShallowCloneMock).toHaveBeenCalledWith(expect.any(String), expect.any(String), undefined, signal);
+      expect(execGitShallowCloneMock).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        undefined,
+        undefined,
+        signal,
+      );
       expect(runDefaultActionMock).toHaveBeenCalledWith(
         expect.any(Array),
         expect.any(String),
@@ -762,7 +768,7 @@ describe('remoteAction functions', () => {
     const credentialedUrl = `https://oauth2:${token}@github.com/owner/repo.git`;
 
     test('should not log credentials embedded in the repository URL', async () => {
-      await cloneRepository(credentialedUrl, '/temp/dir', undefined, undefined, {
+      await cloneRepository(credentialedUrl, '/temp/dir', undefined, {
         execGitShallowClone: vi.fn().mockResolvedValue(undefined),
       });
 
@@ -774,11 +780,17 @@ describe('remoteAction functions', () => {
     test('should still clone using the original, unredacted URL', async () => {
       const execGitShallowCloneMock = vi.fn().mockResolvedValue(undefined);
 
-      await cloneRepository(credentialedUrl, '/temp/dir', undefined, undefined, {
+      await cloneRepository(credentialedUrl, '/temp/dir', undefined, {
         execGitShallowClone: execGitShallowCloneMock,
       });
 
-      expect(execGitShallowCloneMock).toHaveBeenCalledWith(credentialedUrl, '/temp/dir', undefined, undefined);
+      expect(execGitShallowCloneMock).toHaveBeenCalledWith(
+        credentialedUrl,
+        '/temp/dir',
+        undefined,
+        undefined,
+        undefined,
+      );
     });
 
     test('should not leak credentials through a clone failure message', async () => {
@@ -790,7 +802,7 @@ describe('remoteAction functions', () => {
 
       let error: Error | undefined;
       try {
-        await cloneRepository(credentialedUrl, '/temp/dir', undefined, undefined, {
+        await cloneRepository(credentialedUrl, '/temp/dir', undefined, {
           execGitShallowClone: execGitShallowCloneMock,
         });
       } catch (err) {

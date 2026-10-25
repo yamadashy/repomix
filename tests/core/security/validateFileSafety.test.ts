@@ -26,9 +26,16 @@ describe('validateFileSafety', () => {
       filterOutUntrustedFiles: vi.fn().mockReturnValue(safeRawFiles),
     };
 
-    const result = await validateFileSafety(rawFiles, progressCallback, config, undefined, undefined, undefined, deps);
+    const result = await validateFileSafety(rawFiles, progressCallback, config, undefined, undefined, deps);
 
-    expect(deps.runSecurityCheck).toHaveBeenCalledWith(rawFiles, progressCallback, undefined, undefined, undefined);
+    expect(deps.runSecurityCheck).toHaveBeenCalledWith(
+      rawFiles,
+      progressCallback,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    );
     expect(deps.filterOutUntrustedFiles).toHaveBeenCalledWith(rawFiles, suspiciousFilesResults);
     expect(result).toEqual({
       safeRawFiles,
@@ -61,7 +68,7 @@ describe('validateFileSafety', () => {
         filterOutUntrustedFiles: vi.fn().mockReturnValue([]),
       };
 
-      const result = await validateFileSafety([], progressCallback, config, undefined, undefined, undefined, deps);
+      const result = await validateFileSafety([], progressCallback, config, undefined, undefined, deps);
 
       expect(result.suspiciousGitDiffResults).toHaveLength(2);
       expect(result.suspiciousGitLogResults).toHaveLength(1);
@@ -82,7 +89,7 @@ describe('validateFileSafety', () => {
         security: { enableSecurityCheck: true },
       } as RepomixConfigMerged;
 
-      await validateFileSafety([], vi.fn(), config, undefined, undefined, undefined, {
+      await validateFileSafety([], vi.fn(), config, undefined, undefined, {
         runSecurityCheck: vi.fn().mockResolvedValue([]),
         filterOutUntrustedFiles: vi.fn().mockReturnValue([]),
       });
@@ -104,7 +111,7 @@ describe('validateFileSafety', () => {
       filterOutUntrustedFiles: vi.fn().mockReturnValue(rawFiles),
     };
 
-    const result = await validateFileSafety(rawFiles, vi.fn(), config, undefined, undefined, undefined, deps);
+    const result = await validateFileSafety(rawFiles, vi.fn(), config, undefined, undefined, deps);
 
     expect(deps.runSecurityCheck).not.toHaveBeenCalled();
     expect(result.suspiciousFilesResults).toEqual([]);

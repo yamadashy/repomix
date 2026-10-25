@@ -100,11 +100,13 @@ describe('packager', () => {
       undefined,
       undefined,
       undefined,
+      undefined,
     );
     expect(mockDeps.processFiles).toHaveBeenCalledWith(
       expectedLeveledRawFiles,
       mockConfig,
       progressCallback,
+      undefined,
       undefined,
     );
     expect(mockDeps.produceOutput).toHaveBeenCalledWith(
@@ -199,11 +201,13 @@ describe('packager', () => {
       undefined,
       undefined,
       undefined,
+      undefined,
     );
     expect(mockDeps.processFiles).toHaveBeenCalledWith(
       [expect.objectContaining({ path: 'a.json', content: 'transformed content' })],
       config,
       progressCallback,
+      undefined,
       undefined,
     );
   });
@@ -365,12 +369,14 @@ describe('packager', () => {
           expect.any(Object),
           undefined,
           undefined,
+          undefined,
           controller.signal,
         );
         expect(deps.processFiles).toHaveBeenCalledWith(
           expect.any(Array),
           expect.any(Object),
           expect.any(Function),
+          undefined,
           controller.signal,
         );
         expect(deps.produceOutput).not.toHaveBeenCalled();

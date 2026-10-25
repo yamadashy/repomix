@@ -171,10 +171,10 @@ export const execGitShallowClone = async (
   url: string,
   directory: string,
   remoteBranch?: string,
-  signal?: AbortSignal,
   deps = {
     execFileAsync,
   },
+  signal?: AbortSignal,
 ) => {
   validateGitUrl(url);
   // Only the network operations take the signal: they are the slow, cancellable part.

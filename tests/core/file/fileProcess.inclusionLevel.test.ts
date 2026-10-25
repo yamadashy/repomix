@@ -46,7 +46,7 @@ describe('fileProcess inclusion levels (output.patterns)', () => {
         output: { patterns: [{ pattern: 'website/**/*', directoryStructureOnly: true }] },
       });
 
-      const result = await processFiles(rawFiles, config, () => {}, undefined, {
+      const result = await processFiles(rawFiles, config, () => {}, {
         initTaskRunner: mockInitTaskRunner,
         getFileManipulator: mockGetFileManipulator,
       });
@@ -63,7 +63,7 @@ describe('fileProcess inclusion levels (output.patterns)', () => {
         output: { compress: false, patterns: [{ pattern: 'docs/**/*', compress: true }] },
       });
 
-      const result = await processFiles(rawFiles, config, () => {}, undefined, {
+      const result = await processFiles(rawFiles, config, () => {}, {
         initTaskRunner: mockInitTaskRunner,
         getFileManipulator: mockGetFileManipulator,
       });
@@ -82,7 +82,7 @@ describe('fileProcess inclusion levels (output.patterns)', () => {
         output: { compress: true, patterns: [{ pattern: 'src/**/*', compress: false }] },
       });
 
-      const result = await processFiles(rawFiles, config, () => {}, undefined, {
+      const result = await processFiles(rawFiles, config, () => {}, {
         initTaskRunner: mockInitTaskRunner,
         getFileManipulator: mockGetFileManipulator,
       });
@@ -108,7 +108,7 @@ describe('fileProcess inclusion levels (output.patterns)', () => {
         },
       });
 
-      const result = await processFiles(rawFiles, config, () => {}, undefined, {
+      const result = await processFiles(rawFiles, config, () => {}, {
         initTaskRunner: mockInitTaskRunner,
         getFileManipulator: mockGetFileManipulator,
       });
@@ -125,7 +125,7 @@ describe('fileProcess inclusion levels (output.patterns)', () => {
         output: { compress: false, patterns: [{ pattern: 'docs/**/*', compress: true }] },
       });
 
-      const result = await processFiles(rawFiles, config, () => {}, undefined, {
+      const result = await processFiles(rawFiles, config, () => {}, {
         initTaskRunner: mockInitTaskRunner,
         getFileManipulator: mockGetFileManipulator,
       });
@@ -149,7 +149,7 @@ describe('fileProcess inclusion levels (output.patterns)', () => {
       ];
       const config = createMockConfig({ output: {} });
 
-      const result = await processFiles(rawFiles, config, () => {}, undefined, {
+      const result = await processFiles(rawFiles, config, () => {}, {
         initTaskRunner: mockInitTaskRunner,
         getFileManipulator: mockGetFileManipulator,
       });
@@ -164,7 +164,7 @@ describe('fileProcess inclusion levels (output.patterns)', () => {
       const rawFiles: RawFile[] = [{ path: 'app/src/index.ts', content: 'const a = 1;', level: 'compress' }];
       const config = createMockConfig({ output: { compress: false } });
 
-      const result = await processFiles(rawFiles, config, () => {}, undefined, {
+      const result = await processFiles(rawFiles, config, () => {}, {
         initTaskRunner: mockInitTaskRunner,
         getFileManipulator: mockGetFileManipulator,
       });

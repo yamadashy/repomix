@@ -85,11 +85,11 @@ export const processFiles = async (
   rawFiles: RawFile[],
   config: RepomixConfigMerged,
   progressCallback: RepomixProgressCallback,
-  signal?: AbortSignal,
   deps = {
     initTaskRunner,
     getFileManipulator,
   },
+  signal?: AbortSignal,
 ): Promise<ProcessedFile[]> => {
   const startTime = process.hrtime.bigint();
   let files: ProcessedFile[];
