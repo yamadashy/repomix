@@ -89,6 +89,25 @@ export const normalizeGlobPattern = (pattern: string): string => {
   return pattern;
 };
 
+/**
+ * Normalizes an ignore pattern into the globby/minimatch patterns that implement it.
+ *
+ * `normalizeGlobPattern` turns `**\/name` into `**\/name/**`. For a literal name that
+ * still excludes a file called `name`, but when the last segment has a wildcard
+ * (`**\/npm-debug.log*`, `**\/repomix-output.*`, `**\/.*`) the `/**` form only matches
+ * directory contents, so files like `npm-debug.log.1` slipped through. Such patterns
+ * also keep their bare form, which excludes the matching files. The `/**` form stays,
+ * so nothing excluded today becomes included.
+ */
+export const expandIgnorePattern = (pattern: string): string[] => {
+  const normalized = normalizeGlobPattern(pattern);
+  const lastSegment = pattern.slice(pattern.lastIndexOf('/') + 1);
+  if (normalized === `${pattern}/**` && /[*?[{]/.test(lastSegment)) {
+    return [pattern, normalized];
+  }
+  return [normalized];
+};
+
 const toPosixPath = (value: string): string => value.replace(/\\/g, '/');
 
 // Canonical posix form of a deferred ignore pattern: forward slashes and no
@@ -394,7 +413,7 @@ const prepareIgnoreContext = async (
   }
 
   // Normalize ignore patterns to handle trailing slashes consistently
-  const normalizedIgnorePatterns = globbyIgnorePatterns.map(normalizeGlobPattern);
+  const normalizedIgnorePatterns = globbyIgnorePatterns.flatMap(expandIgnorePattern);
 
   // Check if .git is a worktree reference
   const gitPath = path.join(rootDir, '.git');
