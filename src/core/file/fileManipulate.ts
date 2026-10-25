@@ -42,6 +42,19 @@ class StripCommentsManipulator extends BaseManipulator {
   }
 }
 
+// CSS has no `//` line comments, but its strip profile is the JavaScript one, so a bare
+// `//` — most often an unquoted `url(http://...)` — was cut as a comment together with the
+// rest of the line. Strip block comments only.
+class CssManipulator extends BaseManipulator {
+  removeComments(content: string): string {
+    const result = strip.block(content, {
+      language: 'css',
+      preserveNewlines: true,
+    });
+    return rtrimLines(result);
+  }
+}
+
 // Matches a shell heredoc opener (`<<EOF`, `<<-EOF`, `<<'EOF'`, `<<"EOF"`), excluding the
 // `<<<` herestring operator via the lookaround guards.
 const HEREDOC_START = /(?<!<)<<(?!<)(-?)\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\2/;
@@ -191,7 +204,7 @@ const manipulators: Record<string, FileManipulator> = {
   '.cc': new StripCommentsManipulator('cpp'),
   '.cxx': new StripCommentsManipulator('cpp'),
   '.cs': new StripCommentsManipulator('csharp'),
-  '.css': new StripCommentsManipulator('css'),
+  '.css': new CssManipulator(),
   '.dart': new StripCommentsManipulator('c'),
   '.go': new StripCommentsManipulator('go'),
   '.html': new StripCommentsManipulator('html'),
