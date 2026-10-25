@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792934494340,
+  "lastUpdate": 1792936325803,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -14753,6 +14753,51 @@ window.BENCHMARK_DATA = {
             "range": "±17",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 751ms, Q3: 768ms\nAll times: 720, 734, 734, 740, 743, 751, 753, 754, 754, 754, 754, 755, 757, 758, 765, 768, 774, 776, 779, 808ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "232d9317d708f981b1c92d998f64adaf315fbf28",
+          "message": "Merge pull request #1865 from sxh313/fix/mcp-quiet-log-level-leak\n\nfix(mcp): Restore the operator log level after quiet packing",
+          "timestamp": "2026-10-25T22:50:25+09:00",
+          "tree_id": "e598850405fe202d83e7a620dbca96e30c17d788",
+          "url": "https://github.com/yamadashy/repomix/commit/232d9317d708f981b1c92d998f64adaf315fbf28"
+        },
+        "date": 1792936324960,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 588,
+            "range": "±73",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 568ms, Q3: 641ms\nAll times: 554, 556, 558, 559, 559, 564, 566, 568, 568, 571, 572, 575, 576, 581, 584, 588, 591, 592, 597, 603, 611, 637, 641, 648, 651, 660, 667, 685, 697, 715ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 587,
+            "range": "±10",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 583ms, Q3: 593ms\nAll times: 574, 578, 579, 582, 582, 583, 583, 584, 585, 587, 587, 588, 589, 590, 590, 593, 596, 611, 617, 626ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1012,
+            "range": "±20",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1000ms, Q3: 1020ms\nAll times: 976, 983, 990, 995, 996, 1000, 1001, 1007, 1008, 1008, 1012, 1014, 1014, 1016, 1017, 1020, 1026, 1033, 1039, 1061ms"
           }
         ]
       }
