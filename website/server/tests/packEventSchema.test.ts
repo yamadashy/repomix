@@ -38,6 +38,7 @@ describe('classifyRejectReason', () => {
     ['file_too_large', MESSAGES.FILE_TOO_LARGE],
     ['invalid_ignore_chars', MESSAGES.INVALID_IGNORE_CHARS],
     ['include_too_long', MESSAGES.INCLUDE_TOO_LONG],
+    ['include_too_nested', MESSAGES.INCLUDE_TOO_NESTED],
     ['ignore_too_long', MESSAGES.IGNORE_TOO_LONG],
   ])('%s — classifies "%s"', (expected, message) => {
     expect(classifyRejectReason(schemaErrorWith(message))).toBe(expected);
