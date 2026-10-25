@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792936325803,
+  "lastUpdate": 1792938212209,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -14798,6 +14798,51 @@ window.BENCHMARK_DATA = {
             "range": "±20",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1000ms, Q3: 1020ms\nAll times: 976, 983, 990, 995, 996, 1000, 1001, 1007, 1008, 1008, 1012, 1014, 1014, 1016, 1017, 1020, 1026, 1033, 1039, 1061ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5f4923b92a6289cb6497666c6945e95752a1df90",
+          "message": "Merge pull request #1869 from sxh313/fix/grep-output-context-blocks\n\nfix(mcp): Follow grep separator and prefix semantics in grep_repomix_output output",
+          "timestamp": "2026-10-25T23:21:49+09:00",
+          "tree_id": "b39b8b83f9f51b810787005808d8a454d3fe12b8",
+          "url": "https://github.com/yamadashy/repomix/commit/5f4923b92a6289cb6497666c6945e95752a1df90"
+        },
+        "date": 1792938211150,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 972,
+            "range": "±329",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 821ms, Q3: 1150ms\nAll times: 622, 624, 651, 693, 743, 802, 810, 821, 822, 843, 855, 887, 889, 921, 962, 972, 1007, 1015, 1035, 1073, 1132, 1142, 1150, 1166, 1186, 1224, 1250, 1282, 1381, 1512ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 972,
+            "range": "±54",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 948ms, Q3: 1002ms\nAll times: 929, 931, 940, 946, 947, 948, 949, 950, 955, 957, 972, 975, 981, 983, 998, 1002, 1058, 1114, 1127, 1167ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1329,
+            "range": "±19",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1327ms, Q3: 1346ms\nAll times: 1312, 1320, 1320, 1323, 1326, 1327, 1328, 1328, 1329, 1329, 1329, 1330, 1335, 1344, 1346, 1346, 1350, 1358, 1364, 1367ms"
           }
         ]
       }
