@@ -57,6 +57,7 @@ const MESSAGE_TO_REASON: Record<string, string> = {
   [MESSAGES.FILE_TOO_LARGE]: 'file_too_large',
   [MESSAGES.INVALID_IGNORE_CHARS]: 'invalid_ignore_chars',
   [MESSAGES.INCLUDE_TOO_LONG]: 'include_too_long',
+  [MESSAGES.INCLUDE_TOO_NESTED]: 'include_too_nested',
   [MESSAGES.IGNORE_TOO_LONG]: 'ignore_too_long',
 };
 

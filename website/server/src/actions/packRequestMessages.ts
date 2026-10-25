@@ -16,6 +16,7 @@ export const MESSAGES = {
   FILE_TOO_LARGE: 'File size must be less than 10MB',
   INVALID_IGNORE_CHARS: 'Invalid characters in ignore patterns',
   INCLUDE_TOO_LONG: 'Include patterns too long',
+  INCLUDE_TOO_NESTED: 'Include patterns have too deeply nested braces',
   IGNORE_TOO_LONG: 'Ignore patterns too long',
   MISSING_INPUT: 'Either URL or file must be provided',
   BOTH_PROVIDED: 'Cannot provide both URL and file',

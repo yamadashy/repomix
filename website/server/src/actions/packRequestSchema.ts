@@ -1,6 +1,7 @@
 import { isValidRemoteValue } from 'repomix';
 import * as v from 'valibot';
 import { FILE_SIZE_LIMITS } from '../domains/pack/utils/fileUtils.js';
+import { getMaxBraceDepth, MAX_BRACE_DEPTH } from '../domains/pack/utils/validation.js';
 import { MESSAGES } from './packRequestMessages.js';
 
 export const packRequestSchema = v.pipe(
@@ -29,7 +30,14 @@ export const packRequestSchema = v.pipe(
       showLineNumbers: v.optional(v.boolean()),
       fileSummary: v.optional(v.boolean()),
       directoryStructure: v.optional(v.boolean()),
-      includePatterns: v.optional(v.pipe(v.string(), v.maxLength(100_000, MESSAGES.INCLUDE_TOO_LONG), v.trim())),
+      includePatterns: v.optional(
+        v.pipe(
+          v.string(),
+          v.maxLength(100_000, MESSAGES.INCLUDE_TOO_LONG),
+          v.check((val) => getMaxBraceDepth(val) <= MAX_BRACE_DEPTH, MESSAGES.INCLUDE_TOO_NESTED),
+          v.trim(),
+        ),
+      ),
       ignorePatterns: v.optional(
         v.pipe(
           v.string(),
