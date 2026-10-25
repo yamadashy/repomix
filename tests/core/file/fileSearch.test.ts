@@ -302,6 +302,10 @@ temp-files/
       expect(splitPartPattern).toBeDefined();
       if (!splitPartPattern) return;
       expect(minimatch('docs/mycustom.notes.xml', splitPartPattern)).toBe(false);
+      expect(minimatch('docs/mycustom.10.xml', splitPartPattern)).toBe(true);
+      // Never generated: parts start at 1 and are not zero-padded.
+      expect(minimatch('docs/mycustom.0.xml', splitPartPattern)).toBe(false);
+      expect(minimatch('docs/mycustom.01.xml', splitPartPattern)).toBe(false);
     });
 
     test('should use POSIX separators for a nested output file path (Windows)', async () => {

@@ -505,7 +505,9 @@ export const getIgnorePatterns = async (rootDir: string, config: RepomixConfigMe
     if (config.output.splitOutput) {
       const extension = path.posix.extname(relativeToTargetPath);
       const outputBasePath = extension ? relativeToTargetPath.slice(0, -extension.length) : relativeToTargetPath;
-      const splitOutputPattern = `${escapeGlobPattern(outputBasePath)}.+([0-9])${escapeGlobPattern(extension)}`;
+      // Part numbers start at 1 with no zero padding (buildSplitOutputFilePath), so names
+      // such as `out.0.xml` or `out.01.xml` are user files and must stay packed.
+      const splitOutputPattern = `${escapeGlobPattern(outputBasePath)}.[1-9]*([0-9])${escapeGlobPattern(extension)}`;
       ignorePatterns.add(splitOutputPattern);
     }
   }
