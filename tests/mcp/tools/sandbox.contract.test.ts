@@ -1,8 +1,7 @@
 import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { registerFileSystemReadDirectoryTool } from '../../../src/mcp/tools/fileSystemReadDirectoryTool.js';
 import { registerFileSystemReadFileTool } from '../../../src/mcp/tools/fileSystemReadFileTool.js';
@@ -24,6 +23,7 @@ import { logger, repomixLogLevels } from '../../../src/shared/logger.js';
 vi.mock('../../../src/cli/cliRun.js', () => ({ runCli: vi.fn() }));
 
 import { runCli } from '../../../src/cli/cliRun.js';
+import { structuredContentOf } from '../../testing/testUtils.js';
 
 // ── escape variants the guard MUST reject (host-aware) ────────────────────────
 // Cross-platform: absolute-by-POSIX-and-Windows, "~" home refs, and any ".."
@@ -190,8 +190,8 @@ describe('sandbox contract', () => {
       const r = await readFile({ path: name });
       expect(rejectedAsEscape(r), `${name} must not be rejected as an escape`).toBe(false);
       expect(r.isError ?? false).toBe(false);
-      expect(r.structuredContent?.content).toBe(`body:${name}`);
-      expect(r.structuredContent?.path).toBe(name); // echoed relative, not absolute
+      expect(structuredContentOf(r).content).toBe(`body:${name}`);
+      expect(structuredContentOf(r).path).toBe(name); // echoed relative, not absolute
       assertNoHostPath(r);
     });
   });
@@ -327,14 +327,14 @@ describe('sandbox contract', () => {
     test('read_file returns content + a relative path', async () => {
       const r = await readFile({ path: 'src/a.ts' });
       expect(r.isError ?? false).toBe(false);
-      expect(r.structuredContent?.path).toBe('src/a.ts');
-      expect(r.structuredContent?.content).toBe('const x = 1;\n');
+      expect(structuredContentOf(r).path).toBe('src/a.ts');
+      expect(structuredContentOf(r).content).toBe('const x = 1;\n');
       assertNoHostPath(r);
     });
     test('read_directory "." lists entries with a relative path', async () => {
       const r = await readDir({ path: '.' });
       expect(r.isError ?? false).toBe(false);
-      expect(r.structuredContent?.path).toBe('.');
+      expect(structuredContentOf(r).path).toBe('.');
       expect((r.structuredContent as { contents: string[] }).contents.some((c) => c.includes('src'))).toBe(true);
       assertNoHostPath(r);
     });

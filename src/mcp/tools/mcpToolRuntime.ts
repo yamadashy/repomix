@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { generateTreeString } from '../../core/file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../../core/file/fileTypes.js';

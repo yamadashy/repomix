@@ -1,10 +1,10 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { registerPackRemoteRepositoryPrompt } from '../../../src/mcp/prompts/packRemoteRepositoryPrompts.js';
 
 describe('packRemoteRepositoryPrompts', () => {
   const mockMcpServer = {
-    prompt: vi.fn(),
+    registerPrompt: vi.fn(),
   };
 
   type PromptHandlerType = (args: {
@@ -20,17 +20,21 @@ describe('packRemoteRepositoryPrompts', () => {
 
     registerPackRemoteRepositoryPrompt(mockMcpServer as unknown as McpServer);
 
-    promptHandler = mockMcpServer.prompt.mock.calls[0][3];
+    promptHandler = mockMcpServer.registerPrompt.mock.calls[0][2];
   });
 
   it('should register the prompt with correct parameters', () => {
-    expect(mockMcpServer.prompt).toHaveBeenCalledWith(
+    expect(mockMcpServer.registerPrompt).toHaveBeenCalledWith(
       'pack_remote_repository',
-      expect.any(String),
       expect.objectContaining({
-        repository: expect.any(Object),
-        includePatterns: expect.any(Object),
-        ignorePatterns: expect.any(Object),
+        description: expect.any(String),
+        argsSchema: expect.objectContaining({
+          shape: expect.objectContaining({
+            repository: expect.any(Object),
+            includePatterns: expect.any(Object),
+            ignorePatterns: expect.any(Object),
+          }),
+        }),
       }),
       expect.any(Function),
     );

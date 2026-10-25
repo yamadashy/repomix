@@ -65,3 +65,7 @@ export const writeFixture = async (rootDir: string, files: Record<string, string
     await fs.writeFile(fullPath, content);
   }
 };
+
+// MCP SDK v2 types `structuredContent` loosely, so tests read it through this narrowing helper.
+export const structuredContentOf = (result: { structuredContent?: unknown }): Record<string, unknown> =>
+  (result.structuredContent ?? {}) as Record<string, unknown>;

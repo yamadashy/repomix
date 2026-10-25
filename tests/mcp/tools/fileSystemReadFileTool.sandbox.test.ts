@@ -1,10 +1,10 @@
 import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { registerFileSystemReadFileTool } from '../../../src/mcp/tools/fileSystemReadFileTool.js';
+import { structuredContentOf } from '../../testing/testUtils.js';
 
 // No module mocks here: the sandboxed branch relies on real fs + realpath so
 // resolveWithinRoot's containment checks exercise the actual filesystem.
@@ -26,8 +26,8 @@ describe('FileSystemReadFileTool (sandboxed)', () => {
 
   test('reads a plain-relative file and echoes a plain-relative path', async () => {
     const result = await handler({ path: 'a.ts' });
-    expect(result.structuredContent?.path).toBe('a.ts');
-    expect(result.structuredContent?.content).toBe('const x = 1;\n');
+    expect(structuredContentOf(result).path).toBe('a.ts');
+    expect(structuredContentOf(result).content).toBe('const x = 1;\n');
     expect(JSON.stringify(result)).not.toContain(root);
   });
 

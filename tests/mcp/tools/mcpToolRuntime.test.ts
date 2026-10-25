@@ -23,6 +23,7 @@ import {
   getOutputFilePath,
   registerOutputFile,
 } from '../../../src/mcp/tools/mcpToolRuntime.js';
+import { structuredContentOf } from '../../testing/testUtils.js';
 
 vi.mock('node:fs/promises');
 vi.mock('node:path');
@@ -278,8 +279,8 @@ describe('mcpToolRuntime', () => {
       const text = JSON.stringify(result);
       expect(text).not.toContain(root); // no host workspace path
       expect(text).not.toContain(outDir); // no host output path
-      expect(result.structuredContent?.outputFilePath).toBe('');
-      expect(result.structuredContent?.description).not.toContain('read the file directly using path');
+      expect(structuredContentOf(result).outputFilePath).toBe('');
+      expect(structuredContentOf(result).description).not.toContain('read the file directly using path');
 
       await fsp.rm(root, { recursive: true, force: true });
       await fsp.rm(outDir, { recursive: true, force: true });

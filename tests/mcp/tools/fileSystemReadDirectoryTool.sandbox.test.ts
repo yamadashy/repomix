@@ -1,10 +1,10 @@
 import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { registerFileSystemReadDirectoryTool } from '../../../src/mcp/tools/fileSystemReadDirectoryTool.js';
+import { structuredContentOf } from '../../testing/testUtils.js';
 
 // No module mocks: the sandboxed branch relies on real fs + realpath.
 describe('FileSystemReadDirectoryTool (sandboxed)', () => {
@@ -26,8 +26,8 @@ describe('FileSystemReadDirectoryTool (sandboxed)', () => {
 
   test('lists the root as "." and returns entry names', async () => {
     const result = await handler({ path: '.' });
-    expect(result.structuredContent?.path).toBe('.');
-    expect(result.structuredContent?.contents).toEqual(expect.arrayContaining(['[DIR] src', '[FILE] README.md']));
+    expect(structuredContentOf(result).path).toBe('.');
+    expect(structuredContentOf(result).contents).toEqual(expect.arrayContaining(['[DIR] src', '[FILE] README.md']));
     expect(JSON.stringify(result)).not.toContain(root);
   });
 
