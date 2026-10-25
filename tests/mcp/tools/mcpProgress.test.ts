@@ -79,7 +79,35 @@ describe('createMcpProgressReporter', () => {
 
     const messages = paramsOf(notify).map((p) => p.message);
     expect(messages.slice(0, 2)).toEqual(['Processing file... (1/500) a.ts', 'Running security check... (1/500) a.ts']);
-    expect(messages.length).toBeLessThanOrEqual(Math.ceil(500 / PROGRESS_THROTTLE_MS) + 2);
+    // First and final message of each of the two stages, plus throttled updates in between.
+    expect(messages.length).toBeLessThanOrEqual(Math.ceil(500 / PROGRESS_THROTTLE_MS) + 4);
+  });
+
+  test('always sends the final "(n/n)" message of a stage even within the throttle window', () => {
+    const { ctx, notify } = createCtx('t');
+    const clock = createClock();
+    const report = createMcpProgressReporter(ctx, { sandboxed: false }, clock);
+
+    for (let i = 1; i <= 100; i++) {
+      report?.(`Collect file... (${i}/100) a.ts`);
+    }
+
+    expect(paramsOf(notify).map((p) => p.message)).toEqual([
+      'Collect file... (1/100) a.ts',
+      'Collect file... (100/100) a.ts',
+    ]);
+  });
+
+  test('throttles messages without a stage head together', () => {
+    const { ctx, notify } = createCtx('t');
+    const clock = createClock();
+    const report = createMcpProgressReporter(ctx, { sandboxed: false }, clock);
+
+    for (let i = 1; i <= 100; i++) {
+      report?.(`/abs/path/file-${i}.ts`);
+    }
+
+    expect(paramsOf(notify).map((p) => p.message)).toEqual(['/abs/path/file-1.ts']);
   });
 
   test('strips ANSI color codes from messages', () => {

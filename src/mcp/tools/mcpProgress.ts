@@ -14,9 +14,18 @@ export const PROGRESS_THROTTLE_MS = 250;
 // only of letters and spaces cannot carry a path.
 const STAGE_PATTERN = /^[A-Za-z ]+\.\.\./;
 const COUNTER_PATTERN = /\((\d+)\/(\d+)\)/;
-const SANDBOX_FALLBACK_MESSAGE = 'Packing...';
+const FALLBACK_STAGE = 'Packing...';
 
-const stageOf = (message: string): string => message.match(STAGE_PATTERN)?.[0] ?? message;
+// Messages without a recognisable stage head share one fixed stage, so they are throttled
+// together instead of each one counting as a new stage.
+const stageOf = (message: string): string => message.match(STAGE_PATTERN)?.[0] ?? FALLBACK_STAGE;
+
+// A "(n/n)" counter marks the last update of a stage. It is always sent so a client's
+// counter does not stall short of the total when the throttle drops it.
+const isStageComplete = (message: string): boolean => {
+  const counter = message.match(COUNTER_PATTERN);
+  return counter !== null && counter[1] === counter[2];
+};
 
 /**
  * Sandbox-safe rendering: only the literal stage head plus a numeric "(n/total)"
@@ -26,7 +35,7 @@ const stageOf = (message: string): string => message.match(STAGE_PATTERN)?.[0] ?
  */
 const toSandboxMessage = (message: string): string => {
   const stage = message.match(STAGE_PATTERN)?.[0];
-  if (!stage) return SANDBOX_FALLBACK_MESSAGE;
+  if (!stage) return FALLBACK_STAGE;
   const counter = message.slice(stage.length).match(COUNTER_PATTERN);
   return counter ? `${stage} (${counter[1]}/${counter[2]})` : stage;
 };
@@ -39,8 +48,8 @@ const toSandboxMessage = (message: string): string => {
  * - `progress` is a per-request counter incremented on every sent notification, so it
  *   strictly increases across stages; `total` is omitted because the number of
  *   updates is not known up front.
- * - Throttled: the first message of each stage is always sent; any other message only
- *   when PROGRESS_THROTTLE_MS has passed since the last notification. Stages that run
+ * - Throttled: the first and the final ("(n/n)") message of each stage are always sent;
+ *   any other message only when PROGRESS_THROTTLE_MS has passed since the last notification. Stages that run
  *   concurrently (e.g. security check and file processing) interleave their messages,
  *   so "new stage" means first seen, not merely different from the previous one.
  * - Notification failures (closed transport, ...) are swallowed: progress is best
@@ -63,7 +72,7 @@ export const createMcpProgressReporter = (
       const message = stripVTControlCharacters(rawMessage).trim();
       const stage = stageOf(message);
       const now = deps.now();
-      if (seenStages.has(stage) && now - lastSentAt < PROGRESS_THROTTLE_MS) return;
+      if (seenStages.has(stage) && !isStageComplete(message) && now - lastSentAt < PROGRESS_THROTTLE_MS) return;
       seenStages.add(stage);
       lastSentAt = now;
       progress += 1;

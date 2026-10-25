@@ -10,6 +10,7 @@ import { isGitInstalled } from '../../core/git/gitRepositoryHandle.js';
 import { generateDefaultSkillNameFromUrl, generateProjectNameFromUrl } from '../../core/skill/skillUtils.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
+import { createSafeProgressCallback } from '../../shared/progressCallback.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import { redactErrorMessage, redactUrl } from '../../shared/urlRedact.js';
 import { Spinner } from '../cliSpinner.js';
@@ -35,7 +36,7 @@ export const runRemoteAction = async (
     confirmRemoteConfigTrust,
   },
 ): Promise<DefaultActionRunnerResult> => {
-  const reportProgress = createSafeProgressReporter(progressCallback);
+  const reportProgress = createSafeProgressCallback(progressCallback);
 
   // Validate --config path before any expensive operations (download/clone):
   // only absolute paths are allowed to prevent loading config from the cloned repository
@@ -261,23 +262,6 @@ const performGitClone = async (
     throw error;
   }
 };
-
-/**
- * Wrap an optional progress callback so a throwing or rejecting listener can never
- * break the remote action (runDefaultAction applies the same guard to pack progress).
- */
-const createSafeProgressReporter =
-  (progressCallback?: RepomixProgressCallback) =>
-  (message: string): void => {
-    if (!progressCallback) return;
-    try {
-      Promise.resolve(progressCallback(message)).catch((error) => {
-        logger.trace('progressCallback error:', error);
-      });
-    } catch (error) {
-      logger.trace('progressCallback error:', error);
-    }
-  };
 
 export const createTempDirectory = async (): Promise<string> => {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-'));
