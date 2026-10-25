@@ -1,6 +1,14 @@
 # actionlint configuration
 # https://github.com/rhysd/actionlint/blob/main/docs/config.md
 
+self-hosted-runner:
+  labels:
+    # GitHub-hosted Ubuntu 26.04 runners are not yet in actionlint's built-in
+    # label list (rhysd/actionlint#682). Declare them here until upstream
+    # catches up, then remove this block.
+    - ubuntu-26.04
+    - ubuntu-26.04-arm
+
 paths:
   .github/workflows/**/*.{yml,yaml}:
     ignore:
