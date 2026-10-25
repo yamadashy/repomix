@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792942541814,
+  "lastUpdate": 1792943289902,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -14978,6 +14978,51 @@ window.BENCHMARK_DATA = {
             "range": "±33",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1365ms, Q3: 1398ms\nAll times: 1345, 1354, 1362, 1362, 1364, 1365, 1380, 1381, 1382, 1383, 1385, 1385, 1390, 1392, 1393, 1398, 1400, 1407, 1416, 1430ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a835271f41701245ee24b3c8ba162c5abb3d6f12",
+          "message": "Merge pull request #1912 from plox-sumit/fix/css-url-not-a-comment\n\nfix(core): Keep unquoted URLs when removing CSS comments",
+          "timestamp": "2026-10-26T00:46:24+09:00",
+          "tree_id": "fd64bb51e822dc842be1218667d7a55f4a3bd732",
+          "url": "https://github.com/yamadashy/repomix/commit/a835271f41701245ee24b3c8ba162c5abb3d6f12"
+        },
+        "date": 1792943288439,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 504,
+            "range": "±22",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 497ms, Q3: 519ms\nAll times: 484, 486, 490, 490, 491, 495, 497, 497, 497, 497, 499, 500, 500, 501, 503, 504, 506, 507, 507, 510, 516, 517, 519, 521, 525, 535, 536, 549, 550, 555ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 955,
+            "range": "±28",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 936ms, Q3: 964ms\nAll times: 920, 929, 931, 932, 934, 936, 940, 942, 953, 953, 955, 955, 956, 959, 960, 964, 971, 978, 981, 990ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1363,
+            "range": "±39",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1355ms, Q3: 1394ms\nAll times: 1340, 1350, 1350, 1354, 1355, 1355, 1358, 1358, 1359, 1360, 1363, 1363, 1368, 1368, 1387, 1394, 1396, 1408, 1438, 1689ms"
           }
         ]
       }
