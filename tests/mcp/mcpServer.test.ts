@@ -51,15 +51,26 @@ describe('MCP Server', () => {
       const server = createMcpServer(mockVersion);
 
       expect(McpServer).toHaveBeenCalledWith(
-        {
+        expect.objectContaining({
           name: 'repomix-mcp-server',
+          title: 'Repomix',
           version: mockVersion,
-        },
+          websiteUrl: 'https://repomix.com',
+        }),
         expect.objectContaining({
           instructions: expect.stringContaining('Repomix MCP Server provides AI-optimized codebase analysis tools'),
         }),
       );
       expect(server).toBeDefined();
+    });
+
+    test('advertises https icons rather than data URIs', () => {
+      createMcpServer(mockVersion);
+      const icons = vi.mocked(McpServer).mock.calls[0][0].icons ?? [];
+      expect(icons.length).toBeGreaterThan(0);
+      for (const icon of icons) {
+        expect(icon.src).toMatch(/^https:\/\/repomix\.com\//);
+      }
     });
 
     test('bounds tool input size and sets list cache hints', () => {
@@ -178,7 +189,7 @@ describe('MCP Server', () => {
       expect(first).not.toBe(second);
       expect(deps?.getVersion).toHaveBeenCalledTimes(1);
       expect(McpServer).toHaveBeenLastCalledWith(
-        { name: 'repomix-mcp-server', version: mockVersion },
+        expect.objectContaining({ name: 'repomix-mcp-server', version: mockVersion }),
         expect.objectContaining({ instructions: expect.stringContaining('SANDBOX MODE') }),
       );
     });
