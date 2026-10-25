@@ -183,7 +183,14 @@ const downloadAndExtractArchive = async (
     const gunzipStream = deps.createGunzip();
 
     try {
-      await deps.pipeline(nodeStream, progressStream, gunzipStream, extractStream);
+      // Once the body is fully read, aborting the fetch no longer reaches the buffered
+      // chunks, so the caller's signal is also given to the pipeline. The download
+      // timeout is not, to keep extraction of an already downloaded archive unbounded.
+      if (signal) {
+        await deps.pipeline(nodeStream, progressStream, gunzipStream, extractStream, { signal });
+      } else {
+        await deps.pipeline(nodeStream, progressStream, gunzipStream, extractStream);
+      }
     } finally {
       // Explicitly destroy streams to release handles.
       // Bun's pipeline() may not fully clean up, causing subsequent worker_threads to hang.

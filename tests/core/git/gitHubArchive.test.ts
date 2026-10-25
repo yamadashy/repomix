@@ -130,6 +130,21 @@ describe('gitHubArchive', () => {
       expect(mockPipeline).toHaveBeenCalled();
     });
 
+    test('gives the caller signal to the extraction pipeline', async () => {
+      const controller = new AbortController();
+      mockFetch.mockResolvedValue(createMockResponse());
+
+      await downloadGitHubArchive(
+        mockRepoInfo,
+        mockTargetDirectory,
+        { ...mockOptions, signal: controller.signal },
+        undefined,
+        mockDeps,
+      );
+
+      expect(mockPipeline.mock.calls[0].at(-1)).toEqual({ signal: controller.signal });
+    });
+
     test('aborts the fetch when the caller signal fires and does not retry', async () => {
       const controller = new AbortController();
       mockFetch.mockImplementation((_url, init) => {
