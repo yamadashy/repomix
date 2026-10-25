@@ -4,7 +4,9 @@ import { logger } from '../../shared/logger.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 
 /** The slice of the SDK request context the reporter needs (narrow for testability). */
-export type McpProgressContext = { mcpReq: Pick<ServerContext['mcpReq'], '_meta' | 'notify'> };
+export type McpProgressContext = {
+  mcpReq: Pick<ServerContext['mcpReq'], '_meta' | 'notify'> & { signal?: AbortSignal };
+};
 
 export type McpProgressReporter = { report: RepomixProgressCallback; stop: () => void };
 
@@ -58,7 +60,8 @@ const toSandboxMessage = (message: string): string => {
  *   effort and must never fail the tool call.
  * - `stop()` silences the reporter. The pipeline can keep emitting after the tool has
  *   already responded (e.g. a concurrent stage still running when another one threw),
- *   and progress for a completed request must not be sent.
+ *   and progress for a completed request must not be sent. The reporter is also silent
+ *   once the request's abort signal fires (client cancellation or disconnect).
  */
 export const createMcpProgressReporter = (
   ctx: McpProgressContext | undefined,
@@ -74,7 +77,8 @@ export const createMcpProgressReporter = (
   let stopped = false;
 
   const report: RepomixProgressCallback = (rawMessage) => {
-    if (stopped) return;
+    // A cancelled request gets no further progress, even while the pack winds down.
+    if (stopped || ctx?.mcpReq.signal?.aborted) return;
     try {
       const message = stripVTControlCharacters(rawMessage).trim();
       const stage = stageOf(message);

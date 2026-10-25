@@ -209,6 +209,78 @@ describe('processConcurrency', () => {
       await taskRunner.cleanup();
       expect(destroyMock).toHaveBeenCalled();
     });
+
+    describe('with an abort signal', () => {
+      const setupPool = () => {
+        const runMock = vi.fn().mockResolvedValue('result');
+        const destroyMock = vi.fn().mockResolvedValue(undefined);
+        vi.mocked(Tinypool).mockImplementation(function (this: unknown) {
+          (this as Record<string, unknown>).run = runMock;
+          (this as Record<string, unknown>).destroy = destroyMock;
+          return this as Tinypool;
+        });
+        return { runMock, destroyMock };
+      };
+
+      it('destroys the pool when the signal fires and refuses new tasks', async () => {
+        const { runMock, destroyMock } = setupPool();
+        const controller = new AbortController();
+        const taskRunner = initTaskRunner<{ payload: string }, string>({
+          numOfTasks: 10,
+          workerType: 'securityCheck',
+          runtime: 'worker_threads',
+          signal: controller.signal,
+        });
+
+        controller.abort();
+
+        expect(destroyMock).toHaveBeenCalledTimes(1);
+        await expect(taskRunner.run({ payload: 'x' })).rejects.toMatchObject({ name: 'AbortError' });
+        expect(runMock).not.toHaveBeenCalled();
+      });
+
+      it('cleanup waits for the teardown started by the abort', async () => {
+        const { destroyMock } = setupPool();
+        let finishDestroy: () => void = () => {};
+        destroyMock.mockReturnValue(new Promise<void>((resolve) => (finishDestroy = resolve)));
+        const controller = new AbortController();
+        const taskRunner = initTaskRunner({
+          numOfTasks: 10,
+          workerType: 'securityCheck',
+          runtime: 'worker_threads',
+          signal: controller.signal,
+        });
+
+        controller.abort();
+        let cleanedUp = false;
+        const cleanupPromise = taskRunner.cleanup().then(() => {
+          cleanedUp = true;
+        });
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        expect(cleanedUp).toBe(false);
+
+        finishDestroy();
+        await cleanupPromise;
+        expect(cleanedUp).toBe(true);
+        expect(destroyMock).toHaveBeenCalledTimes(1);
+      });
+
+      it('stops listening once cleaned up', async () => {
+        const { destroyMock } = setupPool();
+        const controller = new AbortController();
+        const taskRunner = initTaskRunner({
+          numOfTasks: 10,
+          workerType: 'securityCheck',
+          runtime: 'worker_threads',
+          signal: controller.signal,
+        });
+
+        await taskRunner.cleanup();
+        controller.abort();
+
+        expect(destroyMock).toHaveBeenCalledTimes(1);
+      });
+    });
   });
 
   describe('cleanupWorkerPool', () => {

@@ -71,6 +71,9 @@ export interface PackOptions {
   // callers like the MCP --sandbox). Off by default so ../ / absolute include
   // patterns keep working for normal CLI and library callers.
   confineToBaseDir?: boolean;
+  // Cancels the pack (e.g. an MCP client cancelling the tool call). Checked between
+  // phases; worker pools are destroyed as soon as it fires.
+  signal?: AbortSignal;
 }
 
 export const pack = async (
@@ -85,6 +88,8 @@ export const pack = async (
     ...defaultDeps,
     ...overrideDeps,
   };
+  const { signal } = options;
+  signal?.throwIfAborted();
 
   logMemoryUsage('Pack - Start');
 
@@ -109,6 +114,7 @@ export const pack = async (
       }),
     ),
   );
+  signal?.throwIfAborted();
 
   const filePathStyle = config.output.filePathStyle;
   const rootLabels =
@@ -165,7 +171,9 @@ export const pack = async (
     rootDirs,
     allFilePaths.length,
     config.tokenCount.encoding,
+    signal,
   );
+  let pendingOutput: Promise<unknown> | undefined;
 
   try {
     // Run file collection and git operations in parallel since they are independent:
@@ -192,6 +200,7 @@ export const pack = async (
       deps.getGitDiffs(rootDirs, config),
       deps.getGitLogs(rootDirs, config),
     ]);
+    signal?.throwIfAborted();
 
     const rawFiles = collectResults.flatMap((curr, index) => {
       const rootDir = sortedFilePathsByDir[index]?.rootDir;
@@ -236,11 +245,11 @@ export const pack = async (
     // After both complete, filter out any suspicious files from the processed results.
     const [validationResult, allProcessedFiles] = await Promise.all([
       withMemoryLogging('Security Check', () =>
-        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult),
+        deps.validateFileSafety(rawFiles, progressCallback, config, gitDiffResult, gitLogResult, undefined, signal),
       ),
       withMemoryLogging('Process Files', () => {
         progressCallback('Processing files...');
-        return deps.processFiles(rawFiles, config, progressCallback);
+        return deps.processFiles(rawFiles, config, progressCallback, undefined, signal);
       }),
     ]);
 
@@ -260,6 +269,7 @@ export const pack = async (
     // in order via `extractOutputWrapper`.
     await sortDataPromise;
     const processedFiles = await deps.sortOutputFiles(filteredProcessedFiles, config);
+    signal?.throwIfAborted();
 
     progressCallback('Generating output...');
 
@@ -280,6 +290,7 @@ export const pack = async (
         skippedFiles: allSkippedFiles,
         progressCallback,
       });
+      signal?.throwIfAborted();
 
       logMemoryUsage('Pack - End');
       return result;
@@ -299,6 +310,7 @@ export const pack = async (
     // from it. The load was started at the very beginning of pack() and is
     // typically already resolved; this await is a safety net for fast machines.
     await tokenCacheLoadPromise;
+    signal?.throwIfAborted();
 
     // Generate and write output, overlapping with metrics calculation.
     // File and git metrics don't depend on the output, so they start immediately
@@ -315,6 +327,7 @@ export const pack = async (
       emptyDirPaths,
     );
 
+    pendingOutput = outputPromise;
     const outputForMetricsPromise = outputPromise.then((r) => r.outputForMetrics);
 
     const [{ outputFiles }, metrics] = await Promise.all([
@@ -333,6 +346,7 @@ export const pack = async (
         ),
       ),
     ]);
+    signal?.throwIfAborted();
 
     // Create a result object that includes metrics and security results
     const result = {
@@ -354,7 +368,15 @@ export const pack = async (
     logMemoryUsage('Pack - End');
 
     return result;
+  } catch (error) {
+    // An aborted pack surfaces the abort reason rather than whichever error the
+    // destroyed worker pool produced.
+    signal?.throwIfAborted();
+    throw error;
   } finally {
+    // Let an in-flight output write settle so it cannot land after the caller has
+    // already cleaned up the output directory.
+    await pendingOutput?.catch(() => {});
     await metricsWarmupPromise.catch(() => {});
     await metricsTaskRunner.cleanup();
   }

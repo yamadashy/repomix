@@ -75,6 +75,12 @@ Example Path:
       },
     },
     async ({ directory, skillName, compress, includePatterns, ignorePatterns }, ctx): Promise<CallToolResult> => {
+      // Fires on notifications/cancelled for this request or when the transport closes.
+      const signal = ctx?.mcpReq.signal;
+      // Set only after this call created the skill directory, so cleanup never removes a
+      // directory another call (or the user) owns.
+      let createdSkillDir: string | undefined;
+      let succeeded = false;
       try {
         // Validate directory is an absolute path
         if (!path.isAbsolute(directory)) {
@@ -106,15 +112,19 @@ Example Path:
         const actualSkillName = skillName ? validateSkillName(skillName) : generateDefaultSkillName([directory]);
         const skillDir = path.join(getSkillBaseDir(directory, 'project'), actualSkillName);
 
-        // Check if skill directory already exists (MCP cannot prompt for overwrite)
+        // Claim the skill directory atomically (MCP cannot prompt for overwrite): a
+        // non-recursive mkdir fails with EEXIST if it already exists, so of two
+        // concurrent same-name calls only one owns the directory.
+        await fs.mkdir(path.dirname(skillDir), { recursive: true });
         try {
-          await fs.access(skillDir);
+          await fs.mkdir(skillDir);
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
           return buildMcpToolErrorResponse({
             errorMessage: `Skill directory already exists: ${skillDir}. Please remove it first or use a different skill name.`,
           });
-        } catch {
-          // Directory doesn't exist - this is expected
         }
+        createdSkillDir = skillDir;
 
         const cliOptions = {
           skillGenerate: actualSkillName,
@@ -125,6 +135,7 @@ Example Path:
           ignore: ignorePatterns,
           securityCheck: true,
           quiet: true,
+          signal,
         } as CliOptions;
 
         const result = await withMcpProgress(ctx, { sandboxed: false }, (progressCallback) =>
@@ -137,6 +148,7 @@ Example Path:
         }
 
         const { packResult } = result;
+        succeeded = true;
 
         return buildMcpToolSuccessResponse({
           skillPath: skillDir,
@@ -147,6 +159,19 @@ Example Path:
         } satisfies z.infer<typeof generateSkillOutputSchema>);
       } catch (error) {
         return buildMcpToolErrorResponse(convertErrorToJson(error));
+      } finally {
+        // Remove what this call claimed so a retry is not refused with "Skill directory
+        // already exists". A cancelled run may have left a partial skill, so it goes
+        // entirely. Other failures only drop the directory while it is still empty: some
+        // errors, such as an exceeded output.tokenBudget, are raised after the skill was
+        // written, and that output is kept as before.
+        if (!succeeded && createdSkillDir) {
+          if (signal?.aborted) {
+            await fs.rm(createdSkillDir, { recursive: true, force: true }).catch(() => {});
+          } else {
+            await fs.rmdir(createdSkillDir).catch(() => {});
+          }
+        }
       }
     },
   );

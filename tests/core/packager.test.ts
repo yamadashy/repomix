@@ -99,8 +99,16 @@ describe('packager', () => {
       mockConfig,
       undefined,
       undefined,
+      undefined,
+      undefined,
     );
-    expect(mockDeps.processFiles).toHaveBeenCalledWith(expectedLeveledRawFiles, mockConfig, progressCallback);
+    expect(mockDeps.processFiles).toHaveBeenCalledWith(
+      expectedLeveledRawFiles,
+      mockConfig,
+      progressCallback,
+      undefined,
+      undefined,
+    );
     expect(mockDeps.produceOutput).toHaveBeenCalledWith(
       ['root'],
       mockConfig,
@@ -192,11 +200,15 @@ describe('packager', () => {
       config,
       undefined,
       undefined,
+      undefined,
+      undefined,
     );
     expect(mockDeps.processFiles).toHaveBeenCalledWith(
       [expect.objectContaining({ path: 'a.json', content: 'transformed content' })],
       config,
       progressCallback,
+      undefined,
+      undefined,
     );
   });
 
@@ -306,6 +318,88 @@ describe('packager', () => {
       await expect(pack(['root'], createMockConfig(), vi.fn(), deps)).rejects.toThrow('warmup failed');
 
       expect(cleanup).toHaveBeenCalled();
+    });
+
+    describe('cancellation', () => {
+      const packWithSignal = (deps: ReturnType<typeof baseDeps>['deps'], signal: AbortSignal) =>
+        pack(['root'], createMockConfig(), vi.fn(), deps, undefined, { signal });
+
+      test('rejects without doing any work when the signal is already aborted', async () => {
+        const { deps } = baseDeps();
+        const controller = new AbortController();
+        controller.abort();
+
+        await expect(packWithSignal(deps, controller.signal)).rejects.toMatchObject({ name: 'AbortError' });
+
+        expect(deps.searchFiles).not.toHaveBeenCalled();
+        expect(deps.createMetricsTaskRunner).not.toHaveBeenCalled();
+      });
+
+      test('stops at the next phase boundary when aborted mid-run', async () => {
+        const { cleanup, deps } = baseDeps();
+        const controller = new AbortController();
+        deps.collectFiles = vi.fn().mockImplementation(async () => {
+          controller.abort();
+          return { rawFiles: mockRawFiles, skippedFiles: [] };
+        });
+
+        await expect(packWithSignal(deps, controller.signal)).rejects.toMatchObject({ name: 'AbortError' });
+
+        expect(deps.validateFileSafety).not.toHaveBeenCalled();
+        expect(deps.processFiles).not.toHaveBeenCalled();
+        expect(deps.produceOutput).not.toHaveBeenCalled();
+        expect(cleanup).toHaveBeenCalled();
+      });
+
+      test('passes the signal to the worker-backed phases and surfaces the abort reason', async () => {
+        const { deps } = baseDeps();
+        const controller = new AbortController();
+        // A destroyed worker pool rejects its tasks with its own error.
+        deps.validateFileSafety = vi.fn().mockImplementation(async () => {
+          controller.abort();
+          throw new Error('Terminating worker thread');
+        });
+
+        await expect(packWithSignal(deps, controller.signal)).rejects.toMatchObject({ name: 'AbortError' });
+
+        expect(deps.createMetricsTaskRunner).toHaveBeenCalledWith(['root'], 1, 'o200k_base', controller.signal);
+        expect(deps.validateFileSafety).toHaveBeenCalledWith(
+          expect.any(Array),
+          expect.any(Function),
+          expect.any(Object),
+          undefined,
+          undefined,
+          undefined,
+          controller.signal,
+        );
+        expect(deps.processFiles).toHaveBeenCalledWith(
+          expect.any(Array),
+          expect.any(Object),
+          expect.any(Function),
+          undefined,
+          controller.signal,
+        );
+        expect(deps.produceOutput).not.toHaveBeenCalled();
+      });
+
+      test('waits for an in-flight output write before rejecting', async () => {
+        const { deps } = baseDeps();
+        const controller = new AbortController();
+        let outputSettled = false;
+        deps.produceOutput = vi.fn().mockImplementation(async () => {
+          await new Promise((resolve) => setTimeout(resolve, 10));
+          outputSettled = true;
+          return { outputForMetrics: 'output' };
+        });
+        deps.calculateMetrics = vi.fn().mockImplementation(async () => {
+          controller.abort();
+          throw new Error('Terminating worker thread');
+        });
+
+        await expect(packWithSignal(deps, controller.signal)).rejects.toMatchObject({ name: 'AbortError' });
+
+        expect(outputSettled).toBe(true);
+      });
     });
   });
 });

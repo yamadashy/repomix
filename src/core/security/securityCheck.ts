@@ -30,6 +30,7 @@ export const runSecurityCheck = async (
     initTaskRunner,
     getProcessConcurrency: defaultGetProcessConcurrency,
   },
+  signal?: AbortSignal,
 ): Promise<SuspiciousFileResult[]> => {
   const gitDiffItems: SecurityCheckItem[] = [];
   const gitLogItems: SecurityCheckItem[] = [];
@@ -89,6 +90,7 @@ export const runSecurityCheck = async (
     workerType: 'securityCheck',
     runtime: 'worker_threads',
     maxWorkerThreads: maxSecurityWorkers,
+    signal,
   });
 
   // Split items into batches to reduce IPC round-trips

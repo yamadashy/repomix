@@ -363,6 +363,75 @@ describe('remoteAction functions', () => {
       expect(execGitShallowCloneMock).toHaveBeenCalledTimes(1);
     });
 
+    test('does not fall back to git clone when the archive download is cancelled', async () => {
+      const controller = new AbortController();
+      let tempDirPath = '';
+      const downloadGitHubArchiveMock = vi.fn(async (_repoInfo: unknown, directory: string) => {
+        tempDirPath = directory;
+        controller.abort();
+        throw new DOMException('This operation was aborted', 'AbortError');
+      });
+      const execGitShallowCloneMock = vi.fn();
+      const runDefaultActionMock = vi.fn();
+
+      await expect(
+        runRemoteAction('yamadashy/repomix', { signal: controller.signal }, undefined, {
+          isGitInstalled: async () => true,
+          execGitShallowClone: execGitShallowCloneMock,
+          getRemoteRefs: async () => ['main'],
+          runDefaultAction: runDefaultActionMock,
+          downloadGitHubArchive: downloadGitHubArchiveMock,
+          isGitHubRepository: vi.fn().mockReturnValue(true),
+          parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
+          isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
+          confirmRemoteConfigTrust: vi.fn(),
+        }),
+      ).rejects.toMatchObject({ name: 'AbortError' });
+
+      expect(downloadGitHubArchiveMock).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.any(String),
+        expect.objectContaining({ signal: controller.signal }),
+        expect.any(Function),
+      );
+      expect(execGitShallowCloneMock).not.toHaveBeenCalled();
+      expect(runDefaultActionMock).not.toHaveBeenCalled();
+      await expect(fs.stat(tempDirPath)).rejects.toMatchObject({ code: 'ENOENT' });
+    });
+
+    test('passes the signal to git clone and to runDefaultAction', async () => {
+      const { signal } = new AbortController();
+      const execGitShallowCloneMock = vi.fn(async () => {});
+      const runDefaultActionMock = vi.fn(async () => createMockDefaultActionResult());
+      vi.mocked(fs.copyFile).mockResolvedValue(undefined);
+
+      await runRemoteAction('https://gitlab.com/owner/repo.git', { signal }, undefined, {
+        isGitInstalled: async () => true,
+        execGitShallowClone: execGitShallowCloneMock,
+        getRemoteRefs: async () => ['main'],
+        runDefaultAction: runDefaultActionMock,
+        downloadGitHubArchive: vi.fn(),
+        isGitHubRepository: vi.fn().mockReturnValue(false),
+        parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
+        isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
+        confirmRemoteConfigTrust: vi.fn(),
+      });
+
+      expect(execGitShallowCloneMock).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        undefined,
+        undefined,
+        signal,
+      );
+      expect(runDefaultActionMock).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.any(String),
+        expect.objectContaining({ signal }),
+        undefined,
+      );
+    });
+
     test('should fail when archive download fails and git is not installed', async () => {
       const downloadGitHubArchiveMock = vi.fn().mockRejectedValue(new Error('Archive download failed'));
       const execGitShallowCloneMock = vi.fn();
@@ -715,7 +784,13 @@ describe('remoteAction functions', () => {
         execGitShallowClone: execGitShallowCloneMock,
       });
 
-      expect(execGitShallowCloneMock).toHaveBeenCalledWith(credentialedUrl, '/temp/dir', undefined);
+      expect(execGitShallowCloneMock).toHaveBeenCalledWith(
+        credentialedUrl,
+        '/temp/dir',
+        undefined,
+        undefined,
+        undefined,
+      );
     });
 
     test('should not leak credentials through a clone failure message', async () => {

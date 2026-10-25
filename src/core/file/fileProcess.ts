@@ -89,6 +89,7 @@ export const processFiles = async (
     initTaskRunner,
     getFileManipulator,
   },
+  signal?: AbortSignal,
 ): Promise<ProcessedFile[]> => {
   const startTime = process.hrtime.bigint();
   let files: ProcessedFile[];
@@ -122,6 +123,7 @@ export const processFiles = async (
       numOfTasks: leveledFiles.length,
       workerType: 'fileProcess',
       runtime: 'worker_threads',
+      signal,
     });
 
     const tasks = leveledFiles.map(

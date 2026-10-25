@@ -197,6 +197,27 @@ file2.ts
       );
     });
 
+    test('passes the abort signal to the network operations', async () => {
+      const mockFileExecAsync = vi.fn().mockResolvedValue({ stdout: '', stderr: '' });
+      const url = 'https://github.com/user/repo.git';
+      const directory = '/tmp/repo';
+      const { signal } = new AbortController();
+
+      await execGitShallowClone(url, directory, undefined, { execFileAsync: mockFileExecAsync }, signal);
+      await execGitShallowClone(url, directory, 'main', { execFileAsync: mockFileExecAsync }, signal);
+
+      expect(mockFileExecAsync).toHaveBeenCalledWith(
+        'git',
+        ['clone', '--depth', '1', '--', url, directory],
+        expect.objectContaining({ timeout: 30000, signal }),
+      );
+      expect(mockFileExecAsync).toHaveBeenCalledWith(
+        'git',
+        ['-C', directory, 'fetch', '--depth', '1', 'origin', '--end-of-options', 'main'],
+        expect.objectContaining({ timeout: 30000, signal }),
+      );
+    });
+
     test('should throw error when git clone fails', async () => {
       const mockFileExecAsync = vi.fn().mockRejectedValue(new Error('Authentication failed'));
       const url = 'https://github.com/user/repo.git';

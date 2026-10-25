@@ -17,6 +17,7 @@ import type { GitHubRepoInfo } from './gitRemoteParse.js';
 export interface ArchiveDownloadOptions {
   timeout?: number; // Download timeout in milliseconds (default: 30000)
   retries?: number; // Number of retry attempts (default: 3)
+  signal?: AbortSignal; // Cancels the download; no retry or fallback URL is tried afterwards
 }
 
 export interface ArchiveDownloadProgress {
@@ -55,7 +56,7 @@ export const downloadGitHubArchive = async (
   onProgress?: ProgressCallback,
   deps: ArchiveDownloadDeps = defaultDeps,
 ): Promise<void> => {
-  const { timeout = 30000, retries = 3 } = options;
+  const { timeout = 30000, retries = 3, signal } = options;
 
   let lastError: Error | null = null;
 
@@ -71,11 +72,12 @@ export const downloadGitHubArchive = async (
       try {
         logger.trace(`Downloading GitHub archive from: ${redactUrl(archiveUrl)} (attempt ${attempt}/${retries})`);
 
-        await downloadAndExtractArchive(archiveUrl, targetDirectory, timeout, onProgress, deps);
+        await downloadAndExtractArchive(archiveUrl, targetDirectory, timeout, signal, onProgress, deps);
 
         logger.trace('Successfully downloaded and extracted GitHub archive');
         return; // Success - exit early
       } catch (error) {
+        signal?.throwIfAborted();
         lastError = error as Error;
         logger.trace(`Archive download attempt ${attempt} failed:`, lastError.message);
 
@@ -112,6 +114,7 @@ const downloadAndExtractArchive = async (
   archiveUrl: string,
   targetDirectory: string,
   timeout: number,
+  signal: AbortSignal | undefined,
   onProgress?: ProgressCallback,
   deps: ArchiveDownloadDeps = defaultDeps,
 ): Promise<void> => {
@@ -119,8 +122,10 @@ const downloadAndExtractArchive = async (
   const timeoutId = setTimeout(controller.abort.bind(controller), timeout);
 
   try {
+    // Aborting the fetch also errors the response body, which tears down the
+    // extraction pipeline below.
     const response = await deps.fetch(archiveUrl, {
-      signal: controller.signal,
+      signal: signal ? AbortSignal.any([controller.signal, signal]) : controller.signal,
     });
 
     checkGitHubResponse(response);
@@ -178,7 +183,14 @@ const downloadAndExtractArchive = async (
     const gunzipStream = deps.createGunzip();
 
     try {
-      await deps.pipeline(nodeStream, progressStream, gunzipStream, extractStream);
+      // Once the body is fully read, aborting the fetch no longer reaches the buffered
+      // chunks, so the caller's signal is also given to the pipeline. The download
+      // timeout is not, to keep extraction of an already downloaded archive unbounded.
+      if (signal) {
+        await deps.pipeline(nodeStream, progressStream, gunzipStream, extractStream, { signal });
+      } else {
+        await deps.pipeline(nodeStream, progressStream, gunzipStream, extractStream);
+      }
     } finally {
       // Explicitly destroy streams to release handles.
       // Bun's pipeline() may not fully clean up, causing subsequent worker_threads to hang.

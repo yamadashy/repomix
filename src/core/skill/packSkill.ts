@@ -243,12 +243,16 @@ export const packSkill = async (params: PackSkillParams, deps = defaultDeps): Pr
       config,
       gitDiffResult,
       gitLogResult,
+      {},
+      options.signal,
     ),
   );
 
   // Step 3: Generate SKILL.md with accurate token count
   const skillOutput = generateSkillMdFromReferences(skillReferencesResult, skillMetrics.totalTokens);
 
+  // Last chance to stop before the skill lands on disk.
+  options.signal?.throwIfAborted();
   progressCallback('Writing skill output...');
   await withMemoryLogging('Write Skill Output', () => deps.writeSkillOutput(skillOutput, skillDir));
 

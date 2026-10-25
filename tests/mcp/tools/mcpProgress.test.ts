@@ -172,6 +172,19 @@ describe('createMcpProgressReporter', () => {
   });
 });
 
+test('sends nothing once the request signal has aborted', () => {
+  const controller = new AbortController();
+  const notify = vi.fn().mockResolvedValue(undefined);
+  const ctx = { mcpReq: { _meta: { progressToken: 't' }, notify, signal: controller.signal } };
+  const reporter = createMcpProgressReporter(ctx, { sandboxed: false });
+
+  reporter?.report('Searching for files...');
+  controller.abort();
+  reporter?.report('Running security check...');
+
+  expect(paramsOf(notify).map((p) => p.message)).toEqual(['Searching for files...']);
+});
+
 describe('withMcpProgress', () => {
   test('passes the reporter to the run and stops it once the run resolves', async () => {
     const { ctx, notify } = createCtx('t');
