@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792917840496,
+  "lastUpdate": 1792929094727,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -14618,6 +14618,51 @@ window.BENCHMARK_DATA = {
             "range": "±37",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1393ms, Q3: 1430ms\nAll times: 1369, 1370, 1381, 1386, 1386, 1393, 1398, 1406, 1406, 1412, 1413, 1421, 1422, 1425, 1426, 1430, 1430, 1435, 1438, 1487ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9fdff328c33fd65d7338a7eb853d781a98991bf5",
+          "message": "Merge pull request #1960 from yamadashy/fix/mcp-enforce-security-check\n\nfix(mcp): Enforce secret scan when securityCheck is explicitly true",
+          "timestamp": "2026-10-25T20:49:50+09:00",
+          "tree_id": "5d4dbf04bc79582cf9433f3d2d9e153b337964c2",
+          "url": "https://github.com/yamadashy/repomix/commit/9fdff328c33fd65d7338a7eb853d781a98991bf5"
+        },
+        "date": 1792929093554,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 895,
+            "range": "±154",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 847ms, Q3: 1001ms\nAll times: 802, 819, 827, 832, 832, 838, 845, 847, 849, 853, 870, 875, 876, 880, 889, 895, 909, 921, 932, 942, 946, 986, 1001, 1007, 1013, 1016, 1026, 1048, 1079, 1106ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 559,
+            "range": "±24",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 542ms, Q3: 566ms\nAll times: 535, 537, 539, 541, 541, 542, 545, 547, 555, 556, 559, 559, 559, 560, 565, 566, 587, 591, 592, 603ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1071,
+            "range": "±29",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1065ms, Q3: 1094ms\nAll times: 1042, 1044, 1053, 1054, 1055, 1065, 1066, 1066, 1069, 1069, 1071, 1075, 1075, 1079, 1085, 1094, 1101, 1111, 1113, 1126ms"
           }
         ]
       }
