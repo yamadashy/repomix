@@ -2,7 +2,12 @@ import path from 'node:path';
 import { isGitIgnored, isIgnoredByIgnoreFiles } from 'globby';
 import { Minimatch } from 'minimatch';
 import type { RepomixConfigMerged } from '../../../config/configSchema.js';
-import { getIgnoreFilePatterns, getIgnorePatterns, normalizeGlobPattern } from '../../../core/file/fileSearch.js';
+import {
+  expandIgnorePattern,
+  getIgnoreFilePatterns,
+  getIgnorePatterns,
+  isIgnoreControlFile,
+} from '../../../core/file/fileSearch.js';
 
 /**
  * Builds a chokidar `ignored` predicate that mirrors the packer's ignore rules,
@@ -26,7 +31,7 @@ export const buildWatchIgnoreFilter = async (
       // Default + custom + output + .git/info/exclude patterns (relative to this root).
       // Normalize the same way the packer does (fileSearch.prepareIgnoreContext) so watch
       // and pack ignore identical patterns (e.g. trailing-slash and `**/folder` forms).
-      const patterns = (await getIgnorePatterns(root, config)).map(normalizeGlobPattern);
+      const patterns = (await getIgnorePatterns(root, config)).flatMap(expandIgnorePattern);
       const fileMatchers = patterns.map((pattern) => new Minimatch(pattern, { dot: true }));
       // Directory form of every `foo/**` pattern, so the directory itself matches and
       // chokidar stops before descending into it (the part that actually prevents EMFILE).
@@ -45,7 +50,15 @@ export const buildWatchIgnoreFilter = async (
     }),
   );
 
+  // The packer's own output must never trigger a repack, even when it is named like an
+  // ignore-control file (e.g. `-o .ignore` with --no-dot-ignore), so it is checked before the
+  // control-file exemption below.
+  const absoluteOutputPath = config.output.filePath ? path.resolve(config.cwd, config.output.filePath) : undefined;
+
   return (watchedPath: string): boolean => {
+    if (absoluteOutputPath && path.resolve(watchedPath) === absoluteOutputPath) {
+      return true;
+    }
     for (const { root, fileMatchers, dirMatchers, gitIgnored, ignoreFileIgnored } of rootFilters) {
       const relative = path.relative(root, watchedPath);
       // Skip only when the path is genuinely outside this root. A bare `..startsWith` test
@@ -56,6 +69,11 @@ export const buildWatchIgnoreFilter = async (
         continue; // not under this root
       }
       const normalized = relative.split(path.sep).join('/');
+      // Keep watching .gitignore/.ignore/.repomixignore even when a pattern such as `**/.*`
+      // matches them: editing their rules changes what gets packed, so it must trigger a repack.
+      if (isIgnoreControlFile(normalized)) {
+        continue;
+      }
       for (const matcher of fileMatchers) {
         if (matcher.match(normalized)) {
           return true;

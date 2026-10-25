@@ -7,6 +7,7 @@ import { minimatch } from 'minimatch';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   escapeGlobPattern,
+  expandIgnorePattern,
   getIgnoreFilePatterns,
   getIgnorePatterns,
   listDirectories,
@@ -926,6 +927,21 @@ node_modules
 
     test('should not convert patterns that already have /**/*', () => {
       expect(normalizeGlobPattern('**/folder/**/*')).toBe('**/folder/**/*');
+    });
+  });
+
+  describe('expandIgnorePattern', () => {
+    test('keeps the bare form of **/ patterns whose last segment has a wildcard', () => {
+      expect(expandIgnorePattern('**/npm-debug.log*')).toEqual(['**/npm-debug.log*', '**/npm-debug.log*/**']);
+      expect(expandIgnorePattern('**/.*')).toEqual(['**/.*', '**/.*/**']);
+      expect(expandIgnorePattern('**/file?.txt')).toEqual(['**/file?.txt', '**/file?.txt/**']);
+    });
+
+    test('returns only the normalized form for literal names and other patterns', () => {
+      expect(expandIgnorePattern('**/node_modules')).toEqual(['**/node_modules/**']);
+      expect(expandIgnorePattern('**/*.log/**')).toEqual(['**/*.log/**']);
+      expect(expandIgnorePattern('*.log')).toEqual(['*.log']);
+      expect(expandIgnorePattern('bin/')).toEqual(['bin']);
     });
   });
 
