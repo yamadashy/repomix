@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/server';
 import { StdioServerTransport, serveStdio } from '@modelcontextprotocol/server/stdio';
 import { getVersion } from '../core/file/packageJsonParse.js';
 import { logger } from '../shared/logger.js';
+import { MCP_SERVER_ICONS } from './mcpServerIcons.js';
 import { registerPackRemoteRepositoryPrompt } from './prompts/packRemoteRepositoryPrompts.js';
 import { registerAttachPackedOutputTool } from './tools/attachPackedOutputTool.js';
 import { registerFileSystemReadDirectoryTool } from './tools/fileSystemReadDirectoryTool.js';
@@ -78,7 +79,10 @@ export const createMcpServer = (version: string, config: McpServerConfig = defau
   const mcpServer = new McpServer(
     {
       name: 'repomix-mcp-server',
+      title: 'Repomix',
       version,
+      websiteUrl: 'https://repomix.com',
+      icons: MCP_SERVER_ICONS,
     },
     {
       instructions: config.sandboxed ? SANDBOX_INSTRUCTIONS : MCP_SERVER_INSTRUCTIONS,
