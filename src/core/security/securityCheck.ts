@@ -26,6 +26,7 @@ export const runSecurityCheck = async (
   progressCallback: RepomixProgressCallback = () => {},
   gitDiffResult?: GitDiffResult,
   gitLogResult?: GitLogResult,
+  signal?: AbortSignal,
   deps = {
     initTaskRunner,
     getProcessConcurrency: defaultGetProcessConcurrency,
@@ -89,6 +90,7 @@ export const runSecurityCheck = async (
     workerType: 'securityCheck',
     runtime: 'worker_threads',
     maxWorkerThreads: maxSecurityWorkers,
+    signal,
   });
 
   // Split items into batches to reduce IPC round-trips

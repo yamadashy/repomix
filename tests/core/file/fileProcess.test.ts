@@ -44,7 +44,7 @@ describe('fileProcess', () => {
         },
       });
 
-      const result = await processFiles(mockRawFiles, config, () => {}, {
+      const result = await processFiles(mockRawFiles, config, () => {}, undefined, {
         initTaskRunner: mockInitTaskRunner,
         getFileManipulator: mockGetFileManipulator,
       });
@@ -73,7 +73,7 @@ describe('fileProcess', () => {
         },
       });
 
-      const result = await processFiles(mockRawFiles, config, () => {}, {
+      const result = await processFiles(mockRawFiles, config, () => {}, undefined, {
         initTaskRunner: mockInitTaskRunner,
         getFileManipulator: mockGetFileManipulator,
       });
@@ -99,7 +99,7 @@ describe('fileProcess', () => {
         },
       });
 
-      const result = await processFiles(mockRawFiles, config, () => {}, {
+      const result = await processFiles(mockRawFiles, config, () => {}, undefined, {
         initTaskRunner: mockInitTaskRunner,
         getFileManipulator: mockGetFileManipulator,
       });
@@ -273,7 +273,7 @@ describe('fileProcess', () => {
         output: { removeComments: true, removeEmptyLines: true },
       });
 
-      const result = await processFiles(rawFiles, config, () => {}, {
+      const result = await processFiles(rawFiles, config, () => {}, undefined, {
         initTaskRunner: mockInitTaskRunner,
         getFileManipulator: mockGetFileManipulator,
       });
@@ -294,7 +294,7 @@ describe('fileProcess', () => {
         output: { removeComments: true, removeEmptyLines: false },
       });
 
-      const result = await processFiles(rawFiles, config, () => {}, {
+      const result = await processFiles(rawFiles, config, () => {}, undefined, {
         initTaskRunner: mockInitTaskRunner,
         getFileManipulator: mockGetFileManipulator,
       });
@@ -319,13 +319,19 @@ describe('fileProcess', () => {
         });
 
       // Lightweight path (removeComments=false → main thread)
-      const lightweightResult = await processFiles(rawFiles, baseConfig({ removeComments: false }), () => {}, {
-        initTaskRunner: mockInitTaskRunner,
-        getFileManipulator: mockGetFileManipulator,
-      });
+      const lightweightResult = await processFiles(
+        rawFiles,
+        baseConfig({ removeComments: false }),
+        () => {},
+        undefined,
+        {
+          initTaskRunner: mockInitTaskRunner,
+          getFileManipulator: mockGetFileManipulator,
+        },
+      );
 
       // Worker path (removeComments=true → worker, but no comments in input → no change)
-      const workerResult = await processFiles(rawFiles, baseConfig({ removeComments: true }), () => {}, {
+      const workerResult = await processFiles(rawFiles, baseConfig({ removeComments: true }), () => {}, undefined, {
         initTaskRunner: mockInitTaskRunner,
         getFileManipulator: mockGetFileManipulator,
       });

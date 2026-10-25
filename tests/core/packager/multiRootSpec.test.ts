@@ -70,7 +70,7 @@ const runPack = (rootDirs: string[], config: RepomixConfigMerged) =>
     // No secrets in these fixtures — short-circuit the security scan to keep
     // the test fast and focused on the multi-root assembly path.
     validateFileSafety: (rawFiles, progressCallback, cfg, gitDiff, gitLog) =>
-      validateFileSafety(rawFiles, progressCallback, cfg, gitDiff, gitLog, {
+      validateFileSafety(rawFiles, progressCallback, cfg, gitDiff, gitLog, undefined, {
         runSecurityCheck: async () => [],
         filterOutUntrustedFiles,
       }),

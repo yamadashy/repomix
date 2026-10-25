@@ -75,6 +75,11 @@ Example Path:
       },
     },
     async ({ directory, skillName, compress, includePatterns, ignorePatterns }, ctx): Promise<CallToolResult> => {
+      // Fires on notifications/cancelled for this request or when the transport closes.
+      const signal = ctx?.mcpReq.signal;
+      // Set only once the skill directory is known not to exist, so cancellation never
+      // removes a directory this call did not create.
+      let createdSkillDir: string | undefined;
       try {
         // Validate directory is an absolute path
         if (!path.isAbsolute(directory)) {
@@ -115,6 +120,7 @@ Example Path:
         } catch {
           // Directory doesn't exist - this is expected
         }
+        createdSkillDir = skillDir;
 
         const cliOptions = {
           skillGenerate: actualSkillName,
@@ -125,6 +131,7 @@ Example Path:
           ignore: ignorePatterns,
           securityCheck: true,
           quiet: true,
+          signal,
         } as CliOptions;
 
         const result = await withMcpProgress(ctx, { sandboxed: false }, (progressCallback) =>
@@ -147,6 +154,12 @@ Example Path:
         } satisfies z.infer<typeof generateSkillOutputSchema>);
       } catch (error) {
         return buildMcpToolErrorResponse(convertErrorToJson(error));
+      } finally {
+        // A cancelled run may have left a partial skill; remove it so a retry is not
+        // refused with "Skill directory already exists".
+        if (signal?.aborted && createdSkillDir) {
+          await fs.rm(createdSkillDir, { recursive: true, force: true }).catch(() => {});
+        }
       }
     },
   );

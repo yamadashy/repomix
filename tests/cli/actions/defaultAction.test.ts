@@ -174,6 +174,21 @@ describe('defaultAction', () => {
     );
   });
 
+  it('should forward the abort signal to pack', async () => {
+    const { signal } = new AbortController();
+
+    await runDefaultAction(['.'], process.cwd(), { signal });
+
+    expect(packager.pack).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.any(Object),
+      expect.any(Function),
+      {},
+      undefined,
+      expect.objectContaining({ signal }),
+    );
+  });
+
   it('should handle errors gracefully', async () => {
     vi.mocked(packager.pack).mockRejectedValue(new Error('Test error'));
 

@@ -12,6 +12,7 @@ import {
   createToolWorkspace,
   formatPackToolResponse,
   outputPatternsSchema,
+  removeToolWorkspace,
 } from './mcpToolRuntime.js';
 
 const packRemoteRepositoryInputSchema = z.object({
@@ -85,6 +86,8 @@ export const registerPackRemoteRepositoryTool = (mcpServer: McpServer) => {
       ctx,
     ): Promise<CallToolResult> => {
       let tempDir = '';
+      // Fires on notifications/cancelled for this request or when the transport closes.
+      const signal = ctx?.mcpReq.signal;
 
       try {
         tempDir = await createToolWorkspace();
@@ -102,6 +105,7 @@ export const registerPackRemoteRepositoryTool = (mcpServer: McpServer) => {
           securityCheck: true,
           topFilesLen: topFilesLength,
           quiet: true,
+          signal,
         } as CliOptions;
 
         const result = await withMcpProgress(ctx, { sandboxed: false }, (progressCallback) =>
@@ -127,6 +131,10 @@ export const registerPackRemoteRepositoryTool = (mcpServer: McpServer) => {
         );
       } catch (error) {
         return buildMcpToolErrorResponse(convertErrorToJson(error));
+      } finally {
+        // The SDK never delivers a cancelled request's response, so nothing will read
+        // this workspace's output.
+        if (signal?.aborted && tempDir) await removeToolWorkspace(tempDir);
       }
     },
   );

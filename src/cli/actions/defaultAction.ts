@@ -161,6 +161,7 @@ export const runDefaultAction = async (
       skillProjectName,
       skillSourceUrl,
       confineToBaseDir: cliOptions.confineToBaseDir,
+      signal: cliOptions.signal,
     };
 
     const targetPaths = stdinFilePaths ? [cwd] : directories.map((directory) => path.resolve(cwd, directory));

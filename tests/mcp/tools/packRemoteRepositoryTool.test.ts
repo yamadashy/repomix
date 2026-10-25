@@ -2,7 +2,11 @@ import path from 'node:path';
 import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { runCli } from '../../../src/cli/cliRun.js';
-import { createToolWorkspace, formatPackToolResponse } from '../../../src/mcp/tools/mcpToolRuntime.js';
+import {
+  createToolWorkspace,
+  formatPackToolResponse,
+  removeToolWorkspace,
+} from '../../../src/mcp/tools/mcpToolRuntime.js';
 import { registerPackRemoteRepositoryTool } from '../../../src/mcp/tools/packRemoteRepositoryTool.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
@@ -14,6 +18,7 @@ vi.mock('../../../src/mcp/tools/mcpToolRuntime.js', async () => {
     ...actual,
     createToolWorkspace: vi.fn(),
     formatPackToolResponse: vi.fn(),
+    removeToolWorkspace: vi.fn(),
   };
 });
 
@@ -155,6 +160,28 @@ describe('PackRemoteRepositoryTool', () => {
     expect(result.isError).toBe(true);
     const content = result.content[0] as { type: 'text'; text: string };
     expect(JSON.parse(content.text).errorMessage).toBe('Clone failed');
+  });
+
+  test('passes the request abort signal to runCli and cleans up when cancelled', async () => {
+    const controller = new AbortController();
+    vi.mocked(runCli).mockImplementationOnce(async () => {
+      controller.abort();
+      throw controller.signal.reason;
+    });
+    const handlerWithCtx = toolHandler as (args: { remote: string }, ctx: unknown) => Promise<CallToolResult>;
+
+    await handlerWithCtx(
+      { remote: 'yamadashy/repomix' },
+      { mcpReq: { _meta: {}, notify: vi.fn(), signal: controller.signal } },
+    );
+
+    expect(runCli).toHaveBeenCalledWith(
+      ['.'],
+      process.cwd(),
+      expect.objectContaining({ signal: controller.signal }),
+      undefined,
+    );
+    expect(removeToolWorkspace).toHaveBeenCalledWith('/temp/dir');
   });
 
   test('returns an error response when workspace creation fails', async () => {

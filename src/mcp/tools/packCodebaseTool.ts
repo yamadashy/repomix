@@ -18,6 +18,7 @@ import {
   createToolWorkspace,
   formatPackToolResponse,
   outputPatternsSchema,
+  removeToolWorkspace,
 } from './mcpToolRuntime.js';
 
 /**
@@ -118,6 +119,8 @@ export const registerPackCodebaseTool = (
       ctx,
     ): Promise<CallToolResult> => {
       let tempDir = '';
+      // Fires on notifications/cancelled for this request or when the transport closes.
+      const signal = ctx?.mcpReq.signal;
 
       try {
         let targetDirectory = directory;
@@ -161,6 +164,7 @@ export const registerPackCodebaseTool = (
           securityCheck: true,
           topFilesLen: topFilesLength,
           quiet: true,
+          signal,
           // Untrusted-workspace lockdown — one set, all gated on --sandbox:
           //  - skip EVERY config file: the workspace's repomix.config.* AND the
           //    operator's global one, since either could set
@@ -216,6 +220,10 @@ export const registerPackCodebaseTool = (
         // host path can leak. Non-sandbox: full detail (host paths are fine locally).
         if (config.sandboxed) return buildSandboxErrorResponse(error, directory);
         return buildMcpToolErrorResponse(convertErrorToJson(error));
+      } finally {
+        // The SDK never delivers a cancelled request's response, so nothing will read
+        // this workspace's output.
+        if (signal?.aborted && tempDir) await removeToolWorkspace(tempDir);
       }
     },
   );

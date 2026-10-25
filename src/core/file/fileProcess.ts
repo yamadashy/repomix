@@ -85,6 +85,7 @@ export const processFiles = async (
   rawFiles: RawFile[],
   config: RepomixConfigMerged,
   progressCallback: RepomixProgressCallback,
+  signal?: AbortSignal,
   deps = {
     initTaskRunner,
     getFileManipulator,
@@ -122,6 +123,7 @@ export const processFiles = async (
       numOfTasks: leveledFiles.length,
       workerType: 'fileProcess',
       runtime: 'worker_threads',
+      signal,
     });
 
     const tasks = leveledFiles.map(

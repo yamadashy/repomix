@@ -154,6 +154,14 @@ export const createToolWorkspace = async (): Promise<string> => {
 };
 
 /**
+ * Removes a tool workspace created by createToolWorkspace. Best effort: a failure is
+ * ignored because the directory lives under the repomix temp dir anyway.
+ */
+export const removeToolWorkspace = async (tempDir: string): Promise<void> => {
+  await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+};
+
+/**
  * Generate a unique output ID
  */
 export const generateOutputId = (): string => {

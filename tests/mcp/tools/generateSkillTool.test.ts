@@ -223,6 +223,38 @@ describe('GenerateSkillTool', () => {
     );
   });
 
+  test('passes the request abort signal to runCli', async () => {
+    vi.mocked(fs.access).mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('ENOENT'));
+    const { signal } = new AbortController();
+    const handlerWithCtx = toolHandler as (args: { directory: string }, ctx: unknown) => Promise<CallToolResult>;
+
+    await handlerWithCtx({ directory: '/test/project' }, { mcpReq: { _meta: {}, notify: vi.fn(), signal } });
+
+    expect(runCli).toHaveBeenCalledWith(['.'], '/test/project', expect.objectContaining({ signal }), undefined);
+    expect(fs.rm).not.toHaveBeenCalled();
+  });
+
+  test('removes the partially generated skill directory when the request is cancelled', async () => {
+    vi.mocked(fs.access).mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('ENOENT'));
+    vi.mocked(fs.rm).mockResolvedValue(undefined);
+    const controller = new AbortController();
+    vi.mocked(runCli).mockImplementationOnce(async () => {
+      controller.abort();
+      throw controller.signal.reason;
+    });
+    const handlerWithCtx = toolHandler as (
+      args: { directory: string; skillName: string },
+      ctx: unknown,
+    ) => Promise<CallToolResult>;
+
+    await handlerWithCtx(
+      { directory: '/test/project', skillName: 'my-skill' },
+      { mcpReq: { _meta: {}, notify: vi.fn(), signal: controller.signal } },
+    );
+
+    expect(fs.rm).toHaveBeenCalledWith('/test/project/.claude/skills/my-skill', { recursive: true, force: true });
+  });
+
   test('should handle CLI execution failure', async () => {
     vi.mocked(fs.access).mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('ENOENT'));
     vi.mocked(runCli).mockResolvedValue(undefined);

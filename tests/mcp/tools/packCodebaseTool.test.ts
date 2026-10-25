@@ -2,7 +2,11 @@ import path from 'node:path';
 import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { runCli } from '../../../src/cli/cliRun.js';
-import { createToolWorkspace, formatPackToolResponse } from '../../../src/mcp/tools/mcpToolRuntime.js';
+import {
+  createToolWorkspace,
+  formatPackToolResponse,
+  removeToolWorkspace,
+} from '../../../src/mcp/tools/mcpToolRuntime.js';
 import { registerPackCodebaseTool } from '../../../src/mcp/tools/packCodebaseTool.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
@@ -14,6 +18,7 @@ vi.mock('../../../src/mcp/tools/mcpToolRuntime.js', async () => {
     ...actual,
     createToolWorkspace: vi.fn(),
     formatPackToolResponse: vi.fn(),
+    removeToolWorkspace: vi.fn(),
   };
 });
 
@@ -155,6 +160,30 @@ describe('PackCodebaseTool', () => {
       method: 'notifications/progress',
       params: { progressToken: 'p1', progress: 1, message: 'Searching for files...' },
     });
+  });
+
+  test('passes the request abort signal to runCli', async () => {
+    const { signal } = new AbortController();
+
+    await toolHandler({ directory: '/test/project' }, { mcpReq: { _meta: {}, notify: vi.fn(), signal } });
+
+    expect(runCli).toHaveBeenCalledWith(['.'], '/test/project', expect.objectContaining({ signal }), undefined);
+    expect(removeToolWorkspace).not.toHaveBeenCalled();
+  });
+
+  test('removes the tool workspace when the request is cancelled', async () => {
+    const controller = new AbortController();
+    vi.mocked(runCli).mockImplementationOnce(async () => {
+      controller.abort();
+      throw controller.signal.reason;
+    });
+
+    await toolHandler(
+      { directory: '/test/project' },
+      { mcpReq: { _meta: {}, notify: vi.fn(), signal: controller.signal } },
+    );
+
+    expect(removeToolWorkspace).toHaveBeenCalledWith('/temp/dir');
   });
 
   test('passes no progress callback when the client sent no progressToken', async () => {

@@ -53,7 +53,7 @@ const runPack = (rootDirs: string[], config: RepomixConfigMerged) =>
     // processFiles is intentionally the real default: it resolves/honors
     // rawFile.level and drops directory-only files from the content output.
     validateFileSafety: (rawFiles, progressCallback, cfg, gitDiff, gitLog) =>
-      validateFileSafety(rawFiles, progressCallback, cfg, gitDiff, gitLog, {
+      validateFileSafety(rawFiles, progressCallback, cfg, gitDiff, gitLog, undefined, {
         runSecurityCheck: async () => [],
         filterOutUntrustedFiles,
       }),

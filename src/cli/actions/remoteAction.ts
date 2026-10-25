@@ -37,6 +37,7 @@ export const runRemoteAction = async (
   },
 ): Promise<DefaultActionRunnerResult> => {
   const reportProgress = createSafeProgressCallback(progressCallback);
+  const { signal } = cliOptions;
 
   // Validate --config path before any expensive operations (download/clone):
   // only absolute paths are allowed to prevent loading config from the cloned repository
@@ -77,6 +78,7 @@ export const runRemoteAction = async (
           {
             timeout: 60000, // 1 minute timeout for large repos
             retries: 2,
+            signal,
           },
           (progress) => {
             let message: string;
@@ -96,6 +98,11 @@ export const runRemoteAction = async (
         spinner.succeed('Repository archive downloaded successfully!');
         logger.log('');
       } catch (archiveError) {
+        // A cancelled download must not fall back to cloning.
+        if (signal?.aborted) {
+          spinner.fail('Repository download cancelled');
+          throw signal.reason;
+        }
         spinner.fail('Archive download failed, trying git clone...');
         logger.trace('Archive download error:', (archiveError as Error).message);
 
@@ -251,9 +258,15 @@ const performGitClone = async (
     reportProgress('Cloning repository...');
 
     // Clone the repository
-    await cloneRepository(parsedFields.repoUrl, tempDirPath, cliOptions.remoteBranch || parsedFields.remoteBranch, {
-      execGitShallowClone: deps.execGitShallowClone,
-    });
+    await cloneRepository(
+      parsedFields.repoUrl,
+      tempDirPath,
+      cliOptions.remoteBranch || parsedFields.remoteBranch,
+      cliOptions.signal,
+      {
+        execGitShallowClone: deps.execGitShallowClone,
+      },
+    );
 
     spinner.succeed('Repository cloned successfully!');
     logger.log('');
@@ -273,6 +286,7 @@ export const cloneRepository = async (
   url: string,
   directory: string,
   remoteBranch?: string,
+  signal?: AbortSignal,
   deps = {
     execGitShallowClone,
   },
@@ -281,8 +295,9 @@ export const cloneRepository = async (
   logger.log('');
 
   try {
-    await deps.execGitShallowClone(url, directory, remoteBranch);
+    await deps.execGitShallowClone(url, directory, remoteBranch, signal);
   } catch (error) {
+    signal?.throwIfAborted();
     throw new RepomixError(`Failed to clone repository: ${redactErrorMessage(error)}`);
   }
 };

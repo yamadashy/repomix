@@ -13,6 +13,9 @@ export interface WorkerOptions {
   workerType: WorkerType;
   runtime: WorkerRuntime;
   maxWorkerThreads?: number;
+  // Aborting destroys the pool: queued and running tasks reject and the workers are
+  // terminated, and run() refuses new tasks.
+  signal?: AbortSignal;
 }
 
 /**
@@ -146,8 +149,18 @@ export interface TaskRunner<T, R> {
 
 export const initTaskRunner = <T, R>(options: WorkerOptions): TaskRunner<T, R> => {
   const pool = createWorkerPool(options);
+  const { signal } = options;
+  // One listener per pool rather than Tinypool's per-task `signal` option, which would
+  // add an abort listener for every queued task.
+  const onAbort = () => {
+    void cleanupWorkerPool(pool);
+  };
+  signal?.addEventListener('abort', onAbort, { once: true });
   return {
-    run: (task: T) => pool.run(task),
-    cleanup: () => cleanupWorkerPool(pool),
+    run: (task: T) => (signal?.aborted ? Promise.reject(signal.reason) : pool.run(task)),
+    cleanup: async () => {
+      signal?.removeEventListener('abort', onAbort);
+      await cleanupWorkerPool(pool);
+    },
   };
 };
