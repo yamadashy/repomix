@@ -160,10 +160,17 @@ Example Path:
       } catch (error) {
         return buildMcpToolErrorResponse(convertErrorToJson(error));
       } finally {
-        // A failed or cancelled run may have left an empty or partial skill; remove it so
-        // a retry is not refused with "Skill directory already exists".
+        // Remove what this call claimed so a retry is not refused with "Skill directory
+        // already exists". A cancelled run may have left a partial skill, so it goes
+        // entirely. Other failures only drop the directory while it is still empty: some
+        // errors, such as an exceeded output.tokenBudget, are raised after the skill was
+        // written, and that output is kept as before.
         if (!succeeded && createdSkillDir) {
-          await fs.rm(createdSkillDir, { recursive: true, force: true }).catch(() => {});
+          if (signal?.aborted) {
+            await fs.rm(createdSkillDir, { recursive: true, force: true }).catch(() => {});
+          } else {
+            await fs.rmdir(createdSkillDir).catch(() => {});
+          }
         }
       }
     },

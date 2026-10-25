@@ -53,6 +53,7 @@ describe('GenerateSkillTool', () => {
     vi.mocked(path.dirname).mockImplementation((p: string) => p.split('/').slice(0, -1).join('/'));
     vi.mocked(fs.mkdir).mockResolvedValue(undefined);
     vi.mocked(fs.rm).mockResolvedValue(undefined);
+    vi.mocked(fs.rmdir).mockResolvedValue(undefined);
 
     // Default: directory doesn't exist (for skill dir check)
     vi.mocked(fs.access).mockRejectedValue(new Error('ENOENT'));
@@ -176,7 +177,7 @@ describe('GenerateSkillTool', () => {
     expect(fs.rm).not.toHaveBeenCalled();
   });
 
-  test('removes the claimed skill directory when the run fails', async () => {
+  test('removes the claimed skill directory only while empty when the run fails', async () => {
     vi.mocked(fs.access).mockResolvedValueOnce(undefined);
     vi.mocked(runCli).mockRejectedValueOnce(new Error('pack failed'));
 
@@ -184,7 +185,21 @@ describe('GenerateSkillTool', () => {
 
     expect(result.isError).toBe(true);
     expect(fs.mkdir).toHaveBeenCalledWith('/test/project/.claude/skills/my-skill');
-    expect(fs.rm).toHaveBeenCalledWith('/test/project/.claude/skills/my-skill', { recursive: true, force: true });
+    // Non-recursive: errors raised after the skill was written (e.g. an exceeded
+    // output.tokenBudget) must keep the written output.
+    expect(fs.rmdir).toHaveBeenCalledWith('/test/project/.claude/skills/my-skill');
+    expect(fs.rm).not.toHaveBeenCalled();
+  });
+
+  test('keeps a written skill when an error is raised after writing', async () => {
+    vi.mocked(fs.access).mockResolvedValueOnce(undefined);
+    vi.mocked(fs.rmdir).mockRejectedValue(Object.assign(new Error('ENOTEMPTY'), { code: 'ENOTEMPTY' }));
+    vi.mocked(runCli).mockRejectedValueOnce(new Error('Token budget exceeded'));
+
+    const result = await toolHandler({ directory: '/test/project', skillName: 'my-skill' });
+
+    expect(result.isError).toBe(true);
+    expect(fs.rm).not.toHaveBeenCalled();
   });
 
   test('should generate skill with custom name', async () => {
