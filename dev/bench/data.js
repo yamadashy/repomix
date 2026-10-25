@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792912808930,
+  "lastUpdate": 1792912914755,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -14483,6 +14483,51 @@ window.BENCHMARK_DATA = {
             "range": "±40",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1277ms, Q3: 1317ms\nAll times: 1260, 1262, 1267, 1268, 1270, 1277, 1278, 1278, 1279, 1287, 1290, 1298, 1300, 1302, 1304, 1317, 1319, 1321, 1326, 1343ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "971c5b2444f9ed181554e0310f937cf60b8e8e14",
+          "message": "Merge pull request #1956 from yamadashy/renovate/root-non-major-dependencies\n\nfix(deps): update dependency gpt-tokenizer to ^4.1.0",
+          "timestamp": "2026-10-25T16:19:31+09:00",
+          "tree_id": "e837692328e38672d0316f209303b54f27b6200a",
+          "url": "https://github.com/yamadashy/repomix/commit/971c5b2444f9ed181554e0310f937cf60b8e8e14"
+        },
+        "date": 1792912913099,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 845,
+            "range": "±255",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 772ms, Q3: 1027ms\nAll times: 689, 691, 731, 741, 742, 744, 747, 772, 785, 786, 794, 809, 812, 825, 837, 845, 857, 862, 870, 939, 940, 991, 1027, 1044, 1092, 1113, 1117, 1125, 1221, 1345ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 707,
+            "range": "±37",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 697ms, Q3: 734ms\nAll times: 687, 692, 694, 696, 697, 697, 697, 698, 698, 706, 707, 708, 708, 712, 734, 734, 812, 832, 834, 853ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1358,
+            "range": "±27",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1349ms, Q3: 1376ms\nAll times: 1334, 1335, 1338, 1342, 1345, 1349, 1349, 1351, 1352, 1354, 1358, 1358, 1371, 1372, 1375, 1376, 1380, 1392, 1393, 1393ms"
           }
         ]
       }
