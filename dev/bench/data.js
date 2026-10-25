@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792940636619,
+  "lastUpdate": 1792941493932,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -14888,6 +14888,51 @@ window.BENCHMARK_DATA = {
             "range": "±24",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1298ms, Q3: 1322ms\nAll times: 1273, 1279, 1286, 1289, 1289, 1298, 1299, 1300, 1301, 1301, 1302, 1303, 1304, 1310, 1314, 1322, 1327, 1333, 1334, 1342ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1691ef9fee4bfcca088a990584f92f8c2294c1c6",
+          "message": "Merge pull request #1921 from lorenzozanee/fix/split-output-self-ignore\n\nfix(core): Ignore numbered split output files during input discovery",
+          "timestamp": "2026-10-26T00:16:47+09:00",
+          "tree_id": "4a243fd0d3adad7b62b1e8d1c82b8dcdfc0abcd2",
+          "url": "https://github.com/yamadashy/repomix/commit/1691ef9fee4bfcca088a990584f92f8c2294c1c6"
+        },
+        "date": 1792941492861,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 667,
+            "range": "±77",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 626ms, Q3: 703ms\nAll times: 593, 610, 617, 618, 619, 623, 625, 626, 629, 630, 631, 633, 641, 642, 648, 667, 670, 673, 673, 678, 680, 682, 703, 707, 735, 738, 740, 753, 784, 819ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 973,
+            "range": "±46",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 964ms, Q3: 1010ms\nAll times: 941, 945, 954, 956, 963, 964, 966, 967, 971, 971, 973, 981, 983, 986, 989, 1010, 1016, 1072, 1088, 1109ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 781,
+            "range": "±30",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 774ms, Q3: 804ms\nAll times: 762, 767, 770, 772, 773, 774, 777, 777, 779, 781, 781, 788, 795, 802, 802, 804, 807, 812, 815, 825ms"
           }
         ]
       }
