@@ -76,14 +76,19 @@ export const getWorkerThreadCount = (
 // one per message it sends) triggers a spurious MaxListenersExceededWarning. A pool raises
 // the limit by its worker count while alive, as Tinypool already does for child_process.
 const PIPED_STREAMS = [process.stdout, process.stderr];
-const reservedListeners = new WeakMap<Tinypool, number>();
+// Per pool, the streams whose limit was actually raised, so cleanup undoes only those.
+const reservedListeners = new WeakMap<Tinypool, Map<NodeJS.WriteStream, number>>();
 
-const adjustPipedStreamMaxListeners = (delta: number) => {
+const raisePipedStreamMaxListeners = (amount: number): Map<NodeJS.WriteStream, number> => {
+  const raised = new Map<NodeJS.WriteStream, number>();
   for (const stream of PIPED_STREAMS) {
     const current = stream.getMaxListeners();
-    // 0 means unlimited; leave it alone.
-    if (current !== 0) stream.setMaxListeners(Math.max(1, current + delta));
+    // 0 or Infinity means unlimited; leave it alone.
+    if (current === 0 || current === Number.POSITIVE_INFINITY) continue;
+    stream.setMaxListeners(current + amount);
+    raised.set(stream, amount);
   }
+  return raised;
 };
 
 export const createWorkerPool = (options: WorkerOptions): Tinypool => {
@@ -130,8 +135,7 @@ export const createWorkerPool = (options: WorkerOptions): Tinypool => {
   });
 
   if (runtime === 'worker_threads') {
-    adjustPipedStreamMaxListeners(maxThreads);
-    reservedListeners.set(pool, maxThreads);
+    reservedListeners.set(pool, raisePipedStreamMaxListeners(maxThreads));
   }
 
   const endTime = process.hrtime.bigint();
@@ -161,10 +165,12 @@ export const cleanupWorkerPool = async (pool: Tinypool): Promise<void> => {
   } catch (error) {
     logger.debug('Error during worker pool cleanup:', error);
   } finally {
-    const reserved = reservedListeners.get(pool);
-    if (reserved !== undefined) {
-      reservedListeners.delete(pool);
-      adjustPipedStreamMaxListeners(-reserved);
+    const raised = reservedListeners.get(pool);
+    reservedListeners.delete(pool);
+    for (const [stream, amount] of raised ?? []) {
+      const current = stream.getMaxListeners();
+      if (current === 0 || current === Number.POSITIVE_INFINITY) continue;
+      stream.setMaxListeners(Math.max(1, current - amount));
     }
   }
 };
