@@ -4,6 +4,9 @@ rules:
       # pull_request_target so fork PRs get labeled; the job never checks out or
       # runs PR code, only reads the payload and the changed-file list
       - jev-pr-labeler.yml
+      # issue_comment so maintainers can invoke @claude from comments; the job is
+      # gated to OWNER/MEMBER/COLLABORATOR and runs with read-only permissions
+      - claude.yml
   artipacked:
     ignore:
       # git-auto-commit-action requires persist-credentials for pushing
