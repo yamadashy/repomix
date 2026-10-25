@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792819057713,
+  "lastUpdate": 1792904598576,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -14033,6 +14033,51 @@ window.BENCHMARK_DATA = {
             "range": "±43",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1362ms, Q3: 1405ms\nAll times: 1346, 1353, 1356, 1356, 1362, 1362, 1374, 1375, 1377, 1378, 1378, 1381, 1384, 1397, 1401, 1405, 1419, 1421, 1431, 1440ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "653896d37ef8f03962fd2568950c61a33866f4fb",
+          "message": "Merge pull request #1950 from yamadashy/chore/zizmor-ignore-claude-issue-comment\n\nci(security): Ignore issue_comment dangerous-trigger finding for claude.yml",
+          "timestamp": "2026-10-25T14:01:22+09:00",
+          "tree_id": "a85b30b60eec9717c35d0dd9a8114abaa2df5900",
+          "url": "https://github.com/yamadashy/repomix/commit/653896d37ef8f03962fd2568950c61a33866f4fb"
+        },
+        "date": 1792904597846,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 888,
+            "range": "±188",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 800ms, Q3: 988ms\nAll times: 716, 752, 758, 760, 767, 768, 786, 800, 803, 831, 837, 857, 862, 863, 867, 888, 889, 911, 942, 951, 978, 985, 988, 993, 1003, 1003, 1003, 1024, 1230, 1287ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 597,
+            "range": "±31",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 592ms, Q3: 623ms\nAll times: 578, 584, 586, 590, 591, 592, 592, 593, 594, 597, 597, 599, 603, 609, 610, 623, 624, 633, 659, 698ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1280,
+            "range": "±14",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1274ms, Q3: 1288ms\nAll times: 1266, 1270, 1270, 1271, 1273, 1274, 1275, 1275, 1277, 1279, 1280, 1282, 1284, 1286, 1286, 1288, 1289, 1290, 1291, 1299ms"
           }
         ]
       }
