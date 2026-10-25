@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792912914755,
+  "lastUpdate": 1792914542115,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -14528,6 +14528,51 @@ window.BENCHMARK_DATA = {
             "range": "±27",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1349ms, Q3: 1376ms\nAll times: 1334, 1335, 1338, 1342, 1345, 1349, 1349, 1351, 1352, 1354, 1358, 1358, 1371, 1372, 1375, 1376, 1380, 1392, 1393, 1393ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b2061b21c3dde918fe99d90356e33051fa1a970a",
+          "message": "Merge pull request #1958 from yamadashy/feat/mcp-cancellation\n\nfeat(mcp): Stop long-running pack tools when a request is cancelled",
+          "timestamp": "2026-10-25T16:47:17+09:00",
+          "tree_id": "d1fd4af2581b8fe84a91587ddeab8c7b32763d55",
+          "url": "https://github.com/yamadashy/repomix/commit/b2061b21c3dde918fe99d90356e33051fa1a970a"
+        },
+        "date": 1792914541036,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 910,
+            "range": "±126",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 870ms, Q3: 996ms\nAll times: 787, 817, 823, 841, 851, 855, 859, 870, 873, 876, 885, 888, 891, 896, 906, 910, 917, 923, 932, 940, 946, 965, 996, 996, 1040, 1054, 1060, 1063, 1078, 1144ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 932,
+            "range": "±85",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 916ms, Q3: 1001ms\nAll times: 910, 912, 913, 913, 916, 916, 920, 921, 929, 932, 932, 935, 937, 944, 944, 1001, 1014, 1024, 1066, 1072ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1379,
+            "range": "±50",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1361ms, Q3: 1411ms\nAll times: 1333, 1337, 1344, 1355, 1360, 1361, 1362, 1365, 1368, 1372, 1379, 1386, 1389, 1392, 1403, 1411, 1422, 1438, 1483, 1493ms"
           }
         ]
       }
