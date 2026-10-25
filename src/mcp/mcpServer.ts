@@ -63,6 +63,10 @@ const MAX_TOOL_INPUT_ELEMENTS = 10_000;
 // cache fields, so this does not change what legacy clients see.
 const LIST_CACHE_TTL_MS = 60 * 60 * 1000;
 
+// handle.close() waits for pending writes to stdout to drain. If the client stops reading
+// stdout, that wait never ends, so shutdown gives up after this long and exits anyway.
+const SHUTDOWN_TIMEOUT_MS = 5_000;
+
 /**
  * Builds one MCP server instance. Must stay synchronous, cheap and side-effect free:
  * `serveStdio` may call the factory more than once per connection (a discarded
@@ -123,6 +127,7 @@ export const runMcpServer = async (
     getVersion,
     serveStdio,
     createStdioTransport: () => new StdioServerTransport(),
+    shutdownTimeoutMs: SHUTDOWN_TIMEOUT_MS,
   },
 ) => {
   const config: McpServerConfig = {
@@ -147,13 +152,22 @@ export const runMcpServer = async (
     const handleExit = async () => {
       if (shuttingDown) return;
       shuttingDown = true;
+      let timer: NodeJS.Timeout | undefined;
+      const timedOut = new Promise<'timeout'>((resolve) => {
+        timer = setTimeout(() => resolve('timeout'), deps.shutdownTimeoutMs);
+        timer.unref();
+      });
       try {
-        await handle.close();
-        logger.trace('Repomix MCP Server shutdown complete');
+        const result = await Promise.race([handle.close().then(() => 'closed' as const), timedOut]);
+        logger.trace(
+          result === 'closed' ? 'Repomix MCP Server shutdown complete' : 'MCP server shutdown timed out, exiting',
+        );
         processExit(0);
       } catch (error) {
         logger.error('Error during MCP server shutdown:', error);
         processExit(1);
+      } finally {
+        clearTimeout(timer);
       }
     };
 

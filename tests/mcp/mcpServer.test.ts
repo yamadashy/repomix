@@ -128,7 +128,7 @@ describe('MCP Server', () => {
     let transport: ReturnType<typeof createFakeTransport>;
     let handle: { close: ReturnType<typeof vi.fn<() => Promise<void>>> };
     let serveStdio: ReturnType<typeof vi.fn<(...args: ServeStdioArgs) => { close: () => Promise<void> }>>;
-    let deps: Parameters<typeof runMcpServer>[1];
+    let deps: NonNullable<Parameters<typeof runMcpServer>[1]>;
     let existingListeners: Record<'SIGINT' | 'SIGTERM', NodeJS.SignalsListener[]>;
 
     beforeEach(() => {
@@ -148,6 +148,7 @@ describe('MCP Server', () => {
         getVersion: vi.fn().mockResolvedValue(mockVersion),
         serveStdio,
         createStdioTransport: () => transport as unknown as StdioServerTransport,
+        shutdownTimeoutMs: 5_000,
       };
     });
 
@@ -234,6 +235,24 @@ describe('MCP Server', () => {
 
       expect(order).toEqual(['sdk', 'handle.close']);
       expect(mockExit).toHaveBeenCalledTimes(1);
+    });
+
+    test('exits anyway when shutdown hangs past the timeout (e.g. stdout never drains)', async () => {
+      vi.useFakeTimers();
+      try {
+        handle.close.mockImplementation(() => new Promise<void>(() => {}));
+
+        await runMcpServer({ processExit: mockExit }, { ...deps, shutdownTimeoutMs: 100 });
+        process.emit('SIGTERM');
+        await vi.advanceTimersByTimeAsync(99);
+        expect(mockExit).not.toHaveBeenCalled();
+
+        await vi.advanceTimersByTimeAsync(1);
+        expect(logger.trace).toHaveBeenCalledWith('MCP server shutdown timed out, exiting');
+        expect(mockExit).toHaveBeenCalledWith(0);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     test('should handle shutdown error', async () => {
