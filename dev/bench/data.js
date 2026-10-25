@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792938212209,
+  "lastUpdate": 1792940636619,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -14843,6 +14843,51 @@ window.BENCHMARK_DATA = {
             "range": "±19",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1327ms, Q3: 1346ms\nAll times: 1312, 1320, 1320, 1323, 1326, 1327, 1328, 1328, 1329, 1329, 1329, 1330, 1335, 1344, 1346, 1346, 1350, 1358, 1364, 1367ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4f67709b4b77a949f37ad96cdacd130e289e8bbd",
+          "message": "Merge pull request #1963 from yamadashy/fix/ignore-trailing-wildcard\n\nfix(core): Exclude files matched by ignore patterns ending in a wildcard",
+          "timestamp": "2026-10-26T00:01:28+09:00",
+          "tree_id": "7307f42797f86c2b1eec2d73e8d11805331410a0",
+          "url": "https://github.com/yamadashy/repomix/commit/4f67709b4b77a949f37ad96cdacd130e289e8bbd"
+        },
+        "date": 1792940634958,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 713,
+            "range": "±168",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 620ms, Q3: 788ms\nAll times: 566, 569, 580, 597, 598, 599, 605, 620, 645, 649, 649, 655, 684, 690, 695, 713, 719, 719, 720, 730, 762, 767, 788, 839, 850, 860, 890, 983, 1109, 1268ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 958,
+            "range": "±29",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 947ms, Q3: 976ms\nAll times: 937, 939, 939, 944, 946, 947, 950, 953, 955, 958, 958, 962, 965, 965, 970, 976, 987, 996, 1030, 1069ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1302,
+            "range": "±24",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1298ms, Q3: 1322ms\nAll times: 1273, 1279, 1286, 1289, 1289, 1298, 1299, 1300, 1301, 1301, 1302, 1303, 1304, 1310, 1314, 1322, 1327, 1333, 1334, 1342ms"
           }
         ]
       }
