@@ -6,7 +6,7 @@ import { runCli } from '../../cli/cliRun.js';
 import { getSkillBaseDir } from '../../cli/prompts/skillPrompts.js';
 import type { CliOptions } from '../../cli/types.js';
 import { generateDefaultSkillName, validateSkillName } from '../../core/skill/skillUtils.js';
-import { createMcpProgressReporter } from './mcpProgress.js';
+import { withMcpProgress } from './mcpProgress.js';
 import { buildMcpToolErrorResponse, buildMcpToolSuccessResponse, convertErrorToJson } from './mcpToolRuntime.js';
 
 const generateSkillInputSchema = z.object({
@@ -127,8 +127,9 @@ Example Path:
           quiet: true,
         } as CliOptions;
 
-        const progressCallback = createMcpProgressReporter(ctx, { sandboxed: false });
-        const result = await runCli(['.'], directory, cliOptions, progressCallback);
+        const result = await withMcpProgress(ctx, { sandboxed: false }, (progressCallback) =>
+          runCli(['.'], directory, cliOptions, progressCallback),
+        );
         if (!result) {
           return buildMcpToolErrorResponse({
             errorMessage: 'Failed to generate skill',

@@ -10,7 +10,7 @@ import { logger } from '../../shared/logger.js';
 import { splitPatterns } from '../../shared/patternUtils.js';
 import type { McpServerConfig } from '../mcpServer.js';
 import { isEscapingPath, resolveWithinRoot } from '../pathScope.js';
-import { createMcpProgressReporter } from './mcpProgress.js';
+import { withMcpProgress } from './mcpProgress.js';
 import {
   buildMcpToolErrorResponse,
   buildSandboxErrorResponse,
@@ -184,8 +184,9 @@ export const registerPackCodebaseTool = (
         let result: Awaited<ReturnType<typeof runCli>>;
         try {
           // Sandbox: progress messages are reduced to fixed stage strings (see mcpProgress).
-          const progressCallback = createMcpProgressReporter(ctx, { sandboxed: config.sandboxed });
-          result = await runCli(['.'], targetDirectory, cliOptions, progressCallback);
+          result = await withMcpProgress(ctx, { sandboxed: config.sandboxed }, (progressCallback) =>
+            runCli(['.'], targetDirectory, cliOptions, progressCallback),
+          );
         } finally {
           logger.setLogLevel(logLevelBeforePack);
         }

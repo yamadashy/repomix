@@ -6,6 +6,8 @@ import type { RepomixProgressCallback } from '../../shared/types.js';
 /** The slice of the SDK request context the reporter needs (narrow for testability). */
 export type McpProgressContext = { mcpReq: Pick<ServerContext['mcpReq'], '_meta' | 'notify'> };
 
+export type McpProgressReporter = { report: RepomixProgressCallback; stop: () => void };
+
 /** Minimum gap between two notifications that do not start a new stage (max ~4/sec). */
 export const PROGRESS_THROTTLE_MS = 250;
 
@@ -54,20 +56,25 @@ const toSandboxMessage = (message: string): string => {
  *   so "new stage" means first seen, not merely different from the previous one.
  * - Notification failures (closed transport, ...) are swallowed: progress is best
  *   effort and must never fail the tool call.
+ * - `stop()` silences the reporter. The pipeline can keep emitting after the tool has
+ *   already responded (e.g. a concurrent stage still running when another one threw),
+ *   and progress for a completed request must not be sent.
  */
 export const createMcpProgressReporter = (
   ctx: McpProgressContext | undefined,
   options: { sandboxed: boolean },
   deps = { now: () => Date.now() },
-): RepomixProgressCallback | undefined => {
+): McpProgressReporter | undefined => {
   const progressToken = ctx?.mcpReq._meta?.progressToken;
   if (progressToken === undefined) return undefined;
 
   let progress = 0;
   const seenStages = new Set<string>();
   let lastSentAt = Number.NEGATIVE_INFINITY;
+  let stopped = false;
 
-  return (rawMessage) => {
+  const report: RepomixProgressCallback = (rawMessage) => {
+    if (stopped) return;
     try {
       const message = stripVTControlCharacters(rawMessage).trim();
       const stage = stageOf(message);
@@ -91,4 +98,28 @@ export const createMcpProgressReporter = (
       logger.trace('Failed to send MCP progress notification:', error);
     }
   };
+
+  return {
+    report,
+    stop: () => {
+      stopped = true;
+    },
+  };
+};
+
+/**
+ * Run a pack with MCP progress reporting and stop reporting once it settles, so no
+ * notification can follow the tool's response for this request.
+ */
+export const withMcpProgress = async <T>(
+  ctx: McpProgressContext | undefined,
+  options: { sandboxed: boolean },
+  run: (progressCallback?: RepomixProgressCallback) => Promise<T>,
+): Promise<T> => {
+  const reporter = createMcpProgressReporter(ctx, options);
+  try {
+    return await run(reporter?.report);
+  } finally {
+    reporter?.stop();
+  }
 };

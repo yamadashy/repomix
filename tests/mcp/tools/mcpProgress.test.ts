@@ -1,5 +1,9 @@
 import { describe, expect, test, vi } from 'vitest';
-import { createMcpProgressReporter, PROGRESS_THROTTLE_MS } from '../../../src/mcp/tools/mcpProgress.js';
+import {
+  createMcpProgressReporter,
+  PROGRESS_THROTTLE_MS,
+  withMcpProgress,
+} from '../../../src/mcp/tools/mcpProgress.js';
 
 const createCtx = (progressToken?: string | number) => {
   const notify = vi.fn().mockResolvedValue(undefined);
@@ -26,7 +30,7 @@ describe('createMcpProgressReporter', () => {
   test('sends notifications/progress with the token, a strictly increasing progress, and no total', () => {
     const { ctx, notify } = createCtx('t1');
     const clock = createClock();
-    const report = createMcpProgressReporter(ctx, { sandboxed: false }, clock);
+    const report = createMcpProgressReporter(ctx, { sandboxed: false }, clock)?.report;
 
     report?.('Searching for files...');
     report?.('Collect file... (1/2) src/a.ts');
@@ -49,7 +53,7 @@ describe('createMcpProgressReporter', () => {
   test('throttles repeats within a stage but always sends a stage change', () => {
     const { ctx, notify } = createCtx(7);
     const clock = createClock();
-    const report = createMcpProgressReporter(ctx, { sandboxed: false }, clock);
+    const report = createMcpProgressReporter(ctx, { sandboxed: false }, clock)?.report;
 
     report?.('Processing file... (1/1000) a.ts');
     for (let i = 2; i <= 1000; i++) {
@@ -68,7 +72,7 @@ describe('createMcpProgressReporter', () => {
   test('throttles interleaved concurrent stages after their first message', () => {
     const { ctx, notify } = createCtx('t');
     const clock = createClock();
-    const report = createMcpProgressReporter(ctx, { sandboxed: false }, clock);
+    const report = createMcpProgressReporter(ctx, { sandboxed: false }, clock)?.report;
 
     // Security check and file processing run concurrently and alternate messages.
     for (let i = 1; i <= 500; i++) {
@@ -86,7 +90,7 @@ describe('createMcpProgressReporter', () => {
   test('always sends the final "(n/n)" message of a stage even within the throttle window', () => {
     const { ctx, notify } = createCtx('t');
     const clock = createClock();
-    const report = createMcpProgressReporter(ctx, { sandboxed: false }, clock);
+    const report = createMcpProgressReporter(ctx, { sandboxed: false }, clock)?.report;
 
     for (let i = 1; i <= 100; i++) {
       report?.(`Collect file... (${i}/100) a.ts`);
@@ -101,7 +105,7 @@ describe('createMcpProgressReporter', () => {
   test('throttles messages without a stage head together', () => {
     const { ctx, notify } = createCtx('t');
     const clock = createClock();
-    const report = createMcpProgressReporter(ctx, { sandboxed: false }, clock);
+    const report = createMcpProgressReporter(ctx, { sandboxed: false }, clock)?.report;
 
     for (let i = 1; i <= 100; i++) {
       report?.(`/abs/path/file-${i}.ts`);
@@ -112,7 +116,7 @@ describe('createMcpProgressReporter', () => {
 
   test('strips ANSI color codes from messages', () => {
     const { ctx, notify } = createCtx('t');
-    const report = createMcpProgressReporter(ctx, { sandboxed: false });
+    const report = createMcpProgressReporter(ctx, { sandboxed: false })?.report;
     report?.('Processing file... (1/1) \u001b[2msrc/a.ts\u001b[22m');
     expect(paramsOf(notify)[0].message).toBe('Processing file... (1/1) src/a.ts');
   });
@@ -120,7 +124,7 @@ describe('createMcpProgressReporter', () => {
   test('sandbox mode reduces messages to the stage and a numeric counter', () => {
     const { ctx, notify } = createCtx('t');
     const clock = createClock();
-    const report = createMcpProgressReporter(ctx, { sandboxed: true }, clock);
+    const report = createMcpProgressReporter(ctx, { sandboxed: true }, clock)?.report;
     report?.('Processing file... (3/10) /home/user/project/src/a.ts');
     report?.('Generating output... (part 2) evaluating /home/user/project/src');
     report?.('/home/user/project leaked without a stage');
@@ -138,7 +142,7 @@ describe('createMcpProgressReporter', () => {
     const report = createMcpProgressReporter(
       { mcpReq: { _meta: { progressToken: 't' }, notify } },
       { sandboxed: false },
-    );
+    )?.report;
     expect(() => report?.('Searching for files...')).not.toThrow();
     // Let the rejection settle; an unhandled rejection would fail the test run.
     await new Promise((resolve) => setImmediate(resolve));
@@ -152,7 +156,59 @@ describe('createMcpProgressReporter', () => {
     const report = createMcpProgressReporter(
       { mcpReq: { _meta: { progressToken: 't' }, notify } },
       { sandboxed: false },
-    );
+    )?.report;
     expect(() => report?.('Searching for files...')).not.toThrow();
+  });
+
+  test('stop() silences the reporter so nothing follows the response', () => {
+    const { ctx, notify } = createCtx('t');
+    const reporter = createMcpProgressReporter(ctx, { sandboxed: false });
+
+    reporter?.report('Searching for files...');
+    reporter?.stop();
+    reporter?.report('Running security check...');
+
+    expect(paramsOf(notify).map((p) => p.message)).toEqual(['Searching for files...']);
+  });
+});
+
+describe('withMcpProgress', () => {
+  test('passes the reporter to the run and stops it once the run resolves', async () => {
+    const { ctx, notify } = createCtx('t');
+    let lateReport: ((message: string) => void) | undefined;
+
+    const result = await withMcpProgress(ctx, { sandboxed: false }, async (progressCallback) => {
+      lateReport = progressCallback as (message: string) => void;
+      progressCallback?.('Searching for files...');
+      return 'done';
+    });
+    lateReport?.('Running security check...');
+
+    expect(result).toBe('done');
+    expect(paramsOf(notify).map((p) => p.message)).toEqual(['Searching for files...']);
+  });
+
+  test('stops the reporter when the run rejects, so a still-running stage cannot report late', async () => {
+    const { ctx, notify } = createCtx('t');
+    let lateReport: ((message: string) => void) | undefined;
+
+    await expect(
+      withMcpProgress(ctx, { sandboxed: false }, async (progressCallback) => {
+        lateReport = progressCallback as (message: string) => void;
+        throw new Error('comment removal failed');
+      }),
+    ).rejects.toThrow('comment removal failed');
+    lateReport?.('Running security check... (5/10)');
+
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  test('passes no callback when the client sent no progressToken', async () => {
+    const { ctx } = createCtx();
+    const run = vi.fn(async () => 'done');
+
+    await withMcpProgress(ctx, { sandboxed: false }, run);
+
+    expect(run).toHaveBeenCalledWith(undefined);
   });
 });
