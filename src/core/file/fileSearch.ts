@@ -24,6 +24,11 @@ export interface FileSearchResult {
 const EMPTY_DIR_CHECK_CONCURRENCY = 20;
 const IGNORE_CONTROL_FILE_NAMES = new Set(['.gitignore', '.ignore', '.repomixignore']);
 
+// Whether a path is an ignore-control file whose rules globby loads. Such files must stay
+// visible to the ignore machinery even when an ignore pattern also matches them.
+export const isIgnoreControlFile = (filePath: string): boolean =>
+  IGNORE_CONTROL_FILE_NAMES.has(path.posix.basename(filePath.replace(/\\/g, '/')));
+
 // No per-directory ignore-pattern check is needed here. The `directories` array
 // comes from globby with the same `ignore` patterns (e.g. `dist/**`), which
 // excludes both the directory contents AND the directory entry itself.

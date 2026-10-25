@@ -2,7 +2,12 @@ import path from 'node:path';
 import { isGitIgnored, isIgnoredByIgnoreFiles } from 'globby';
 import { Minimatch } from 'minimatch';
 import type { RepomixConfigMerged } from '../../../config/configSchema.js';
-import { expandIgnorePattern, getIgnoreFilePatterns, getIgnorePatterns } from '../../../core/file/fileSearch.js';
+import {
+  expandIgnorePattern,
+  getIgnoreFilePatterns,
+  getIgnorePatterns,
+  isIgnoreControlFile,
+} from '../../../core/file/fileSearch.js';
 
 /**
  * Builds a chokidar `ignored` predicate that mirrors the packer's ignore rules,
@@ -56,6 +61,11 @@ export const buildWatchIgnoreFilter = async (
         continue; // not under this root
       }
       const normalized = relative.split(path.sep).join('/');
+      // Keep watching .gitignore/.ignore/.repomixignore even when a pattern such as `**/.*`
+      // matches them: editing their rules changes what gets packed, so it must trigger a repack.
+      if (isIgnoreControlFile(normalized)) {
+        continue;
+      }
       for (const matcher of fileMatchers) {
         if (matcher.match(normalized)) {
           return true;

@@ -48,6 +48,20 @@ describe('trailing wildcard ignore patterns', () => {
     expect(filePaths).toEqual(['keep.ts']);
   });
 
+  it('still loads .repomixignore rules when **/.* also matches the ignore file', async () => {
+    await writeFixture(tmpDir, {
+      'keep.ts': 'export {};\n',
+      '.repomixignore': 'secrets.json\n',
+      'secrets.json': '{}\n',
+      'sub/.repomixignore': 'private.txt\n',
+      'sub/private.txt': 'private\n',
+    });
+
+    const { filePaths } = await searchFiles(tmpDir, createMockConfig({ ignore: { customPatterns: ['**/.*'] } }));
+
+    expect(filePaths).toEqual(['keep.ts']);
+  });
+
   it('still excludes the contents of directories matched by a trailing wildcard', async () => {
     await writeFixture(tmpDir, {
       'keep.ts': 'export {};\n',
