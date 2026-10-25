@@ -1,8 +1,7 @@
 import type { Stats } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { registerAttachPackedOutputTool } from '../../../src/mcp/tools/attachPackedOutputTool.js';
 import { buildMcpToolErrorResponse, formatPackToolResponse } from '../../../src/mcp/tools/mcpToolRuntime.js';

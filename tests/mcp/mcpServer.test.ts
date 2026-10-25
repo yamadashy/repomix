@@ -1,5 +1,5 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { McpServer } from '@modelcontextprotocol/server';
+import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { getVersion } from '../../src/core/file/packageJsonParse.js';
 import { createMcpServer, runMcpServer } from '../../src/mcp/mcpServer.js';
@@ -90,10 +90,10 @@ const { MockMcpServer, MockStdioServerTransport } = vi.hoisted(() => {
 });
 
 // Mock dependencies
-vi.mock('@modelcontextprotocol/sdk/server/mcp.js', () => ({
+vi.mock('@modelcontextprotocol/server', () => ({
   McpServer: MockMcpServer,
 }));
-vi.mock('@modelcontextprotocol/sdk/server/stdio.js', () => ({
+vi.mock('@modelcontextprotocol/server/stdio', () => ({
   StdioServerTransport: MockStdioServerTransport,
 }));
 vi.mock('../../src/core/file/packageJsonParse.js');

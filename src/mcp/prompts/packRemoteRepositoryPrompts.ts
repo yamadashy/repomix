@@ -1,4 +1,4 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 /**
@@ -6,23 +6,25 @@ import { z } from 'zod';
  */
 export const registerPackRemoteRepositoryPrompt = (mcpServer: McpServer) => {
   // Pack Remote Repository Prompt
-  mcpServer.prompt(
+  mcpServer.registerPrompt(
     'pack_remote_repository',
-    'Pack a remote GitHub repository for analysis',
     {
-      repository: z.string().describe('GitHub repository URL or owner/repo format (e.g., "yamadashy/repomix")'),
-      includePatterns: z
-        .string()
-        .optional()
-        .describe(
-          'Comma-separated list of glob patterns to include (e.g., "src/**,lib/**"). It is recommended to pack only necessary files.',
-        ),
-      ignorePatterns: z
-        .string()
-        .optional()
-        .describe(
-          'Comma-separated list of glob patterns to ignore (e.g., "**/*.test.js,**/*.spec.js"). It is recommended to pack only necessary files.',
-        ),
+      description: 'Pack a remote GitHub repository for analysis',
+      argsSchema: z.object({
+        repository: z.string().describe('GitHub repository URL or owner/repo format (e.g., "yamadashy/repomix")'),
+        includePatterns: z
+          .string()
+          .optional()
+          .describe(
+            'Comma-separated list of glob patterns to include (e.g., "src/**,lib/**"). It is recommended to pack only necessary files.',
+          ),
+        ignorePatterns: z
+          .string()
+          .optional()
+          .describe(
+            'Comma-separated list of glob patterns to ignore (e.g., "**/*.test.js,**/*.spec.js"). It is recommended to pack only necessary files.',
+          ),
+      }),
     },
     async ({ repository, includePatterns, ignorePatterns }) => {
       return {
