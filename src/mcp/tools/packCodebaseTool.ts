@@ -10,6 +10,7 @@ import { logger } from '../../shared/logger.js';
 import { splitPatterns } from '../../shared/patternUtils.js';
 import type { McpServerConfig } from '../mcpServer.js';
 import { isEscapingPath, resolveWithinRoot } from '../pathScope.js';
+import { withMcpProgress } from './mcpProgress.js';
 import {
   buildMcpToolErrorResponse,
   buildSandboxErrorResponse,
@@ -112,15 +113,10 @@ export const registerPackCodebaseTool = (
         openWorldHint: false,
       },
     },
-    async ({
-      directory,
-      compress,
-      includePatterns,
-      ignorePatterns,
-      outputPatterns,
-      topFilesLength,
-      style,
-    }): Promise<CallToolResult> => {
+    async (
+      { directory, compress, includePatterns, ignorePatterns, outputPatterns, topFilesLength, style },
+      ctx,
+    ): Promise<CallToolResult> => {
       let tempDir = '';
 
       try {
@@ -187,7 +183,10 @@ export const registerPackCodebaseTool = (
         const logLevelBeforePack = logger.getLogLevel();
         let result: Awaited<ReturnType<typeof runCli>>;
         try {
-          result = await runCli(['.'], targetDirectory, cliOptions);
+          // Sandbox: progress messages are reduced to fixed stage strings (see mcpProgress).
+          result = await withMcpProgress(ctx, { sandboxed: config.sandboxed }, (progressCallback) =>
+            runCli(['.'], targetDirectory, cliOptions, progressCallback),
+          );
         } finally {
           logger.setLogLevel(logLevelBeforePack);
         }

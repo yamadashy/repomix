@@ -10,6 +10,8 @@ import { isGitInstalled } from '../../core/git/gitRepositoryHandle.js';
 import { generateDefaultSkillNameFromUrl, generateProjectNameFromUrl } from '../../core/skill/skillUtils.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
+import { createSafeProgressCallback } from '../../shared/progressCallback.js';
+import type { RepomixProgressCallback } from '../../shared/types.js';
 import { redactErrorMessage, redactUrl } from '../../shared/urlRedact.js';
 import { Spinner } from '../cliSpinner.js';
 import { validateTokenBudget } from '../cliTokenBudget.js';
@@ -21,6 +23,7 @@ import { type DefaultActionRunnerResult, runDefaultAction } from './defaultActio
 export const runRemoteAction = async (
   repoUrl: string,
   cliOptions: CliOptions,
+  progressCallback?: RepomixProgressCallback,
   deps = {
     isGitInstalled,
     execGitShallowClone,
@@ -33,6 +36,8 @@ export const runRemoteAction = async (
     confirmRemoteConfigTrust,
   },
 ): Promise<DefaultActionRunnerResult> => {
+  const reportProgress = createSafeProgressCallback(progressCallback);
+
   // Validate --config path before any expensive operations (download/clone):
   // only absolute paths are allowed to prevent loading config from the cloned repository
   if (cliOptions.config && !path.isAbsolute(cliOptions.config)) {
@@ -58,6 +63,7 @@ export const runRemoteAction = async (
 
       try {
         spinner.start();
+        reportProgress('Downloading repository archive...');
 
         // Override ref with CLI option if provided
         const repoInfoWithBranch = {
@@ -73,13 +79,16 @@ export const runRemoteAction = async (
             retries: 2,
           },
           (progress) => {
+            let message: string;
             if (progress.percentage !== null) {
-              spinner.update(`Downloading repository archive... (${progress.percentage}%)`);
+              message = `Downloading repository archive... (${progress.percentage}%)`;
             } else {
               // Show downloaded bytes when percentage is not available
               const downloadedMB = (progress.downloaded / 1024 / 1024).toFixed(1);
-              spinner.update(`Downloading repository archive... (${downloadedMB} MB)`);
+              message = `Downloading repository archive... (${downloadedMB} MB)`;
             }
+            spinner.update(message);
+            reportProgress(message);
           },
         );
 
@@ -95,12 +104,12 @@ export const runRemoteAction = async (
         tempDirPath = await createTempDirectory();
 
         // Fall back to git clone
-        await performGitClone(repoUrl, tempDirPath, cliOptions, deps);
+        await performGitClone(repoUrl, tempDirPath, cliOptions, deps, reportProgress);
         downloadMethod = 'git';
       }
     } else {
       // Use git clone directly
-      await performGitClone(repoUrl, tempDirPath, cliOptions, deps);
+      await performGitClone(repoUrl, tempDirPath, cliOptions, deps, reportProgress);
       downloadMethod = 'git';
     }
 
@@ -179,7 +188,7 @@ export const runRemoteAction = async (
       // runDefaultAction and the temp dir (with the output) would be cleaned up.
       deferTokenBudgetCheck: true,
     };
-    result = await deps.runDefaultAction([tempDirPath], tempDirPath, optionsWithSkill);
+    result = await deps.runDefaultAction([tempDirPath], tempDirPath, optionsWithSkill, progressCallback);
 
     // Copy output to current directory (only for non-skill generation)
     // Skip copy for stdout mode (output goes directly to stdout)
@@ -217,6 +226,7 @@ const performGitClone = async (
     getRemoteRefs: typeof getRemoteRefs;
     execGitShallowClone: typeof execGitShallowClone;
   },
+  reportProgress: (message: string) => void = () => {},
 ): Promise<void> => {
   // Check if git is installed only when we actually need to use git
   if (!(await deps.isGitInstalled())) {
@@ -238,6 +248,7 @@ const performGitClone = async (
 
   try {
     spinner.start();
+    reportProgress('Cloning repository...');
 
     // Clone the repository
     await cloneRepository(parsedFields.repoUrl, tempDirPath, cliOptions.remoteBranch || parsedFields.remoteBranch, {

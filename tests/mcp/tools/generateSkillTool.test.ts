@@ -161,6 +161,7 @@ describe('GenerateSkillTool', () => {
         skillName: 'my-custom-skill',
         skillDir: expect.stringContaining('my-custom-skill'),
       }),
+      undefined,
     );
   });
 
@@ -180,6 +181,7 @@ describe('GenerateSkillTool', () => {
         skillGenerate: 'repomix-reference-project',
         skillName: 'repomix-reference-project',
       }),
+      undefined,
     );
   });
 
@@ -197,6 +199,7 @@ describe('GenerateSkillTool', () => {
       expect.objectContaining({
         compress: true,
       }),
+      undefined,
     );
   });
 
@@ -216,6 +219,7 @@ describe('GenerateSkillTool', () => {
         include: '**/*.ts',
         ignore: 'test/**',
       }),
+      undefined,
     );
   });
 

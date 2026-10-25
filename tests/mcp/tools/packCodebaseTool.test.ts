@@ -22,14 +22,17 @@ describe('PackCodebaseTool', () => {
     registerTool: vi.fn().mockReturnThis(),
   } as unknown as McpServer;
 
-  let toolHandler: (args: {
-    directory: string;
-    compress?: boolean;
-    includePatterns?: string;
-    ignorePatterns?: string;
-    outputPatterns?: { pattern: string; compress?: boolean; directoryStructureOnly?: boolean }[];
-    topFilesLength?: number;
-  }) => Promise<CallToolResult>;
+  let toolHandler: (
+    args: {
+      directory: string;
+      compress?: boolean;
+      includePatterns?: string;
+      ignorePatterns?: string;
+      outputPatterns?: { pattern: string; compress?: boolean; directoryStructureOnly?: boolean }[];
+      topFilesLength?: number;
+    },
+    ctx?: unknown,
+  ) => Promise<CallToolResult>;
 
   const defaultPackResult = {
     totalFiles: 10,
@@ -135,7 +138,30 @@ describe('PackCodebaseTool', () => {
         ignore: 'test/**',
         topFilesLen: 10,
       }),
+      undefined,
     );
+  });
+
+  test('forwards pipeline progress as notifications/progress when the client sent a progressToken', async () => {
+    vi.mocked(runCli).mockImplementationOnce(async (_dirs, _cwd, _opts, progressCallback) => {
+      progressCallback?.('Searching for files...');
+      return undefined as unknown as Awaited<ReturnType<typeof runCli>>;
+    });
+    const notify = vi.fn().mockResolvedValue(undefined);
+
+    await toolHandler({ directory: '/test/project' }, { mcpReq: { _meta: { progressToken: 'p1' }, notify } });
+
+    expect(notify).toHaveBeenCalledWith({
+      method: 'notifications/progress',
+      params: { progressToken: 'p1', progress: 1, message: 'Searching for files...' },
+    });
+  });
+
+  test('passes no progress callback when the client sent no progressToken', async () => {
+    const notify = vi.fn();
+    await toolHandler({ directory: '/test/project' }, { mcpReq: { _meta: {}, notify } });
+    expect(vi.mocked(runCli).mock.calls[0][3]).toBeUndefined();
+    expect(notify).not.toHaveBeenCalled();
   });
 
   test('should pass outputPatterns through to runCli', async () => {
@@ -155,6 +181,7 @@ describe('PackCodebaseTool', () => {
         compress: true,
         outputPatterns,
       }),
+      undefined,
     );
   });
 

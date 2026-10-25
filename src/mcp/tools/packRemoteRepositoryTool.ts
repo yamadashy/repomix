@@ -5,6 +5,7 @@ import { runCli } from '../../cli/cliRun.js';
 import type { CliOptions } from '../../cli/types.js';
 import { defaultFilePathMap } from '../../config/configSchema.js';
 import { redactUrl } from '../../shared/urlRedact.js';
+import { withMcpProgress } from './mcpProgress.js';
 import {
   buildMcpToolErrorResponse,
   convertErrorToJson,
@@ -79,15 +80,10 @@ export const registerPackRemoteRepositoryTool = (mcpServer: McpServer) => {
         openWorldHint: true,
       },
     },
-    async ({
-      remote,
-      compress,
-      includePatterns,
-      ignorePatterns,
-      outputPatterns,
-      topFilesLength,
-      style,
-    }): Promise<CallToolResult> => {
+    async (
+      { remote, compress, includePatterns, ignorePatterns, outputPatterns, topFilesLength, style },
+      ctx,
+    ): Promise<CallToolResult> => {
       let tempDir = '';
 
       try {
@@ -108,7 +104,9 @@ export const registerPackRemoteRepositoryTool = (mcpServer: McpServer) => {
           quiet: true,
         } as CliOptions;
 
-        const result = await runCli(['.'], process.cwd(), cliOptions);
+        const result = await withMcpProgress(ctx, { sandboxed: false }, (progressCallback) =>
+          runCli(['.'], process.cwd(), cliOptions, progressCallback),
+        );
         if (!result) {
           return buildMcpToolErrorResponse({
             errorMessage: 'Failed to return a result',

@@ -16,6 +16,7 @@ import { generateDefaultSkillName } from '../../core/skill/skillUtils.js';
 import { RepomixError, rethrowValidationErrorIfSchemaError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { splitPatterns } from '../../shared/patternUtils.js';
+import { createSafeProgressCallback } from '../../shared/progressCallback.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import { redactOptionsForLog } from '../../shared/urlRedact.js';
 import { reportResults } from '../cliReport.js';
@@ -164,17 +165,10 @@ export const runDefaultAction = async (
 
     const targetPaths = stdinFilePaths ? [cwd] : directories.map((directory) => path.resolve(cwd, directory));
 
+    const reportProgress = createSafeProgressCallback(progressCallback);
     const handleProgress: RepomixProgressCallback = (message) => {
       spinner.update(message);
-      if (progressCallback) {
-        try {
-          Promise.resolve(progressCallback(message)).catch((error) => {
-            logger.trace('progressCallback error:', error);
-          });
-        } catch (error) {
-          logger.trace('progressCallback error:', error);
-        }
-      }
+      reportProgress(message);
     };
 
     packResult = await pack(targetPaths, config, handleProgress, {}, stdinFilePaths, packOptions);
