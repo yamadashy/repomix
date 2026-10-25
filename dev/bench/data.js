@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792941493932,
+  "lastUpdate": 1792942541814,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -14933,6 +14933,51 @@ window.BENCHMARK_DATA = {
             "range": "±30",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 774ms, Q3: 804ms\nAll times: 762, 767, 770, 772, 773, 774, 777, 777, 779, 781, 781, 788, 795, 802, 802, 804, 807, 812, 815, 825ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3f72927c07336192265b140fbab408e8a6097125",
+          "message": "Merge pull request #1875 from sxh313/fix/quiet-keeps-fatal-errors\n\nfix(cli): Keep fatal errors visible under --quiet and --stdout",
+          "timestamp": "2026-10-26T00:34:12+09:00",
+          "tree_id": "ab5d8ef56ddaf334fb4a2c5dd76aaf48fe3c1143",
+          "url": "https://github.com/yamadashy/repomix/commit/3f72927c07336192265b140fbab408e8a6097125"
+        },
+        "date": 1792942541009,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 880,
+            "range": "±174",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 768ms, Q3: 942ms\nAll times: 593, 647, 696, 698, 716, 764, 767, 768, 811, 824, 838, 839, 847, 864, 878, 880, 886, 895, 899, 899, 899, 937, 942, 953, 958, 971, 986, 1017, 1017, 1052ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 985,
+            "range": "±33",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 976ms, Q3: 1009ms\nAll times: 967, 971, 973, 974, 974, 976, 979, 982, 982, 985, 985, 990, 991, 999, 999, 1009, 1021, 1030, 1032, 1093ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1385,
+            "range": "±33",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1365ms, Q3: 1398ms\nAll times: 1345, 1354, 1362, 1362, 1364, 1365, 1380, 1381, 1382, 1383, 1385, 1385, 1390, 1392, 1393, 1398, 1400, 1407, 1416, 1430ms"
           }
         ]
       }
