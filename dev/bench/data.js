@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792914542115,
+  "lastUpdate": 1792917840496,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -14573,6 +14573,51 @@ window.BENCHMARK_DATA = {
             "range": "±50",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1361ms, Q3: 1411ms\nAll times: 1333, 1337, 1344, 1355, 1360, 1361, 1362, 1365, 1368, 1372, 1379, 1386, 1389, 1392, 1403, 1411, 1422, 1438, 1483, 1493ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3ee1eb826273241d52fb8411c678a7891fe56742",
+          "message": "Merge pull request #1959 from yamadashy/fix/mcp-max-listeners\n\nfix(core): Avoid spurious MaxListenersExceededWarning with worker pools",
+          "timestamp": "2026-10-25T17:42:04+09:00",
+          "tree_id": "eeb031b1a878eb769ff5321e611a501b65f88c7e",
+          "url": "https://github.com/yamadashy/repomix/commit/3ee1eb826273241d52fb8411c678a7891fe56742"
+        },
+        "date": 1792917839640,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 805,
+            "range": "±159",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 740ms, Q3: 899ms\nAll times: 643, 662, 697, 697, 706, 721, 732, 740, 741, 748, 748, 754, 764, 774, 805, 805, 806, 810, 826, 834, 852, 884, 899, 905, 918, 928, 933, 951, 957, 1045ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 731,
+            "range": "±20",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 721ms, Q3: 741ms\nAll times: 703, 706, 708, 717, 720, 721, 723, 728, 730, 731, 731, 734, 740, 741, 741, 741, 742, 767, 769, 798ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1413,
+            "range": "±37",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1393ms, Q3: 1430ms\nAll times: 1369, 1370, 1381, 1386, 1386, 1393, 1398, 1406, 1406, 1412, 1413, 1421, 1422, 1425, 1426, 1430, 1430, 1435, 1438, 1487ms"
           }
         ]
       }
