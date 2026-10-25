@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/server';
 import { StdioServerTransport, serveStdio } from '@modelcontextprotocol/server/stdio';
 import { getVersion } from '../core/file/packageJsonParse.js';
 import { logger } from '../shared/logger.js';
+import { MCP_SERVER_ICONS } from './mcpServerIcons.js';
 import { registerPackRemoteRepositoryPrompt } from './prompts/packRemoteRepositoryPrompts.js';
 import { registerAttachPackedOutputTool } from './tools/attachPackedOutputTool.js';
 import { registerFileSystemReadDirectoryTool } from './tools/fileSystemReadDirectoryTool.js';
@@ -67,13 +68,6 @@ const LIST_CACHE_TTL_MS = 60 * 60 * 1000;
 // stdout, that wait never ends, so shutdown gives up after this long and exits anyway.
 const SHUTDOWN_TIMEOUT_MS = 5_000;
 
-// Clients show these next to the server name. They are URLs rather than data: URIs because
-// 2026-07-28 responses repeat serverInfo, icons included, in the `_meta` of every result.
-const SERVER_ICONS = [
-  { src: 'https://repomix.com/images/repomix-logo.svg', mimeType: 'image/svg+xml', sizes: ['any'] },
-  { src: 'https://repomix.com/images/repomix-logo.png', mimeType: 'image/png', sizes: ['512x512'] },
-];
-
 /**
  * Builds one MCP server instance. Must stay synchronous, cheap and side-effect free:
  * `serveStdio` may call the factory more than once per connection (a discarded
@@ -88,7 +82,7 @@ export const createMcpServer = (version: string, config: McpServerConfig = defau
       title: 'Repomix',
       version,
       websiteUrl: 'https://repomix.com',
-      icons: SERVER_ICONS,
+      icons: MCP_SERVER_ICONS,
     },
     {
       instructions: config.sandboxed ? SANDBOX_INSTRUCTIONS : MCP_SERVER_INSTRUCTIONS,

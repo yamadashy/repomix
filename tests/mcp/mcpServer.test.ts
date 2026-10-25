@@ -64,13 +64,20 @@ describe('MCP Server', () => {
       expect(server).toBeDefined();
     });
 
-    test('advertises https icons rather than data URIs', () => {
+    test('embeds icons as data URIs with a PNG fallback', () => {
       createMcpServer(mockVersion);
       const icons = vi.mocked(McpServer).mock.calls[0][0].icons ?? [];
-      expect(icons.length).toBeGreaterThan(0);
+      expect(icons.map(({ mimeType, sizes }) => ({ mimeType, sizes }))).toEqual([
+        { mimeType: 'image/svg+xml', sizes: ['any'] },
+        { mimeType: 'image/png', sizes: ['48x48'] },
+      ]);
       for (const icon of icons) {
-        expect(icon.src).toMatch(/^https:\/\/repomix\.com\//);
+        expect(icon.src.startsWith(`data:${icon.mimeType};base64,`)).toBe(true);
       }
+      const png = Buffer.from(icons[1].src.split(',')[1], 'base64');
+      expect(png.subarray(1, 4).toString()).toBe('PNG');
+      expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([48, 48]);
+      expect(Buffer.from(icons[0].src.split(',')[1], 'base64').toString()).toContain('<svg');
     });
 
     test('bounds tool input size and sets list cache hints', () => {
