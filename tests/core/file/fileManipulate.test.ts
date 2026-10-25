@@ -1230,6 +1230,134 @@ a: "x
     expect(manipulator).toBeNull();
   });
 
+  describe('SCSS, Sass and Less keep unquoted url() values', () => {
+    // These profiles have real `//` line comments, so an unquoted `url(http://...)` used to
+    // be cut at its `//` together with the rest of the line.
+    test.each(['.scss', '.sass', '.less'])('keeps absolute and protocol-relative URLs in %s', (ext) => {
+      const manipulator = getFileManipulator(`test${ext}`);
+      const input = [
+        '.a { background: url(http://example.com/a.png); } // trailing',
+        '.b { background: url( https://example.com/b.png ) no-repeat; }',
+        '.c { background: URL(//cdn.example.com/c.png), url(//cdn.example.com/d.png); }',
+        '// whole-line comment with url(http://example.com/gone.png)',
+        '/* block comment url(http://example.com/gone.png) */',
+        '.d { background: url(\'http://example.com/e.png\'); content: "// not a comment"; }',
+      ].join('\n');
+      expect(manipulator?.removeComments(input)).toBe(
+        [
+          '.a { background: url(http://example.com/a.png); }',
+          '.b { background: url( https://example.com/b.png ) no-repeat; }',
+          '.c { background: URL(//cdn.example.com/c.png), url(//cdn.example.com/d.png); }',
+          '',
+          '',
+          '.d { background: url(\'http://example.com/e.png\'); content: "// not a comment"; }',
+        ].join('\n'),
+      );
+    });
+
+    test('does not confuse file content that looks like a placeholder', () => {
+      const manipulator = getFileManipulator('test.scss');
+      const input = '$x: __REPOMIX_URL_0__; // comment\n.a { background: url(http://example.com/a.png); }';
+      expect(manipulator?.removeComments(input)).toBe(
+        '$x: __REPOMIX_URL_0__;\n.a { background: url(http://example.com/a.png); }',
+      );
+    });
+  });
+
+  describe('Vue and Svelte strip each section with its own language', () => {
+    test('keeps `//` in Vue markup and style, and keeps script tag attributes', () => {
+      const manipulator = getFileManipulator('App.vue');
+      const input = `<template>
+  <!-- HTML comment -->
+  <p>Visit http://example.com today</p>
+  <img src=http://example.com/a.png>
+</template>
+<script setup lang="ts" generic="T extends Record<string, unknown>">
+// JavaScript comment
+const url = 'http://example.com'; /* block */
+</script>
+<style scoped>
+/* CSS comment */
+.a { background: url(http://example.com/a.png); }
+</style>`;
+      expect(manipulator?.removeComments(input)).toBe(`<template>
+
+  <p>Visit http://example.com today</p>
+  <img src=http://example.com/a.png>
+</template>
+<script setup lang="ts" generic="T extends Record<string, unknown>">
+
+const url = 'http://example.com';
+</script>
+<style scoped>
+
+.a { background: url(http://example.com/a.png); }
+</style>`);
+    });
+
+    test('strips `//` comments in a Vue style block with lang="scss" but keeps its URLs', () => {
+      const manipulator = getFileManipulator('App.vue');
+      const input = `<style lang="scss">
+// SCSS comment
+.a { background: url(//cdn.example.com/a.png); }
+</style>
+<style lang="less">
+.b { background: url(https://example.com/b.png); } // Less comment
+</style>
+<style>
+.c { color: red; } // not a CSS comment, kept as-is
+</style>`;
+      expect(manipulator?.removeComments(input)).toBe(`<style lang="scss">
+
+.a { background: url(//cdn.example.com/a.png); }
+</style>
+<style lang="less">
+.b { background: url(https://example.com/b.png); }
+</style>
+<style>
+.c { color: red; } // not a CSS comment, kept as-is
+</style>`);
+    });
+
+    test('keeps `//` in Svelte markup', () => {
+      const manipulator = getFileManipulator('App.svelte');
+      const input = `<script lang="ts">
+  // JavaScript comment
+  let href = 'https://example.com';
+</script>
+
+<!-- HTML comment -->
+<a {href}>Docs at https://example.com/docs</a>
+<svelte:head>
+  <link rel="stylesheet" href=//cdn.example.com/a.css>
+</svelte:head>
+
+<style>
+  a { background: url(http://example.com/a.png); }
+</style>`;
+      expect(manipulator?.removeComments(input)).toBe(`<script lang="ts">
+
+  let href = 'https://example.com';
+</script>
+
+
+<a {href}>Docs at https://example.com/docs</a>
+<svelte:head>
+  <link rel="stylesheet" href=//cdn.example.com/a.css>
+</svelte:head>
+
+<style>
+  a { background: url(http://example.com/a.png); }
+</style>`);
+    });
+
+    test('treats a commented-out script as markup', () => {
+      const manipulator = getFileManipulator('App.vue');
+      const input = '<!-- <script>const a = 1;</script> -->\n<p>http://example.com</p>';
+      expect(manipulator?.removeComments(input)).toBe('\n<p>http://example.com</p>');
+    });
+  });
+
   describe('JS/TS module extension variants', () => {
     // .mjs/.cjs/.mjsx/.mts/.cts/.mtsx are ESM/CommonJS variants of .js/.ts and are
     // treated as JavaScript/TypeScript everywhere else (tree-sitter languageConfig,
@@ -1287,7 +1415,7 @@ a: "x
       expect(manipulator?.removeEmptyLines('\n\n   \n')).toBe('');
     });
 
-    test('works for composite manipulators (.vue)', () => {
+    test('works for single-file component manipulators (.vue)', () => {
       const manipulator = getFileManipulator('test.vue');
       const input = 'a\n\nb';
       expect(manipulator?.removeEmptyLines(input)).toBe('a\nb');
