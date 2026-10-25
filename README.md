@@ -954,7 +954,9 @@ repomix --mcp --sandbox
 repomix --mcp --sandbox path/to/project
 ```
 
-When sandbox mode is on, every path is relative to the workspace root (absolute, `~`, `..`, and Windows drive/UNC paths are refused, as are paths that resolve outside the root through symlinks), and only the read-only, root-confined tools are registered; remote packing, skill generation, and attaching external outputs are disabled. The raw file tools (`file_system_read_file`, `file_system_read_directory`) are available only in sandbox mode, where the workspace root bounds what they can reach. This is an application-level confinement of the tool surface, not an OS-level sandbox. See the [MCP Server guide](https://repomix.com/guide/mcp-server) for details.
+When sandbox mode is on, every path is relative to the workspace root (absolute, `~`, `..`, and Windows drive/UNC paths are refused, as are paths that resolve outside the root through symlinks), config files are not loaded, and only the read-only, root-confined tools are registered; remote packing, skill generation, and attaching external outputs are disabled. The raw file tools (`file_system_read_file`, `file_system_read_directory`) are available only in sandbox mode, where the workspace root bounds what they can reach. This is an application-level confinement of the tool surface, not an OS-level sandbox.
+
+Without `--sandbox`, `pack_codebase` loads and trusts the `repomix.config.*` in the directory it packs, the same as running `repomix` there from the command line. A config file is code: it can run when loaded and read files outside the repository. If your assistant may pack directories you don't trust, such as cloned third-party repositories, use `--sandbox`. See the [MCP Server guide](https://repomix.com/guide/mcp-server) for details.
 
 #### Configuring MCP Servers
 

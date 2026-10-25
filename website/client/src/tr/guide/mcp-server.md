@@ -36,6 +36,9 @@ Sandbox modu açıkken:
 
 - **Her yol, çalışma alanı köküne görelidir.** Mutlak yollar, `~`, `..` ve Windows sürücü/UNC yolları reddedilir; kökün dışına çözümlenen yollar (sembolik bağlantılar üzerinden olanlar dahil) atlanır. Sonuçlar ve hata mesajları da göreli olduğundan ana makine yolları açığa çıkmaz. Bu durum, aşağıdaki araç referansındaki `directory` ve `path` argümanları için de geçerlidir: sandbox modunda bu değerleri, tabloların normalde tanımladığı mutlak yollar yerine çalışma alanı köküne göreli olarak verin.
 - **Yalnızca salt okunur ve köke sınırlı araçlar kaydedilir:** `pack_codebase`, `read_repomix_output`, `grep_repomix_output`, `file_system_read_file` ve `file_system_read_directory`. Uzak paketleme, beceri oluşturma ve harici çıktıları ekleme devre dışı bırakılır; çünkü bunlar ağa erişir, dosya yazar veya keyfi yollara başvurur. İki `file_system_*` aracının kendisi de yalnızca sandbox modunda kullanılabilir; buna erişebilecekleri alanı çalışma alanı kökü sınırlar.
+- **Yapılandırma dosyaları yüklenmez.** `pack_codebase`, paketlenen dizindeki `repomix.config.*` dosyasını ve genel yapılandırmanızı yok sayar.
+
+`--sandbox` olmadan `pack_codebase`, paketlediği dizindeki `repomix.config.*` dosyasını yükler ve ona güvenir; bu, orada komut satırından `repomix` çalıştırmakla aynıdır. Yapılandırma dosyası koddur: yüklenirken çalışabilir ve depo dışındaki dosyaları okuyabilir ([Güvenlik](/tr/guide/security#bir-yapılandırma-dosyası-neden-koddur) bölümüne bakın). Asistanınız, klonlanmış üçüncü taraf depolar gibi güvenmediğiniz dizinleri paketleyebiliyorsa `--sandbox` kullanın.
 
 Bu, işletim sistemi düzeyinde bir sandbox değil, araç yüzeyinin uygulama düzeyinde bir sınırlandırmasıdır (katmanlı savunma). Sunucuyu güvenilmeyen istemciler için barındırırken yine de platformunuzun olağan izolasyon yöntemlerini (konteynerler, ayrılmış kullanıcılar) kullanarak çalıştırın.
 
