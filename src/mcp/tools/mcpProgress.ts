@@ -1,0 +1,85 @@
+import { stripVTControlCharacters } from 'node:util';
+import type { ServerContext } from '@modelcontextprotocol/server';
+import { logger } from '../../shared/logger.js';
+import type { RepomixProgressCallback } from '../../shared/types.js';
+
+/** The slice of the SDK request context the reporter needs (narrow for testability). */
+export type McpProgressContext = { mcpReq: Pick<ServerContext['mcpReq'], '_meta' | 'notify'> };
+
+/** Minimum gap between two notifications that do not start a new stage (max ~4/sec). */
+export const PROGRESS_THROTTLE_MS = 250;
+
+// A stage is the leading "Verb noun..." of a pipeline message, e.g. "Processing file..."
+// in "Processing file... (3/10) src/a.ts". Stage heads are code literals, so a head made
+// only of letters and spaces cannot carry a path.
+const STAGE_PATTERN = /^[A-Za-z ]+\.\.\./;
+const COUNTER_PATTERN = /\((\d+)\/(\d+)\)/;
+const SANDBOX_FALLBACK_MESSAGE = 'Packing...';
+
+const stageOf = (message: string): string => message.match(STAGE_PATTERN)?.[0] ?? message;
+
+/**
+ * Sandbox-safe rendering: only the literal stage head plus a numeric "(n/total)"
+ * counter survive. Everything else in the pipeline message (file paths, split-part
+ * root entries, ...) is dropped, and a message without a recognisable stage head
+ * collapses to a fixed string, so no host path can reach the untrusted agent.
+ */
+const toSandboxMessage = (message: string): string => {
+  const stage = message.match(STAGE_PATTERN)?.[0];
+  if (!stage) return SANDBOX_FALLBACK_MESSAGE;
+  const counter = message.slice(stage.length).match(COUNTER_PATTERN);
+  return counter ? `${stage} (${counter[1]}/${counter[2]})` : stage;
+};
+
+/**
+ * Build a pipeline progress callback that forwards messages to the MCP client as
+ * `notifications/progress`. Returns undefined when the client did not supply a
+ * progressToken, so nothing is sent unless asked for.
+ *
+ * - `progress` is a per-request counter incremented on every sent notification, so it
+ *   strictly increases across stages; `total` is omitted because the number of
+ *   updates is not known up front.
+ * - Throttled: the first message of each stage is always sent; any other message only
+ *   when PROGRESS_THROTTLE_MS has passed since the last notification. Stages that run
+ *   concurrently (e.g. security check and file processing) interleave their messages,
+ *   so "new stage" means first seen, not merely different from the previous one.
+ * - Notification failures (closed transport, ...) are swallowed: progress is best
+ *   effort and must never fail the tool call.
+ */
+export const createMcpProgressReporter = (
+  ctx: McpProgressContext | undefined,
+  options: { sandboxed: boolean },
+  deps = { now: () => Date.now() },
+): RepomixProgressCallback | undefined => {
+  const progressToken = ctx?.mcpReq._meta?.progressToken;
+  if (progressToken === undefined) return undefined;
+
+  let progress = 0;
+  const seenStages = new Set<string>();
+  let lastSentAt = Number.NEGATIVE_INFINITY;
+
+  return (rawMessage) => {
+    try {
+      const message = stripVTControlCharacters(rawMessage).trim();
+      const stage = stageOf(message);
+      const now = deps.now();
+      if (seenStages.has(stage) && now - lastSentAt < PROGRESS_THROTTLE_MS) return;
+      seenStages.add(stage);
+      lastSentAt = now;
+      progress += 1;
+
+      ctx?.mcpReq
+        .notify({
+          method: 'notifications/progress',
+          params: {
+            progressToken,
+            progress,
+            message: options.sandboxed ? toSandboxMessage(message) : message,
+          },
+        })
+        .catch((error) => logger.trace('Failed to send MCP progress notification:', error));
+    } catch (error) {
+      logger.trace('Failed to send MCP progress notification:', error);
+    }
+  };
+};

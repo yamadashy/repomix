@@ -49,6 +49,54 @@ describe('remoteAction functions', () => {
   });
 
   describe('runRemoteAction', () => {
+    test('reports the clone stage and forwards the progress callback to runDefaultAction', async () => {
+      const runDefaultActionMock = vi.fn(async () => createMockDefaultActionResult());
+      const progressCallback = vi.fn();
+      vi.mocked(fs.copyFile).mockResolvedValue(undefined);
+
+      await runRemoteAction('https://gitlab.com/owner/repo.git', {}, progressCallback, {
+        isGitInstalled: async () => true,
+        execGitShallowClone: vi.fn(async () => {}),
+        getRemoteRefs: async () => ['main'],
+        runDefaultAction: runDefaultActionMock,
+        downloadGitHubArchive: vi.fn(),
+        isGitHubRepository: vi.fn().mockReturnValue(false),
+        parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
+        isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
+        confirmRemoteConfigTrust: vi.fn(),
+      });
+
+      expect(progressCallback).toHaveBeenCalledWith('Cloning repository...');
+      expect(runDefaultActionMock).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.any(String),
+        expect.any(Object),
+        progressCallback,
+      );
+    });
+
+    test('a throwing progress callback does not fail the remote action', async () => {
+      vi.mocked(fs.copyFile).mockResolvedValue(undefined);
+      const progressCallback = vi.fn(() => {
+        throw new Error('listener failed');
+      });
+
+      await expect(
+        runRemoteAction('https://gitlab.com/owner/repo.git', {}, progressCallback, {
+          isGitInstalled: async () => true,
+          execGitShallowClone: vi.fn(async () => {}),
+          getRemoteRefs: async () => ['main'],
+          runDefaultAction: vi.fn(async () => createMockDefaultActionResult()),
+          downloadGitHubArchive: vi.fn(),
+          isGitHubRepository: vi.fn().mockReturnValue(false),
+          parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
+          isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
+          confirmRemoteConfigTrust: vi.fn(),
+        }),
+      ).resolves.toBeDefined();
+      expect(progressCallback).toHaveBeenCalled();
+    });
+
     test('should clone the repository when not a GitHub repo', async () => {
       const execGitShallowCloneMock = vi.fn(async (_url: string, directory: string) => {
         await fs.writeFile(path.join(directory, 'README.md'), 'Hello, world!');
@@ -56,21 +104,17 @@ describe('remoteAction functions', () => {
       const runDefaultActionMock = vi.fn(async () => createMockDefaultActionResult());
 
       vi.mocked(fs.copyFile).mockResolvedValue(undefined);
-      await runRemoteAction(
-        'https://gitlab.com/owner/repo.git',
-        {},
-        {
-          isGitInstalled: async () => Promise.resolve(true),
-          execGitShallowClone: execGitShallowCloneMock,
-          getRemoteRefs: async () => Promise.resolve(['main']),
-          runDefaultAction: runDefaultActionMock,
-          downloadGitHubArchive: vi.fn().mockRejectedValue(new Error('Archive download not implemented in test')),
-          isGitHubRepository: vi.fn().mockReturnValue(false),
-          parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
-          isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
-          confirmRemoteConfigTrust: vi.fn(),
-        },
-      );
+      await runRemoteAction('https://gitlab.com/owner/repo.git', {}, undefined, {
+        isGitInstalled: async () => Promise.resolve(true),
+        execGitShallowClone: execGitShallowCloneMock,
+        getRemoteRefs: async () => Promise.resolve(['main']),
+        runDefaultAction: runDefaultActionMock,
+        downloadGitHubArchive: vi.fn().mockRejectedValue(new Error('Archive download not implemented in test')),
+        isGitHubRepository: vi.fn().mockReturnValue(false),
+        parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
+        isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
+        confirmRemoteConfigTrust: vi.fn(),
+      });
 
       expect(execGitShallowCloneMock).toHaveBeenCalledTimes(1);
       // Verify skipLocalConfig flag is passed to prevent loading untrusted config from cloned repos
@@ -78,6 +122,7 @@ describe('remoteAction functions', () => {
         expect.any(Array),
         expect.any(String),
         expect.objectContaining({ skipLocalConfig: true }),
+        undefined,
       );
     });
 
@@ -101,7 +146,7 @@ describe('remoteAction functions', () => {
         vi.mocked(fs.copyFile).mockResolvedValue(undefined);
         const deps = createTrustDeps();
 
-        await runRemoteAction('https://gitlab.com/owner/repo.git', { remoteTrustConfig: true }, deps);
+        await runRemoteAction('https://gitlab.com/owner/repo.git', { remoteTrustConfig: true }, undefined, deps);
 
         expect(deps.confirmRemoteConfigTrust).toHaveBeenCalledTimes(1);
         expect(deps.confirmRemoteConfigTrust).toHaveBeenCalledWith(
@@ -122,7 +167,7 @@ describe('remoteAction functions', () => {
         });
 
         await expect(
-          runRemoteAction('https://gitlab.com/owner/repo.git', { remoteTrustConfig: true }, deps),
+          runRemoteAction('https://gitlab.com/owner/repo.git', { remoteTrustConfig: true }, undefined, deps),
         ).rejects.toThrow(OperationCancelledError);
 
         // The declined config must never reach the packer.
@@ -133,7 +178,7 @@ describe('remoteAction functions', () => {
         vi.mocked(fs.copyFile).mockResolvedValue(undefined);
         const deps = createTrustDeps();
 
-        await runRemoteAction('https://gitlab.com/owner/repo.git', { remoteTrustConfig: true }, deps);
+        await runRemoteAction('https://gitlab.com/owner/repo.git', { remoteTrustConfig: true }, undefined, deps);
 
         // Migration would rewrite the clone's legacy repopack.config.json into a
         // repomix.config.* the trust prompt never showed.
@@ -141,6 +186,7 @@ describe('remoteAction functions', () => {
           expect.any(Array),
           expect.any(String),
           expect.objectContaining({ skipMigration: true }),
+          undefined,
         );
       });
 
@@ -148,7 +194,12 @@ describe('remoteAction functions', () => {
         vi.mocked(fs.copyFile).mockResolvedValue(undefined);
         const deps = createTrustDeps();
 
-        await runRemoteAction('https://gitlab.com/owner/repo.git', { remoteTrustConfig: true, force: true }, deps);
+        await runRemoteAction(
+          'https://gitlab.com/owner/repo.git',
+          { remoteTrustConfig: true, force: true },
+          undefined,
+          deps,
+        );
 
         // runDefaultAction rejects --force without --skill-generate. Forwarding it
         // would make the documented `--remote-trust-config --force` escape hatch
@@ -158,6 +209,7 @@ describe('remoteAction functions', () => {
           expect.any(Array),
           expect.any(String),
           expect.objectContaining({ force: undefined }),
+          undefined,
         );
       });
 
@@ -165,12 +217,13 @@ describe('remoteAction functions', () => {
         vi.mocked(fs.copyFile).mockResolvedValue(undefined);
         const deps = createTrustDeps();
 
-        await runRemoteAction('https://gitlab.com/owner/repo.git', { force: true }, deps);
+        await runRemoteAction('https://gitlab.com/owner/repo.git', { force: true }, undefined, deps);
 
         expect(deps.runDefaultAction).toHaveBeenCalledWith(
           expect.any(Array),
           expect.any(String),
           expect.objectContaining({ force: true }),
+          undefined,
         );
       });
 
@@ -178,7 +231,7 @@ describe('remoteAction functions', () => {
         vi.mocked(fs.copyFile).mockResolvedValue(undefined);
         const deps = createTrustDeps();
 
-        await runRemoteAction('https://gitlab.com/owner/repo.git', {}, deps);
+        await runRemoteAction('https://gitlab.com/owner/repo.git', {}, undefined, deps);
 
         expect(deps.confirmRemoteConfigTrust).not.toHaveBeenCalled();
       });
@@ -196,21 +249,17 @@ describe('remoteAction functions', () => {
       vi.mocked(fs.copyFile).mockResolvedValue(undefined);
 
       await expect(
-        runRemoteAction(
-          'https://gitlab.com/owner/repo.git',
-          {},
-          {
-            isGitInstalled: async () => Promise.resolve(true),
-            execGitShallowClone: execGitShallowCloneMock,
-            getRemoteRefs: async () => Promise.resolve(['main']),
-            runDefaultAction: runDefaultActionMock,
-            downloadGitHubArchive: vi.fn().mockRejectedValue(new Error('Archive download not implemented in test')),
-            isGitHubRepository: vi.fn().mockReturnValue(false),
-            parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
-            isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
-            confirmRemoteConfigTrust: vi.fn(),
-          },
-        ),
+        runRemoteAction('https://gitlab.com/owner/repo.git', {}, undefined, {
+          isGitInstalled: async () => Promise.resolve(true),
+          execGitShallowClone: execGitShallowCloneMock,
+          getRemoteRefs: async () => Promise.resolve(['main']),
+          runDefaultAction: runDefaultActionMock,
+          downloadGitHubArchive: vi.fn().mockRejectedValue(new Error('Archive download not implemented in test')),
+          isGitHubRepository: vi.fn().mockReturnValue(false),
+          parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
+          isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
+          confirmRemoteConfigTrust: vi.fn(),
+        }),
       ).rejects.toThrow(/exceeds the token budget/);
 
       // runDefaultAction must receive deferTokenBudgetCheck so it does not throw
@@ -219,6 +268,7 @@ describe('remoteAction functions', () => {
         expect.any(Array),
         expect.any(String),
         expect.objectContaining({ deferTokenBudgetCheck: true }),
+        undefined,
       );
       // The output was copied before the guard threw.
       expect(fs.copyFile).toHaveBeenCalled();
@@ -238,21 +288,17 @@ describe('remoteAction functions', () => {
       }));
 
       vi.mocked(fs.copyFile).mockResolvedValue(undefined);
-      await runRemoteAction(
-        'https://gitlab.com/owner/repo.git',
-        {},
-        {
-          isGitInstalled: async () => Promise.resolve(true),
-          execGitShallowClone: execGitShallowCloneMock,
-          getRemoteRefs: async () => Promise.resolve(['main']),
-          runDefaultAction: runDefaultActionMock,
-          downloadGitHubArchive: vi.fn().mockRejectedValue(new Error('Archive download not implemented in test')),
-          isGitHubRepository: vi.fn().mockReturnValue(false),
-          parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
-          isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
-          confirmRemoteConfigTrust: vi.fn(),
-        },
-      );
+      await runRemoteAction('https://gitlab.com/owner/repo.git', {}, undefined, {
+        isGitInstalled: async () => Promise.resolve(true),
+        execGitShallowClone: execGitShallowCloneMock,
+        getRemoteRefs: async () => Promise.resolve(['main']),
+        runDefaultAction: runDefaultActionMock,
+        downloadGitHubArchive: vi.fn().mockRejectedValue(new Error('Archive download not implemented in test')),
+        isGitHubRepository: vi.fn().mockReturnValue(false),
+        parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
+        isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
+        confirmRemoteConfigTrust: vi.fn(),
+      });
 
       expect(fs.copyFile).toHaveBeenCalledTimes(2);
       expect(fs.copyFile).toHaveBeenNthCalledWith(
@@ -277,21 +323,17 @@ describe('remoteAction functions', () => {
       const isGitInstalledMock = vi.fn().mockResolvedValue(false); // Git is NOT installed
 
       vi.mocked(fs.copyFile).mockResolvedValue(undefined);
-      await runRemoteAction(
-        'yamadashy/repomix',
-        {},
-        {
-          isGitInstalled: isGitInstalledMock,
-          execGitShallowClone: execGitShallowCloneMock,
-          getRemoteRefs: async () => Promise.resolve(['main']),
-          runDefaultAction: async () => createMockDefaultActionResult(),
-          downloadGitHubArchive: downloadGitHubArchiveMock,
-          isGitHubRepository: vi.fn().mockReturnValue(true),
-          parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
-          isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
-          confirmRemoteConfigTrust: vi.fn(),
-        },
-      );
+      await runRemoteAction('yamadashy/repomix', {}, undefined, {
+        isGitInstalled: isGitInstalledMock,
+        execGitShallowClone: execGitShallowCloneMock,
+        getRemoteRefs: async () => Promise.resolve(['main']),
+        runDefaultAction: async () => createMockDefaultActionResult(),
+        downloadGitHubArchive: downloadGitHubArchiveMock,
+        isGitHubRepository: vi.fn().mockReturnValue(true),
+        parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
+        isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
+        confirmRemoteConfigTrust: vi.fn(),
+      });
 
       expect(downloadGitHubArchiveMock).toHaveBeenCalledTimes(1);
       expect(execGitShallowCloneMock).not.toHaveBeenCalled();
@@ -305,21 +347,17 @@ describe('remoteAction functions', () => {
       });
 
       vi.mocked(fs.copyFile).mockResolvedValue(undefined);
-      await runRemoteAction(
-        'yamadashy/repomix',
-        {},
-        {
-          isGitInstalled: async () => Promise.resolve(true),
-          execGitShallowClone: execGitShallowCloneMock,
-          getRemoteRefs: async () => Promise.resolve(['main']),
-          runDefaultAction: async () => createMockDefaultActionResult(),
-          downloadGitHubArchive: downloadGitHubArchiveMock,
-          isGitHubRepository: vi.fn().mockReturnValue(true),
-          parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
-          isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
-          confirmRemoteConfigTrust: vi.fn(),
-        },
-      );
+      await runRemoteAction('yamadashy/repomix', {}, undefined, {
+        isGitInstalled: async () => Promise.resolve(true),
+        execGitShallowClone: execGitShallowCloneMock,
+        getRemoteRefs: async () => Promise.resolve(['main']),
+        runDefaultAction: async () => createMockDefaultActionResult(),
+        downloadGitHubArchive: downloadGitHubArchiveMock,
+        isGitHubRepository: vi.fn().mockReturnValue(true),
+        parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
+        isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
+        confirmRemoteConfigTrust: vi.fn(),
+      });
 
       expect(downloadGitHubArchiveMock).toHaveBeenCalledTimes(1);
       expect(execGitShallowCloneMock).toHaveBeenCalledTimes(1);
@@ -333,21 +371,17 @@ describe('remoteAction functions', () => {
       vi.mocked(fs.copyFile).mockResolvedValue(undefined);
 
       await expect(
-        runRemoteAction(
-          'yamadashy/repomix',
-          {},
-          {
-            isGitInstalled: isGitInstalledMock,
-            execGitShallowClone: execGitShallowCloneMock,
-            getRemoteRefs: async () => Promise.resolve(['main']),
-            runDefaultAction: async () => createMockDefaultActionResult(),
-            downloadGitHubArchive: downloadGitHubArchiveMock,
-            isGitHubRepository: vi.fn().mockReturnValue(true),
-            parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
-            isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
-            confirmRemoteConfigTrust: vi.fn(),
-          },
-        ),
+        runRemoteAction('yamadashy/repomix', {}, undefined, {
+          isGitInstalled: isGitInstalledMock,
+          execGitShallowClone: execGitShallowCloneMock,
+          getRemoteRefs: async () => Promise.resolve(['main']),
+          runDefaultAction: async () => createMockDefaultActionResult(),
+          downloadGitHubArchive: downloadGitHubArchiveMock,
+          isGitHubRepository: vi.fn().mockReturnValue(true),
+          parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
+          isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
+          confirmRemoteConfigTrust: vi.fn(),
+        }),
       ).rejects.toThrow('Git is not installed or not in the system PATH.');
 
       expect(downloadGitHubArchiveMock).toHaveBeenCalledTimes(1);
@@ -359,26 +393,23 @@ describe('remoteAction functions', () => {
       const runDefaultActionMock = vi.fn(async () => createMockDefaultActionResult());
 
       vi.mocked(fs.copyFile).mockResolvedValue(undefined);
-      await runRemoteAction(
-        'yamadashy/repomix',
-        {},
-        {
-          isGitInstalled: vi.fn().mockResolvedValue(false),
-          execGitShallowClone: vi.fn(),
-          getRemoteRefs: async () => Promise.resolve(['main']),
-          runDefaultAction: runDefaultActionMock,
-          downloadGitHubArchive: vi.fn().mockResolvedValue(undefined),
-          isGitHubRepository: vi.fn().mockReturnValue(true),
-          parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
-          isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
-          confirmRemoteConfigTrust: vi.fn(),
-        },
-      );
+      await runRemoteAction('yamadashy/repomix', {}, undefined, {
+        isGitInstalled: vi.fn().mockResolvedValue(false),
+        execGitShallowClone: vi.fn(),
+        getRemoteRefs: async () => Promise.resolve(['main']),
+        runDefaultAction: runDefaultActionMock,
+        downloadGitHubArchive: vi.fn().mockResolvedValue(undefined),
+        isGitHubRepository: vi.fn().mockReturnValue(true),
+        parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
+        isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
+        confirmRemoteConfigTrust: vi.fn(),
+      });
 
       expect(runDefaultActionMock).toHaveBeenCalledWith(
         expect.any(Array),
         expect.any(String),
         expect.objectContaining({ skipLocalConfig: true }),
+        undefined,
       );
     });
 
@@ -386,28 +417,25 @@ describe('remoteAction functions', () => {
       const runDefaultActionMock = vi.fn(async () => createMockDefaultActionResult());
 
       vi.mocked(fs.copyFile).mockResolvedValue(undefined);
-      await runRemoteAction(
-        'https://gitlab.com/owner/repo.git',
-        { remoteTrustConfig: true },
-        {
-          isGitInstalled: async () => Promise.resolve(true),
-          execGitShallowClone: vi.fn(async (_url: string, directory: string) => {
-            await fs.writeFile(path.join(directory, 'README.md'), 'Hello');
-          }),
-          getRemoteRefs: async () => Promise.resolve(['main']),
-          runDefaultAction: runDefaultActionMock,
-          downloadGitHubArchive: vi.fn(),
-          isGitHubRepository: vi.fn().mockReturnValue(false),
-          parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
-          isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
-          confirmRemoteConfigTrust: vi.fn(),
-        },
-      );
+      await runRemoteAction('https://gitlab.com/owner/repo.git', { remoteTrustConfig: true }, undefined, {
+        isGitInstalled: async () => Promise.resolve(true),
+        execGitShallowClone: vi.fn(async (_url: string, directory: string) => {
+          await fs.writeFile(path.join(directory, 'README.md'), 'Hello');
+        }),
+        getRemoteRefs: async () => Promise.resolve(['main']),
+        runDefaultAction: runDefaultActionMock,
+        downloadGitHubArchive: vi.fn(),
+        isGitHubRepository: vi.fn().mockReturnValue(false),
+        parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
+        isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
+        confirmRemoteConfigTrust: vi.fn(),
+      });
 
       expect(runDefaultActionMock).toHaveBeenCalledWith(
         expect.any(Array),
         expect.any(String),
         expect.objectContaining({ skipLocalConfig: false }),
+        undefined,
       );
     });
 
@@ -417,26 +445,23 @@ describe('remoteAction functions', () => {
       vi.mocked(fs.copyFile).mockResolvedValue(undefined);
       // enableFileProcessors: true simulates the real CLI entry point injection; the
       // remote gate must still force it off because the config comes from a clone.
-      await runRemoteAction(
-        'yamadashy/repomix',
-        { enableFileProcessors: true },
-        {
-          isGitInstalled: vi.fn().mockResolvedValue(false),
-          execGitShallowClone: vi.fn(),
-          getRemoteRefs: async () => Promise.resolve(['main']),
-          runDefaultAction: runDefaultActionMock,
-          downloadGitHubArchive: vi.fn().mockResolvedValue(undefined),
-          isGitHubRepository: vi.fn().mockReturnValue(true),
-          parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
-          isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
-          confirmRemoteConfigTrust: vi.fn(),
-        },
-      );
+      await runRemoteAction('yamadashy/repomix', { enableFileProcessors: true }, undefined, {
+        isGitInstalled: vi.fn().mockResolvedValue(false),
+        execGitShallowClone: vi.fn(),
+        getRemoteRefs: async () => Promise.resolve(['main']),
+        runDefaultAction: runDefaultActionMock,
+        downloadGitHubArchive: vi.fn().mockResolvedValue(undefined),
+        isGitHubRepository: vi.fn().mockReturnValue(true),
+        parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
+        isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
+        confirmRemoteConfigTrust: vi.fn(),
+      });
 
       expect(runDefaultActionMock).toHaveBeenCalledWith(
         expect.any(Array),
         expect.any(String),
         expect.objectContaining({ enableFileProcessors: false }),
+        undefined,
       );
     });
 
@@ -447,6 +472,7 @@ describe('remoteAction functions', () => {
       await runRemoteAction(
         'https://gitlab.com/owner/repo.git',
         { enableFileProcessors: true, remoteTrustConfig: true },
+        undefined,
         {
           isGitInstalled: async () => Promise.resolve(true),
           execGitShallowClone: vi.fn(async (_url: string, directory: string) => {
@@ -466,6 +492,7 @@ describe('remoteAction functions', () => {
         expect.any(Array),
         expect.any(String),
         expect.objectContaining({ enableFileProcessors: true }),
+        undefined,
       );
     });
 
@@ -491,12 +518,13 @@ describe('remoteAction functions', () => {
         };
 
         vi.mocked(fs.copyFile).mockResolvedValue(undefined);
-        await runRemoteAction('https://gitlab.com/owner/repo.git', {}, deps);
+        await runRemoteAction('https://gitlab.com/owner/repo.git', {}, undefined, deps);
 
         expect(runDefaultActionMock).toHaveBeenCalledWith(
           expect.any(Array),
           expect.any(String),
           expect.objectContaining({ skipLocalConfig: false }),
+          undefined,
         );
         // The env var is the second way to trust remote config, so it must reach the
         // same confirmation the flag does rather than becoming a silent bypass.
@@ -518,28 +546,25 @@ describe('remoteAction functions', () => {
         const runDefaultActionMock = vi.fn(async () => createMockDefaultActionResult());
 
         vi.mocked(fs.copyFile).mockResolvedValue(undefined);
-        await runRemoteAction(
-          'https://gitlab.com/owner/repo.git',
-          {},
-          {
-            isGitInstalled: async () => Promise.resolve(true),
-            execGitShallowClone: vi.fn(async (_url: string, directory: string) => {
-              await fs.writeFile(path.join(directory, 'README.md'), 'Hello');
-            }),
-            getRemoteRefs: async () => Promise.resolve(['main']),
-            runDefaultAction: runDefaultActionMock,
-            downloadGitHubArchive: vi.fn(),
-            isGitHubRepository: vi.fn().mockReturnValue(false),
-            parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
-            isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
-            confirmRemoteConfigTrust: vi.fn(),
-          },
-        );
+        await runRemoteAction('https://gitlab.com/owner/repo.git', {}, undefined, {
+          isGitInstalled: async () => Promise.resolve(true),
+          execGitShallowClone: vi.fn(async (_url: string, directory: string) => {
+            await fs.writeFile(path.join(directory, 'README.md'), 'Hello');
+          }),
+          getRemoteRefs: async () => Promise.resolve(['main']),
+          runDefaultAction: runDefaultActionMock,
+          downloadGitHubArchive: vi.fn(),
+          isGitHubRepository: vi.fn().mockReturnValue(false),
+          parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
+          isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
+          confirmRemoteConfigTrust: vi.fn(),
+        });
 
         expect(runDefaultActionMock).toHaveBeenCalledWith(
           expect.any(Array),
           expect.any(String),
           expect.objectContaining({ skipLocalConfig: true }),
+          undefined,
         );
       } finally {
         if (originalEnv === undefined) {
@@ -554,41 +579,33 @@ describe('remoteAction functions', () => {
   describe('--config path validation in remote mode', () => {
     test('should reject relative --config path in remote mode', async () => {
       await expect(
-        runRemoteAction(
-          'yamadashy/repomix',
-          { config: 'repomix.config.json' },
-          {
-            isGitInstalled: vi.fn().mockResolvedValue(true),
-            execGitShallowClone: vi.fn(),
-            getRemoteRefs: async () => Promise.resolve(['main']),
-            runDefaultAction: vi.fn(),
-            downloadGitHubArchive: vi.fn().mockResolvedValue(undefined),
-            isGitHubRepository: vi.fn().mockReturnValue(true),
-            parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
-            isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
-            confirmRemoteConfigTrust: vi.fn(),
-          },
-        ),
+        runRemoteAction('yamadashy/repomix', { config: 'repomix.config.json' }, undefined, {
+          isGitInstalled: vi.fn().mockResolvedValue(true),
+          execGitShallowClone: vi.fn(),
+          getRemoteRefs: async () => Promise.resolve(['main']),
+          runDefaultAction: vi.fn(),
+          downloadGitHubArchive: vi.fn().mockResolvedValue(undefined),
+          isGitHubRepository: vi.fn().mockReturnValue(true),
+          parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
+          isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
+          confirmRemoteConfigTrust: vi.fn(),
+        }),
       ).rejects.toThrow('--config must be an absolute path');
     });
 
     test('should reject dot-relative --config path in remote mode', async () => {
       await expect(
-        runRemoteAction(
-          'yamadashy/repomix',
-          { config: './my-config.json' },
-          {
-            isGitInstalled: vi.fn().mockResolvedValue(true),
-            execGitShallowClone: vi.fn(),
-            getRemoteRefs: async () => Promise.resolve(['main']),
-            runDefaultAction: vi.fn(),
-            downloadGitHubArchive: vi.fn().mockResolvedValue(undefined),
-            isGitHubRepository: vi.fn().mockReturnValue(true),
-            parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
-            isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
-            confirmRemoteConfigTrust: vi.fn(),
-          },
-        ),
+        runRemoteAction('yamadashy/repomix', { config: './my-config.json' }, undefined, {
+          isGitInstalled: vi.fn().mockResolvedValue(true),
+          execGitShallowClone: vi.fn(),
+          getRemoteRefs: async () => Promise.resolve(['main']),
+          runDefaultAction: vi.fn(),
+          downloadGitHubArchive: vi.fn().mockResolvedValue(undefined),
+          isGitHubRepository: vi.fn().mockReturnValue(true),
+          parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
+          isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
+          confirmRemoteConfigTrust: vi.fn(),
+        }),
       ).rejects.toThrow('--config must be an absolute path');
     });
 
@@ -596,42 +613,34 @@ describe('remoteAction functions', () => {
       const runDefaultActionMock = vi.fn(async () => createMockDefaultActionResult());
 
       vi.mocked(fs.copyFile).mockResolvedValue(undefined);
-      await runRemoteAction(
-        'yamadashy/repomix',
-        { config: '/home/user/repomix.config.json' },
-        {
-          isGitInstalled: vi.fn().mockResolvedValue(true),
-          execGitShallowClone: vi.fn(),
-          getRemoteRefs: async () => Promise.resolve(['main']),
-          runDefaultAction: runDefaultActionMock,
-          downloadGitHubArchive: vi.fn().mockResolvedValue(undefined),
-          isGitHubRepository: vi.fn().mockReturnValue(true),
-          parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
-          isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
-          confirmRemoteConfigTrust: vi.fn(),
-        },
-      );
+      await runRemoteAction('yamadashy/repomix', { config: '/home/user/repomix.config.json' }, undefined, {
+        isGitInstalled: vi.fn().mockResolvedValue(true),
+        execGitShallowClone: vi.fn(),
+        getRemoteRefs: async () => Promise.resolve(['main']),
+        runDefaultAction: runDefaultActionMock,
+        downloadGitHubArchive: vi.fn().mockResolvedValue(undefined),
+        isGitHubRepository: vi.fn().mockReturnValue(true),
+        parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
+        isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
+        confirmRemoteConfigTrust: vi.fn(),
+      });
 
       expect(runDefaultActionMock).toHaveBeenCalled();
     });
 
     test('should reject relative --config path even when --remote-trust-config is passed', async () => {
       await expect(
-        runRemoteAction(
-          'yamadashy/repomix',
-          { config: 'repomix.config.json', remoteTrustConfig: true },
-          {
-            isGitInstalled: vi.fn().mockResolvedValue(true),
-            execGitShallowClone: vi.fn(),
-            getRemoteRefs: async () => Promise.resolve(['main']),
-            runDefaultAction: vi.fn(),
-            downloadGitHubArchive: vi.fn().mockResolvedValue(undefined),
-            isGitHubRepository: vi.fn().mockReturnValue(true),
-            parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
-            isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
-            confirmRemoteConfigTrust: vi.fn(),
-          },
-        ),
+        runRemoteAction('yamadashy/repomix', { config: 'repomix.config.json', remoteTrustConfig: true }, undefined, {
+          isGitInstalled: vi.fn().mockResolvedValue(true),
+          execGitShallowClone: vi.fn(),
+          getRemoteRefs: async () => Promise.resolve(['main']),
+          runDefaultAction: vi.fn(),
+          downloadGitHubArchive: vi.fn().mockResolvedValue(undefined),
+          isGitHubRepository: vi.fn().mockReturnValue(true),
+          parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
+          isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
+          confirmRemoteConfigTrust: vi.fn(),
+        }),
       ).rejects.toThrow('--config must be an absolute path');
     });
   });

@@ -308,6 +308,40 @@ describe('sandbox contract', () => {
       expect(JSON.stringify(r)).not.toContain('fake install');
     });
 
+    test('pack progress notifications never carry a host path', async () => {
+      // Pipeline progress messages embed file paths (and could embed absolute ones,
+      // e.g. a split-output root entry). Every message the pipeline could emit is
+      // pushed through the real progress callback the tool hands to runCli.
+      const pipelineMessages = [
+        'Searching for files...',
+        `Collect file... (1/3) ${path.join(root, 'src', 'a.ts')}`,
+        `Processing file... (2/3) \u001b[2m${path.join(root, 'src', 'a.ts')}\u001b[22m`,
+        `Running security check... (3/3) ${root}/secret.env`,
+        `Generating output... (part 1) evaluating ${root}`,
+        `${root}/unexpected message without a stage head`,
+        'Processing file... (3/3) C:\\Users\\victim\\src\\a.ts',
+        'Calculating metrics... (3/3)',
+      ];
+      vi.mocked(runCli).mockImplementationOnce(async (_dirs, _cwd, _opts, progressCallback) => {
+        for (const message of pipelineMessages) progressCallback?.(message);
+        return undefined as unknown as Awaited<ReturnType<typeof runCli>>;
+      });
+      const notify = vi.fn().mockResolvedValue(undefined);
+      const ctx = { mcpReq: { _meta: { progressToken: 'tok' }, notify } };
+      await (pack as unknown as (args: Record<string, unknown>, c: unknown) => Promise<CallToolResult>)(
+        { directory: '.', compress: false, topFilesLength: 10, style: 'xml' },
+        ctx,
+      );
+
+      expect(notify).toHaveBeenCalled();
+      for (const [notification] of notify.mock.calls) {
+        const serialized = JSON.stringify(notification);
+        expect(serialized).not.toContain(root);
+        // No path separators or drive letters at all: only fixed stage strings + counters.
+        expect(notification.params.message).toMatch(/^[A-Za-z ]+\.\.\.( \(\d+\/\d+\))?$/);
+      }
+    });
+
     test('read_output / grep_output on a stale outputId leak neither the temp path nor the host', async () => {
       const readOut = capture(registerReadRepomixOutputTool, root);
       const grepOut = capture(registerGrepRepomixOutputTool, root);

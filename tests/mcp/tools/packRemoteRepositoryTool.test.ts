@@ -103,6 +103,7 @@ describe('PackRemoteRepositoryTool', () => {
         securityCheck: true,
         quiet: true,
       }),
+      undefined,
     );
     // path is fully determined by mocked createToolWorkspace + mocked path.join
     // (see beforeEach: '/temp/dir' + '/' + defaultFilePathMap[style]).
@@ -132,6 +133,7 @@ describe('PackRemoteRepositoryTool', () => {
         compress: true,
         outputPatterns,
       }),
+      undefined,
     );
   });
 
