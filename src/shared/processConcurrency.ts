@@ -70,6 +70,22 @@ export const getWorkerThreadCount = (
   };
 };
 
+// Every worker_threads worker pipes its stdout and stderr into the parent's, and each pipe
+// adds an 'error' listener there. Node lifts the listener limit only for that one add, so
+// with ~10+ live workers the next unrelated listener (e.g. the MCP stdio transport adding
+// one per message it sends) triggers a spurious MaxListenersExceededWarning. A pool raises
+// the limit by its worker count while alive, as Tinypool already does for child_process.
+const PIPED_STREAMS = [process.stdout, process.stderr];
+const reservedListeners = new WeakMap<Tinypool, number>();
+
+const adjustPipedStreamMaxListeners = (delta: number) => {
+  for (const stream of PIPED_STREAMS) {
+    const current = stream.getMaxListeners();
+    // 0 means unlimited; leave it alone.
+    if (current !== 0) stream.setMaxListeners(Math.max(1, current + delta));
+  }
+};
+
 export const createWorkerPool = (options: WorkerOptions): Tinypool => {
   const { numOfTasks, workerType, runtime = 'child_process', maxWorkerThreads } = options;
   const { minThreads, maxThreads } = getWorkerThreadCount(numOfTasks, maxWorkerThreads);
@@ -113,6 +129,11 @@ export const createWorkerPool = (options: WorkerOptions): Tinypool => {
     }),
   });
 
+  if (runtime === 'worker_threads') {
+    adjustPipedStreamMaxListeners(maxThreads);
+    reservedListeners.set(pool, maxThreads);
+  }
+
   const endTime = process.hrtime.bigint();
   const initTime = Number(endTime - startTime) / 1e6; // Convert to milliseconds
 
@@ -139,6 +160,12 @@ export const cleanupWorkerPool = async (pool: Tinypool): Promise<void> => {
     logger.debug('Worker pool cleaned up successfully');
   } catch (error) {
     logger.debug('Error during worker pool cleanup:', error);
+  } finally {
+    const reserved = reservedListeners.get(pool);
+    if (reserved !== undefined) {
+      reservedListeners.delete(pool);
+      adjustPipedStreamMaxListeners(-reserved);
+    }
   }
 };
 

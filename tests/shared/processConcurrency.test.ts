@@ -283,6 +283,52 @@ describe('processConcurrency', () => {
     });
   });
 
+  describe('piped stream listener limit', () => {
+    beforeEach(() => {
+      vi.mocked(os).availableParallelism = vi.fn().mockReturnValue(4);
+      vi.mocked(Tinypool).mockImplementation(function (this: unknown) {
+        (this as Record<string, unknown>).destroy = vi.fn().mockResolvedValue(undefined);
+        return this as Tinypool;
+      });
+    });
+
+    it('raises stdout/stderr max listeners by the worker count while a worker_threads pool lives', async () => {
+      const stdoutBefore = process.stdout.getMaxListeners();
+      const stderrBefore = process.stderr.getMaxListeners();
+
+      const pool = createWorkerPool({ numOfTasks: 1000, workerType: 'fileProcess', runtime: 'worker_threads' });
+      expect(process.stdout.getMaxListeners()).toBe(stdoutBefore + 4);
+      expect(process.stderr.getMaxListeners()).toBe(stderrBefore + 4);
+
+      await cleanupWorkerPool(pool);
+      // A second cleanup must not lower the limit again.
+      await cleanupWorkerPool(pool);
+      expect(process.stdout.getMaxListeners()).toBe(stdoutBefore);
+      expect(process.stderr.getMaxListeners()).toBe(stderrBefore);
+    });
+
+    it('leaves the limit alone for child_process pools', async () => {
+      const before = process.stdout.getMaxListeners();
+      const pool = createWorkerPool({ numOfTasks: 1000, workerType: 'fileProcess', runtime: 'child_process' });
+      expect(process.stdout.getMaxListeners()).toBe(before);
+      await cleanupWorkerPool(pool);
+      expect(process.stdout.getMaxListeners()).toBe(before);
+    });
+
+    it('keeps an unlimited (0) limit unlimited', async () => {
+      const before = process.stdout.getMaxListeners();
+      process.stdout.setMaxListeners(0);
+      try {
+        const pool = createWorkerPool({ numOfTasks: 1000, workerType: 'fileProcess', runtime: 'worker_threads' });
+        expect(process.stdout.getMaxListeners()).toBe(0);
+        await cleanupWorkerPool(pool);
+        expect(process.stdout.getMaxListeners()).toBe(0);
+      } finally {
+        process.stdout.setMaxListeners(before);
+      }
+    });
+  });
+
   describe('cleanupWorkerPool', () => {
     it('calls destroy on standard Node runtime', async () => {
       const destroy = vi.fn().mockResolvedValue(undefined);
