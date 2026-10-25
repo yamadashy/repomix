@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildCliConfig } from '../../../src/cli/actions/defaultAction.js';
 import type { CliOptions } from '../../../src/cli/types.js';
+import { mergeConfigs } from '../../../src/config/configLoad.js';
 
 describe('buildCliConfig', () => {
   describe('tokenCountTree option', () => {
@@ -78,6 +79,37 @@ describe('buildCliConfig', () => {
       const result = buildCliConfig({});
 
       expect(result.output?.patterns).toBeUndefined();
+    });
+  });
+
+  describe('securityCheck option', () => {
+    it('should map an explicit securityCheck: true into config', () => {
+      const result = buildCliConfig({ securityCheck: true });
+
+      expect(result.security?.enableSecurityCheck).toBe(true);
+    });
+
+    it('should leave security undefined when securityCheck is not provided', () => {
+      const result = buildCliConfig({});
+
+      expect(result.security).toBeUndefined();
+    });
+
+    it('should let an explicit securityCheck: true override a config file that disables it', () => {
+      // MCP pack tools pass securityCheck: true; a workspace config must not turn the scan off
+      const merged = mergeConfigs(
+        process.cwd(),
+        { security: { enableSecurityCheck: false } },
+        buildCliConfig({ securityCheck: true }),
+      );
+
+      expect(merged.security.enableSecurityCheck).toBe(true);
+    });
+
+    it('should let the config file decide when securityCheck is not provided', () => {
+      const merged = mergeConfigs(process.cwd(), { security: { enableSecurityCheck: false } }, buildCliConfig({}));
+
+      expect(merged.security.enableSecurityCheck).toBe(false);
     });
   });
 });

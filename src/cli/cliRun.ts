@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
-import { Option, program } from 'commander';
+import { type Command, Option, program } from 'commander';
 import pc from 'picocolors';
 import { getVersion } from '../core/file/packageJsonParse.js';
 import { isExplicitRemoteUrl, isValidShorthand } from '../core/git/gitRemoteUrl.js';
@@ -252,11 +252,19 @@ export const run = async () => {
   }
 };
 
-const commanderActionEndpoint = async (directories: string[], options: CliOptions = {}) => {
+export const commanderActionEndpoint = async (directories: string[], options: CliOptions = {}, command?: Command) => {
+  // `--no-security-check` makes Commander fill `securityCheck: true` even when the
+  // flag is absent. buildCliConfig treats any defined value as an explicit override,
+  // so drop the default here to let the config file's `security.enableSecurityCheck` apply.
+  const cliOptions: CliOptions = { ...options };
+  if (command?.getOptionValueSource('securityCheck') === 'default') {
+    delete cliOptions.securityCheck;
+  }
+
   // Auto-enable file processors for real CLI invocations only. Library callers
   // (`runCli`/`pack`) and MCP tools bypass this endpoint, so they default to OFF.
   // Remote runs downgrade this based on --remote-trust-config in runRemoteAction.
-  await runCli(directories, process.cwd(), { enableFileProcessors: true, ...options });
+  await runCli(directories, process.cwd(), { enableFileProcessors: true, ...cliOptions });
 };
 
 /**
