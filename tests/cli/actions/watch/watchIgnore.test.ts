@@ -82,6 +82,18 @@ describe('buildWatchIgnoreFilter', () => {
     expect(ignored(path.join(tmpRoot, 'src', '.repomixignore'))).toBe(false);
   });
 
+  it('ignores the output file even when it is named like an ignore-control file', async () => {
+    const config = createMockConfig({
+      cwd: tmpRoot,
+      output: { filePath: '.ignore' },
+      ignore: { useGitignore: false, useDefaultPatterns: true, useDotIgnore: false, customPatterns: [] },
+    });
+    const ignored = await buildWatchIgnoreFilter([tmpRoot], config);
+    // Watching it would make every repack trigger another one.
+    expect(ignored(path.join(tmpRoot, '.ignore'))).toBe(true);
+    expect(ignored(path.join(tmpRoot, '.gitignore'))).toBe(false);
+  });
+
   it('still applies ignore rules to in-root directories whose name starts with ".."', async () => {
     const config = createMockConfig({
       cwd: tmpRoot,

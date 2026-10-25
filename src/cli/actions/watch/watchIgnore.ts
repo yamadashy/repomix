@@ -50,7 +50,15 @@ export const buildWatchIgnoreFilter = async (
     }),
   );
 
+  // The packer's own output must never trigger a repack, even when it is named like an
+  // ignore-control file (e.g. `-o .ignore` with --no-dot-ignore), so it is checked before the
+  // control-file exemption below.
+  const absoluteOutputPath = config.output.filePath ? path.resolve(config.cwd, config.output.filePath) : undefined;
+
   return (watchedPath: string): boolean => {
+    if (absoluteOutputPath && path.resolve(watchedPath) === absoluteOutputPath) {
+      return true;
+    }
     for (const { root, fileMatchers, dirMatchers, gitIgnored, ignoreFileIgnored } of rootFilters) {
       const relative = path.relative(root, watchedPath);
       // Skip only when the path is genuinely outside this root. A bare `..startsWith` test
