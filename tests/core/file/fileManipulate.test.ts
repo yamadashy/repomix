@@ -1262,6 +1262,24 @@ a: "x
         '$x: __REPOMIX_URL_0__;\n.a { background: url(http://example.com/a.png); }',
       );
     });
+    test('keeps code after a block comment that mentions `url(`', () => {
+      const manipulator = getFileManipulator('test.scss');
+      const input = '/* The url( prefix */ .a { color: rgb(1, 2, 3); }';
+      expect(manipulator?.removeComments(input)).toBe(' .a { color: rgb(1, 2, 3); }');
+    });
+
+    test('keeps an unquoted URL that contains `*/`', () => {
+      const manipulator = getFileManipulator('test.scss');
+      const input = '.a { background: url(https://example.com/a*/b.png); color: red; }';
+      expect(manipulator?.removeComments(input)).toBe(input);
+    });
+    test('stays fast on many unclosed block comment openers', () => {
+      const manipulator = getFileManipulator('test.scss');
+      const input = `// ${'/* '.repeat(256_000)}\n.a { color: red; }`;
+      const start = performance.now();
+      expect(manipulator?.removeComments(input)).toBe('\n.a { color: red; }');
+      expect(performance.now() - start).toBeLessThan(2000);
+    });
   });
 
   describe('Vue and Svelte strip each section with its own language', () => {
@@ -1355,6 +1373,14 @@ const url = 'http://example.com';
       const manipulator = getFileManipulator('App.vue');
       const input = '<!-- <script>const a = 1;</script> -->\n<p>http://example.com</p>';
       expect(manipulator?.removeComments(input)).toBe('\n<p>http://example.com</p>');
+    });
+    test('does not treat a hyphenated component such as <style-preview> as a style block', () => {
+      const manipulator = getFileManipulator('App.vue');
+      const input =
+        '<template><style-preview>Preview</style-preview></template>\n<style lang="scss">// comment\n.a{color:red}</style>';
+      expect(manipulator?.removeComments(input)).toBe(
+        '<template><style-preview>Preview</style-preview></template>\n<style lang="scss">\n.a{color:red}</style>',
+      );
     });
   });
 

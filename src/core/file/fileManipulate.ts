@@ -51,10 +51,13 @@ const stripCssComments = (content: string): string =>
     preserveNewlines: true,
   });
 
-// Matches an unquoted `url(...)` on a single line. The `\s` in the lookahead stops `\s*`
-// from backtracking into a quoted `url( "...")`, whose body the strip profile already
-// treats as a string.
-const UNQUOTED_CSS_URL = /url\(\s*(?!['"\s])[^)\n]*\)/gi;
+// Scans block comments, quoted strings and unquoted `url(...)` calls in source order; only the
+// last are masked. Consuming block comments first means a `url(` mentioned inside one cannot
+// swallow the comment's `*/` and take the code after it along, while a real URL may still
+// contain `*/`. The `\s` in the lookahead stops `\s*` from backtracking into a quoted
+// `url( "...")`, whose body the strip profile already treats as a string. An unclosed `/*`
+// runs to the end of input, so the scan stays linear instead of re-searching from every `/*`.
+const CSS_URL_SCAN = /\/\*[\s\S]*?(?:\*\/|$)|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|url\(\s*(?!['"\s])[^)\n]*\)/gi;
 
 // SCSS, Sass and Less do have `//` line comments, so block-only stripping is not an option,
 // but their strip profile cuts at the `//` of an unquoted `url(http://...)` or `url(//cdn...)`.
@@ -67,7 +70,9 @@ const stripCssPreprocessorComments = (content: string): string => {
     marker += '_';
   }
   const urls: string[] = [];
-  const masked = content.replace(UNQUOTED_CSS_URL, (url) => `${marker}${urls.push(url) - 1}__`);
+  const masked = content.replace(CSS_URL_SCAN, (match) =>
+    /^url\(/i.test(match) ? `${marker}${urls.push(match) - 1}__` : match,
+  );
   // `sass` and `less` are the same JavaScript-based profile in strip-comments.
   const stripped = strip(masked, {
     language: 'sass',
@@ -222,9 +227,11 @@ class HashCommentManipulator extends BaseManipulator {
 
 // Matches, in source order, either an HTML comment or a `<script>`/`<style>` element.
 // Comments are matched too so a commented-out `<script>` stays part of the markup. The
+// tag name must end at whitespace, `/` or `>` so `<style-preview>` is not a style block. The
 // opening tag's attributes may contain a quoted `>` (e.g. Vue's `generic="T extends Foo<T>"`),
 // and a self-closing `<script ... />` is rejected by the lookbehind since it has no body.
-const SFC_SECTION = /<!--[\s\S]*?-->|<(script|style)\b((?:[^>"']|"[^"]*"|'[^']*')*)(?<!\/)>([\s\S]*?)(<\/\1\s*>)/gi;
+const SFC_SECTION =
+  /<!--[\s\S]*?-->|<(script|style)(?=[\s/>])((?:[^>"']|"[^"]*"|'[^']*')*)(?<!\/)>([\s\S]*?)(<\/\1\s*>)/gi;
 const STYLE_LANG_ATTR = /\blang\s*=\s*["']?([\w-]+)/i;
 
 // Vue and Svelte single-file components mix three languages. Running each language's
