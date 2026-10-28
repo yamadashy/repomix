@@ -45,13 +45,55 @@ class StripCommentsManipulator extends BaseManipulator {
 // CSS has no `//` line comments, but its strip profile is the JavaScript one, so a bare
 // `//` — most often an unquoted `url(http://...)` — was cut as a comment together with the
 // rest of the line. Strip block comments only.
+const stripCssComments = (content: string): string =>
+  strip.block(content, {
+    language: 'css',
+    preserveNewlines: true,
+  });
+
+// Scans block comments, quoted strings and unquoted `url(...)` calls in source order; only the
+// last are masked. Consuming block comments first means a `url(` mentioned inside one cannot
+// swallow the comment's `*/` and take the code after it along, while a real URL may still
+// contain `*/`. The `\s` in the lookahead stops `\s*` from backtracking into a quoted
+// `url( "...")`, whose body the strip profile already treats as a string. An unclosed `/*`
+// runs to the end of input, so the scan stays linear instead of re-searching from every `/*`.
+const CSS_URL_SCAN = /\/\*[\s\S]*?(?:\*\/|$)|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|url\(\s*(?!['"\s])[^)\n]*\)/gi;
+
+// SCSS, Sass and Less do have `//` line comments, so block-only stripping is not an option,
+// but their strip profile cuts at the `//` of an unquoted `url(http://...)` or `url(//cdn...)`.
+// Mask those calls with placeholders made only of word characters (never read as a comment
+// or a string), strip, then restore. The marker is grown until it does not occur in the
+// content, so every marker seen afterwards is one of ours.
+const stripCssPreprocessorComments = (content: string): string => {
+  let marker = '__REPOMIX_URL_';
+  while (content.includes(marker)) {
+    marker += '_';
+  }
+  const urls: string[] = [];
+  const masked = content.replace(CSS_URL_SCAN, (match) =>
+    /^url\(/i.test(match) ? `${marker}${urls.push(match) - 1}__` : match,
+  );
+  // `sass` and `less` are the same JavaScript-based profile in strip-comments.
+  const stripped = strip(masked, {
+    language: 'sass',
+    preserveNewlines: true,
+  });
+  // A placeholder inside a removed comment is simply gone; the rest are put back.
+  return stripped.replace(
+    new RegExp(`${marker}(\\d+)__`, 'g'),
+    (placeholder, index) => urls[Number(index)] ?? placeholder,
+  );
+};
+
 class CssManipulator extends BaseManipulator {
   removeComments(content: string): string {
-    const result = strip.block(content, {
-      language: 'css',
-      preserveNewlines: true,
-    });
-    return rtrimLines(result);
+    return rtrimLines(stripCssComments(content));
+  }
+}
+
+class CssPreprocessorManipulator extends BaseManipulator {
+  removeComments(content: string): string {
+    return rtrimLines(stripCssPreprocessorComments(content));
   }
 }
 
@@ -183,16 +225,55 @@ class HashCommentManipulator extends BaseManipulator {
   }
 }
 
-class CompositeManipulator extends BaseManipulator {
-  private manipulators: FileManipulator[];
+// Matches, in source order, either an HTML comment or a `<script>`/`<style>` element.
+// Comments are matched too so a commented-out `<script>` stays part of the markup. The
+// tag name must end at whitespace, `/` or `>` so `<style-preview>` is not a style block. The
+// opening tag's attributes may contain a quoted `>` (e.g. Vue's `generic="T extends Foo<T>"`),
+// and a self-closing `<script ... />` is rejected by the lookbehind since it has no body.
+const SFC_SECTION =
+  /<!--[\s\S]*?-->|<(script|style)(?=[\s/>])((?:[^>"']|"[^"]*"|'[^']*')*)(?<!\/)>([\s\S]*?)(<\/\1\s*>)/gi;
+const STYLE_LANG_ATTR = /\blang\s*=\s*["']?([\w-]+)/i;
 
-  constructor(...manipulators: FileManipulator[]) {
-    super();
-    this.manipulators = manipulators;
+// Vue and Svelte single-file components mix three languages. Running each language's
+// stripper over the whole file let the JavaScript one cut every `//` in the markup
+// (`Visit http://example.com`, `<img src=http://...>`) and in `<style>`, so strip each
+// section with its own language instead: script bodies as JavaScript, style bodies as CSS
+// (or SCSS/Sass/Less per `lang`), and the markup around them for HTML comments only.
+// Opening and closing tags are copied through untouched.
+class SfcManipulator extends BaseManipulator {
+  removeComments(content: string): string {
+    let result = '';
+    let markupStart = 0;
+
+    for (const match of content.matchAll(SFC_SECTION)) {
+      const [section, tagName, attributes, body, closeTag] = match;
+      if (tagName === undefined) continue; // An HTML comment, stripped with the markup.
+
+      const openTag = section.slice(0, section.length - body.length - closeTag.length);
+      result += this.stripMarkup(content.slice(markupStart, match.index));
+      result += openTag + this.stripSection(tagName.toLowerCase(), attributes, body) + closeTag;
+      markupStart = match.index + section.length;
+    }
+    result += this.stripMarkup(content.slice(markupStart));
+
+    // Trim once at the end; trimming each section would also drop the indentation that
+    // precedes a closing tag on its own line.
+    return rtrimLines(result);
   }
 
-  removeComments(content: string): string {
-    return this.manipulators.reduce((acc, manipulator) => manipulator.removeComments(acc), content);
+  private stripMarkup(markup: string): string {
+    return strip(markup, { language: 'html', preserveNewlines: true });
+  }
+
+  private stripSection(tagName: string, attributes: string, body: string): string {
+    if (tagName === 'script') {
+      return strip(body, { language: 'javascript', preserveNewlines: true });
+    }
+    const lang = attributes.match(STYLE_LANG_ATTR)?.[1].toLowerCase();
+    if (lang === 'scss' || lang === 'sass' || lang === 'less') {
+      return stripCssPreprocessorComments(body);
+    }
+    return stripCssComments(body);
   }
 }
 
@@ -215,13 +296,13 @@ const manipulators: Record<string, FileManipulator> = {
   '.cjs': new StripCommentsManipulator('javascript'),
   '.mjsx': new StripCommentsManipulator('javascript'),
   '.kt': new StripCommentsManipulator('c'),
-  '.less': new StripCommentsManipulator('less'),
+  '.less': new CssPreprocessorManipulator(),
   '.php': new StripCommentsManipulator('php'),
   '.py': new StripCommentsManipulator('python'),
   '.rb': new StripCommentsManipulator('ruby'),
   '.rs': new StripCommentsManipulator('c'),
-  '.sass': new StripCommentsManipulator('sass'),
-  '.scss': new StripCommentsManipulator('sass'),
+  '.sass': new CssPreprocessorManipulator(),
+  '.scss': new CssPreprocessorManipulator(),
   '.sh': new HashCommentManipulator('shell'),
   '.sol': new StripCommentsManipulator('c'),
   '.sql': new StripCommentsManipulator('sql'),
@@ -235,16 +316,8 @@ const manipulators: Record<string, FileManipulator> = {
   '.yaml': new HashCommentManipulator('yaml'),
   '.yml': new HashCommentManipulator('yaml'),
 
-  '.vue': new CompositeManipulator(
-    new StripCommentsManipulator('html'),
-    new StripCommentsManipulator('css'),
-    new StripCommentsManipulator('javascript'),
-  ),
-  '.svelte': new CompositeManipulator(
-    new StripCommentsManipulator('html'),
-    new StripCommentsManipulator('css'),
-    new StripCommentsManipulator('javascript'),
-  ),
+  '.vue': new SfcManipulator(),
+  '.svelte': new SfcManipulator(),
 };
 
 export const getFileManipulator = (filePath: string): FileManipulator | null => {
