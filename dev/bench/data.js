@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793199457848,
+  "lastUpdate": 1793201144156,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -15068,6 +15068,51 @@ window.BENCHMARK_DATA = {
             "range": "±38",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1314ms, Q3: 1352ms\nAll times: 1291, 1300, 1301, 1311, 1311, 1314, 1317, 1319, 1319, 1322, 1322, 1323, 1331, 1338, 1339, 1352, 1356, 1356, 1374, 1418ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7d7b28bf3e651e2f34a284ca9c91074edfe1b88d",
+          "message": "Merge pull request #1965 from yamadashy/fix/remove-comments-url-scss-vue\n\nfix(core): Keep URLs when removing comments in SCSS, Less, Vue and Svelte",
+          "timestamp": "2026-10-29T00:24:00+09:00",
+          "tree_id": "6ac07004615f042bb3a5b5f73114540c20ee2424",
+          "url": "https://github.com/yamadashy/repomix/commit/7d7b28bf3e651e2f34a284ca9c91074edfe1b88d"
+        },
+        "date": 1793201142823,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 985,
+            "range": "±75",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 943ms, Q3: 1018ms\nAll times: 851, 853, 877, 885, 891, 911, 917, 943, 950, 951, 957, 959, 971, 974, 981, 985, 1000, 1001, 1001, 1002, 1008, 1016, 1018, 1019, 1028, 1039, 1045, 1056, 1068, 1372ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 991,
+            "range": "±23",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 975ms, Q3: 998ms\nAll times: 959, 971, 973, 973, 974, 975, 978, 982, 986, 990, 991, 993, 995, 997, 998, 998, 1003, 1012, 1017, 1028ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1416,
+            "range": "±37",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1405ms, Q3: 1442ms\nAll times: 1379, 1389, 1392, 1399, 1399, 1405, 1406, 1407, 1412, 1415, 1416, 1419, 1423, 1431, 1431, 1442, 1449, 1450, 1451, 1489ms"
           }
         ]
       }
