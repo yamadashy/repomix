@@ -167,11 +167,21 @@ describe('fileSearch gitignore spec', () => {
     expect(filePaths).toContain('sub/keep.ts');
   });
 
-  // Note: parent-directory .gitignore handling when `searchFiles` is invoked
-  // against a subdirectory is intentionally NOT covered here. globby reads
-  // .gitignore files within `cwd` only, so this is a pre-existing gap on main
-  // rather than a regression target. Capture it as a real spec the day the
-  // codebase commits to that behavior.
+  it('honors a parent .gitignore when searching a directory input', async () => {
+    await fs.mkdir(path.join(tmpDir, '.git'));
+    await writeFixture(tmpDir, {
+      '.gitignore': 'should_ignore1.py\nsrc/should_ignore2.py\n',
+      'src/valid.py': 'valid = true;\n',
+      'src/should_ignore1.py': 'ignored = 1;\n',
+      'src/should_ignore2.py': 'ignored = 2;\n',
+    });
+
+    const directoryResult = await searchFiles(path.join(tmpDir, 'src'), createMockConfig({ cwd: tmpDir }));
+    const includeResult = await searchFiles(tmpDir, createMockConfig({ cwd: tmpDir, include: ['src/**'] }));
+
+    expect(directoryResult.filePaths).toEqual(['valid.py']);
+    expect(includeResult.filePaths).toEqual(['src/valid.py']);
+  });
 
   it('reads .gitignore inside monorepo `packages/*` (the classic Lerna/pnpm layout)', async () => {
     await writeFixture(tmpDir, {
