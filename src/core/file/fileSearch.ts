@@ -241,7 +241,7 @@ export const searchFiles = async (
         logger.trace('[stdin mode] Explicit files (absolute):', explicitFiles);
 
         const relativePaths = explicitFiles.map((filePath) => {
-          const relativePath = path.relative(rootDir, filePath);
+          const relativePath = path.relative(rootDir, filePath).split(path.sep).join('/');
           // Escape the path to handle special characters
           return escapeGlobPattern(relativePath);
         });
