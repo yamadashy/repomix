@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793464294047,
+  "lastUpdate": 1793464470257,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -15338,6 +15338,51 @@ window.BENCHMARK_DATA = {
             "range": "±48",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1379ms, Q3: 1427ms\nAll times: 1357, 1357, 1373, 1377, 1378, 1379, 1383, 1388, 1392, 1393, 1394, 1404, 1404, 1413, 1416, 1427, 1439, 1470, 1494, 1788ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b8cbfab4cd32a84d1db4a9f905c6a1678b403a68",
+          "message": "Merge pull request #1940 from feiiiiii5/fix/git-log-raw-unicode-paths\n\nfix(git): keep non-ASCII file names raw in git logs",
+          "timestamp": "2026-11-01T01:32:22+09:00",
+          "tree_id": "196290a2c0028ce0f310560f99b334f7a1e242c7",
+          "url": "https://github.com/yamadashy/repomix/commit/b8cbfab4cd32a84d1db4a9f905c6a1678b403a68"
+        },
+        "date": 1793464468698,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 921,
+            "range": "±333",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 802ms, Q3: 1135ms\nAll times: 689, 755, 764, 772, 777, 784, 797, 802, 802, 806, 815, 835, 859, 894, 910, 921, 932, 939, 942, 991, 1037, 1121, 1135, 1166, 1192, 1251, 1251, 1308, 1359, 1595ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 590,
+            "range": "±75",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 581ms, Q3: 656ms\nAll times: 568, 570, 572, 579, 580, 581, 582, 584, 588, 589, 590, 597, 612, 619, 646, 656, 666, 671, 681, 700ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1009,
+            "range": "±15",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1003ms, Q3: 1018ms\nAll times: 987, 992, 996, 997, 999, 1003, 1004, 1004, 1009, 1009, 1009, 1010, 1011, 1011, 1014, 1018, 1025, 1033, 1037, 1209ms"
           }
         ]
       }
