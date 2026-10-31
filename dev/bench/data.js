@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793464470257,
+  "lastUpdate": 1793464591778,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -15383,6 +15383,51 @@ window.BENCHMARK_DATA = {
             "range": "±15",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1003ms, Q3: 1018ms\nAll times: 987, 992, 996, 997, 999, 1003, 1004, 1004, 1009, 1009, 1009, 1010, 1011, 1011, 1014, 1018, 1025, 1033, 1037, 1209ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2050e90141b01a1fa40bb278f170057ff67eb157",
+          "message": "Merge pull request #1910 from plox-sumit/test/token-budget-locale\n\ntest(cli): Build the token budget expectation with the machine's locale",
+          "timestamp": "2026-11-01T01:34:18+09:00",
+          "tree_id": "e05f613765e485a4c462aec8fc41864bcfc82b16",
+          "url": "https://github.com/yamadashy/repomix/commit/2050e90141b01a1fa40bb278f170057ff67eb157"
+        },
+        "date": 1793464590762,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 796,
+            "range": "±247",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 702ms, Q3: 949ms\nAll times: 630, 651, 677, 685, 689, 699, 701, 702, 712, 723, 725, 732, 732, 768, 781, 796, 821, 848, 849, 852, 856, 861, 949, 955, 965, 971, 988, 1005, 1006, 1045ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 629,
+            "range": "±19",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 617ms, Q3: 636ms\nAll times: 597, 608, 609, 613, 616, 617, 618, 622, 627, 629, 629, 630, 632, 634, 635, 636, 637, 637, 638, 649ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1389,
+            "range": "±28",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1371ms, Q3: 1399ms\nAll times: 1329, 1348, 1357, 1358, 1368, 1371, 1374, 1374, 1375, 1380, 1389, 1389, 1391, 1395, 1396, 1399, 1403, 1411, 1417, 1428ms"
           }
         ]
       }
