@@ -1,4 +1,5 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
+import { isNegatedIgnorePattern } from '../file/fileSearch.js';
 
 interface ContentInfo {
   selection: {
@@ -22,12 +23,16 @@ interface ContentInfo {
   };
 }
 
+// Negated patterns are skipped by the file search, so they must not be reported as exclusions.
+const getEffectiveIgnorePatterns = (config: RepomixConfigMerged): string[] =>
+  config.ignore.customPatterns.filter((pattern) => !isNegatedIgnorePattern(pattern));
+
 export const analyzeContent = (config: RepomixConfigMerged): ContentInfo => {
   return {
     selection: {
-      isEntireCodebase: !config.include.length && !config.ignore.customPatterns.length,
+      isEntireCodebase: !config.include.length && !getEffectiveIgnorePatterns(config).length,
       include: config.include.length > 0,
-      ignore: config.ignore.customPatterns.length > 0,
+      ignore: getEffectiveIgnorePatterns(config).length > 0,
       gitignore: config.ignore.useGitignore,
       defaultIgnore: config.ignore.useDefaultPatterns,
     },
@@ -159,7 +164,7 @@ export const generateSummaryNotes = (config: RepomixConfigMerged): string => {
     notes.push(`- Only files matching these patterns are included: ${config.include.join(', ')}`);
   }
   if (info.selection.ignore) {
-    notes.push(`- Files matching these patterns are excluded: ${config.ignore.customPatterns.join(', ')}`);
+    notes.push(`- Files matching these patterns are excluded: ${getEffectiveIgnorePatterns(config).join(', ')}`);
   }
   if (info.selection.gitignore) {
     notes.push('- Files matching patterns in .gitignore are excluded');
