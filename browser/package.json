@@ -33,7 +33,7 @@
   "author": "yamadashy",
   "license": "MIT",
   "devDependencies": {
-    "@types/chrome": "^0.3.5",
+    "@types/chrome": "^0.3.6",
     "@types/node": "^24.19.2",
     "jsdom": "^30.1.3",
     "sharp": "^0.35.5",
