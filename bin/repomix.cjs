@@ -8,7 +8,7 @@ const nodeModule = require('node:module');
 if (nodeModule.enableCompileCache && !process.env.NODE_DISABLE_COMPILE_CACHE) {
   try {
     const result = nodeModule.enableCompileCache();
-    if (result && result.directory && !process.env.NODE_COMPILE_CACHE) {
+    if (result?.directory && !process.env.NODE_COMPILE_CACHE) {
       process.env.NODE_COMPILE_CACHE = result.directory;
     }
   } catch {
