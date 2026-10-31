@@ -58,4 +58,17 @@ describe('negated custom ignore patterns', () => {
     expect(patterns).toContain('*.log');
     expect(warn).toHaveBeenCalledTimes(1);
   });
+
+  it('keeps extglob patterns such as !(*.ts) as ignore patterns', async () => {
+    await writeFixture(tmpDir, {
+      'a.ts': 'export {};\n',
+      'b.md': '# b\n',
+    });
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+
+    const { filePaths } = await searchFiles(tmpDir, createMockConfig({ ignore: { customPatterns: ['!(*.ts)'] } }));
+
+    expect(filePaths).toEqual(['a.ts']);
+    expect(warn).not.toHaveBeenCalled();
+  });
 });

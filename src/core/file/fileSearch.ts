@@ -13,8 +13,9 @@ import { sortPaths } from './filePathSort.js';
 
 import { checkDirectoryPermissions, PermissionError } from './permissionCheck.js';
 
-// A leading `!` marks a negation; `\!` is an escaped literal `!` and is not one.
-export const isNegatedIgnorePattern = (pattern: string): boolean => pattern.startsWith('!');
+// A leading `!` marks a negation; `\!` is an escaped literal `!` and is not one. Like fast-glob,
+// `!(...)` is an extglob (e.g. `!(*.ts)`) that already works as an ignore pattern, not a negation.
+export const isNegatedIgnorePattern = (pattern: string): boolean => pattern.startsWith('!') && pattern[1] !== '(';
 
 // getIgnorePatterns runs several times per run, so warn once per distinct pattern per process.
 const warnedNegatedPatterns = new Set<string>();
