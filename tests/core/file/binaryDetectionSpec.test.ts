@@ -41,6 +41,7 @@ describe('binary detection spec', () => {
 
   it('skips binaries identified by extension (PNG) without including their bytes', async () => {
     await fs.writeFile(path.join(tmpDir, 'image.png'), Buffer.concat([PNG_MAGIC, Buffer.alloc(64, 0xff)]));
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: literal TypeScript source written to a fixture file
     await fs.writeFile(path.join(tmpDir, 'clean.ts'), 'export const greet = (n: string) => `hi ${n}`;\n');
 
     const { rawFiles, skippedFiles } = await collectFiles(['image.png', 'clean.ts'], tmpDir, createMockConfig());
