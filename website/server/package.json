@@ -27,7 +27,7 @@
   },
   "devDependencies": {
     "@swc/core": "^1.16.20",
-    "@types/node": "^24.19.2",
+    "@types/node": "^26.6.5",
     "rimraf": "^6.1.3",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
