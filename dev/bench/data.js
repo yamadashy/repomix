@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793448454284,
+  "lastUpdate": 1793457369392,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -15203,6 +15203,51 @@ window.BENCHMARK_DATA = {
             "range": "±73",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1042ms, Q3: 1115ms\nAll times: 1020, 1034, 1036, 1038, 1039, 1042, 1042, 1045, 1049, 1052, 1057, 1060, 1066, 1079, 1112, 1115, 1122, 1143, 1187, 1239ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "314f446ba6a2ab364bb21b711ff33cca8e9b1f61",
+          "message": "Merge pull request #1975 from yamadashy/fix/skip-negated-ignore-patterns\n\nfix(core): Skip negated custom ignore patterns instead of inverting them",
+          "timestamp": "2026-10-31T23:34:24+09:00",
+          "tree_id": "b5fb3afe33e342de9d3d2cd451aaeead93086bce",
+          "url": "https://github.com/yamadashy/repomix/commit/314f446ba6a2ab364bb21b711ff33cca8e9b1f61"
+        },
+        "date": 1793457367983,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1234,
+            "range": "±301",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1074ms, Q3: 1375ms\nAll times: 852, 966, 976, 1010, 1045, 1056, 1060, 1074, 1105, 1124, 1131, 1147, 1190, 1206, 1228, 1234, 1239, 1291, 1309, 1311, 1341, 1362, 1375, 1388, 1415, 1416, 1418, 1420, 1603, 1765ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 760,
+            "range": "±24",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 752ms, Q3: 776ms\nAll times: 734, 735, 737, 743, 749, 752, 756, 756, 757, 758, 760, 761, 773, 775, 775, 776, 778, 786, 839, 868ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1376,
+            "range": "±33",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1365ms, Q3: 1398ms\nAll times: 1352, 1360, 1362, 1363, 1364, 1365, 1366, 1368, 1372, 1372, 1376, 1378, 1391, 1392, 1397, 1398, 1409, 1409, 1418, 1436ms"
           }
         ]
       }
