@@ -13,6 +13,22 @@ import { sortPaths } from './filePathSort.js';
 
 import { checkDirectoryPermissions, PermissionError } from './permissionCheck.js';
 
+// A leading `!` marks a negation; `\!` is an escaped literal `!` and is not one.
+export const isNegatedIgnorePattern = (pattern: string): boolean => pattern.startsWith('!');
+
+// getIgnorePatterns runs several times per run, so warn once per distinct pattern per process.
+const warnedNegatedPatterns = new Set<string>();
+
+const warnNegatedIgnorePatternOnce = (pattern: string): void => {
+  if (warnedNegatedPatterns.has(pattern)) {
+    return;
+  }
+  warnedNegatedPatterns.add(pattern);
+  logger.warn(
+    `Negated ignore pattern "${pattern}" is not supported yet and was skipped. See https://github.com/yamadashy/repomix/issues/400`,
+  );
+};
+
 export interface FileSearchResult {
   filePaths: string[];
   emptyDirPaths: string[];
@@ -516,6 +532,12 @@ export const getIgnorePatterns = async (rootDir: string, config: RepomixConfigMe
   if (config.ignore.customPatterns) {
     logger.trace('Adding custom ignore patterns:', config.ignore.customPatterns);
     for (const pattern of config.ignore.customPatterns) {
+      // fast-glob does not treat a leading `!` in its ignore list as re-inclusion and would
+      // exclude the matching files instead. Skip negations until proper support lands (#400).
+      if (isNegatedIgnorePattern(pattern)) {
+        warnNegatedIgnorePatternOnce(pattern);
+        continue;
+      }
       ignorePatterns.add(pattern);
     }
   }

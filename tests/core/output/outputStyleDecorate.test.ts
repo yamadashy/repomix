@@ -175,6 +175,23 @@ describe('generateSummaryNotes', () => {
     expect(notes).toContain('Files matching these patterns are excluded: *.test.ts');
   });
 
+  it('should not list skipped negated patterns as excluded', () => {
+    const config = createMockConfig({
+      ignore: {
+        customPatterns: ['*.test.ts', '!main.ts', '\\!literal'],
+      },
+    });
+    const notes = generateSummaryNotes(config);
+    expect(notes).toContain('Files matching these patterns are excluded: *.test.ts, \\!literal');
+    expect(notes).not.toContain('!main.ts');
+  });
+
+  it('should omit the excluded patterns note when only negated patterns are given', () => {
+    const config = createMockConfig({ ignore: { customPatterns: ['!main.ts'] } });
+    const notes = generateSummaryNotes(config);
+    expect(notes).not.toContain('Files matching these patterns are excluded');
+  });
+
   it('should include processing notes', () => {
     const config = createMockConfig({
       output: {
