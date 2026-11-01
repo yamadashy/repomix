@@ -4,11 +4,17 @@ import type { CliOptions } from './types.js';
 export class Spinner {
   private spinner: PicoSpinner | null;
 
-  constructor(message: string, cliOptions?: CliOptions) {
+  constructor(
+    message: string,
+    cliOptions?: CliOptions,
+    deps = {
+      PicoSpinner,
+    },
+  ) {
     // If the user has specified the verbose flag, don't show the spinner
     // Use optional chaining to handle undefined cliOptions (e.g., in bundled worker environments)
     const isQuiet = cliOptions?.quiet || cliOptions?.verbose || cliOptions?.stdout || false;
-    this.spinner = isQuiet ? null : new PicoSpinner(message);
+    this.spinner = isQuiet ? null : new deps.PicoSpinner(message);
   }
 
   start(): void {

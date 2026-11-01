@@ -1,37 +1,18 @@
-import { beforeEach, describe, expect, type Mock, type MockedFunction, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { runDefaultAction } from '../../../src/cli/actions/defaultAction.js';
-import * as configLoad from '../../../src/config/configLoad.js';
-import * as packager from '../../../src/core/packager.js';
 import { RepomixError } from '../../../src/shared/errorHandle.js';
-
-vi.mock('../../../src/config/configLoad.js');
-vi.mock('../../../src/core/packager.js');
-vi.mock('../../../src/cli/cliReport.js');
-vi.mock('../../../src/cli/actions/migrationAction.js', () => ({
-  runMigrationAction: vi.fn(),
-}));
-
-const mockSpinner = {
-  start: vi.fn() as MockedFunction<() => void>,
-  update: vi.fn() as MockedFunction<(message: string) => void>,
-  succeed: vi.fn() as MockedFunction<(message: string) => void>,
-  fail: vi.fn() as MockedFunction<(message: string) => void>,
-};
-
-vi.mock('../../../src/cli/cliSpinner', () => {
-  const MockSpinner = class {
-    start = mockSpinner.start;
-    update = mockSpinner.update;
-    succeed = mockSpinner.succeed;
-    fail = mockSpinner.fail;
-  };
-  return { Spinner: MockSpinner };
-});
+import { createMockSpinner } from '../../testing/cliDoubles.js';
 
 describe('runDefaultAction token budget guard', () => {
-  const mockLoadFileConfig = configLoad.loadFileConfig as Mock;
-  const mockMergeConfigs = configLoad.mergeConfigs as Mock;
-  const mockPack = packager.pack as Mock;
+  const mockBuildMergedConfig = vi.fn();
+  const mockPack = vi.fn();
+  const deps = {
+    buildMergedConfig: mockBuildMergedConfig,
+    readFilePathsFromStdin: vi.fn(),
+    pack: mockPack,
+    reportResults: vi.fn(),
+    Spinner: createMockSpinner().Spinner,
+  };
 
   const buildConfig = (tokenBudget?: number) => ({
     output: {
@@ -48,7 +29,6 @@ describe('runDefaultAction token budget guard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockLoadFileConfig.mockResolvedValue({});
     mockPack.mockResolvedValue({
       totalFiles: 3,
       totalCharacters: 1000,
@@ -64,30 +44,30 @@ describe('runDefaultAction token budget guard', () => {
   });
 
   test('succeeds when packed tokens are within budget', async () => {
-    mockMergeConfigs.mockReturnValue(buildConfig(500));
+    mockBuildMergedConfig.mockResolvedValue(buildConfig(500));
 
-    await expect(runDefaultAction(['.'], '/test', { tokenBudget: 500 })).resolves.toBeDefined();
+    await expect(runDefaultAction(['.'], '/test', { tokenBudget: 500 }, undefined, deps)).resolves.toBeDefined();
   });
 
   test('succeeds when no budget is configured', async () => {
-    mockMergeConfigs.mockReturnValue(buildConfig(undefined));
+    mockBuildMergedConfig.mockResolvedValue(buildConfig(undefined));
 
-    await expect(runDefaultAction(['.'], '/test', {})).resolves.toBeDefined();
+    await expect(runDefaultAction(['.'], '/test', {}, undefined, deps)).resolves.toBeDefined();
   });
 
   test('throws when packed tokens exceed budget', async () => {
-    mockMergeConfigs.mockReturnValue(buildConfig(100));
+    mockBuildMergedConfig.mockResolvedValue(buildConfig(100));
 
-    await expect(runDefaultAction(['.'], '/test', { tokenBudget: 100 })).rejects.toThrow(RepomixError);
+    await expect(runDefaultAction(['.'], '/test', { tokenBudget: 100 }, undefined, deps)).rejects.toThrow(RepomixError);
   });
 
   test('does not throw when the check is deferred, even if over budget', async () => {
     // Remote runs set deferTokenBudgetCheck so they can copy the output out of
     // the temp dir before enforcing the budget themselves.
-    mockMergeConfigs.mockReturnValue(buildConfig(100));
+    mockBuildMergedConfig.mockResolvedValue(buildConfig(100));
 
     await expect(
-      runDefaultAction(['.'], '/test', { tokenBudget: 100, deferTokenBudgetCheck: true }),
+      runDefaultAction(['.'], '/test', { tokenBudget: 100, deferTokenBudgetCheck: true }, undefined, deps),
     ).resolves.toBeDefined();
   });
 });

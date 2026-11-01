@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   getDisplayPath,
   reportCompletion,
@@ -8,28 +8,20 @@ import {
   reportSummary,
   reportTopFiles,
 } from '../../src/cli/cliReport.js';
-import { reportTokenCountTree } from '../../src/cli/reporters/tokenCountTreeReporter.js';
 import type { SuspiciousFileResult } from '../../src/core/security/securityCheck.js';
 import type { PackResult } from '../../src/index.js';
 import { logger } from '../../src/shared/logger.js';
+import { silenceLogger, tagColors } from '../testing/cliDoubles.js';
 import { createMockConfig } from '../testing/testUtils.js';
-
-vi.mock('../../src/shared/logger');
-vi.mock('../../src/cli/reporters/tokenCountTreeReporter.js');
-vi.mock('picocolors', () => ({
-  default: {
-    dim: (str: string) => `DIM:${str}`,
-    green: (str: string) => `GREEN:${str}`,
-    yellow: (str: string) => `YELLOW:${str}`,
-    red: (str: string) => `RED:${str}`,
-    cyan: (str: string) => `CYAN:${str}`,
-    underline: (str: string) => `UNDERLINE:${str}`,
-  },
-}));
 
 describe('cliReport', () => {
   beforeEach(() => {
-    vi.resetAllMocks();
+    silenceLogger();
+    tagColors();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('getDisplayPath', () => {
@@ -438,17 +430,35 @@ describe('reportResults token count tree', () => {
   };
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    silenceLogger();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   test('should show the tree for a zero threshold', () => {
-    reportResults('/test/project', packResult, createMockConfig({ output: { tokenCountTree: 0 } }));
+    const reportTokenCountTree = vi.fn();
+    reportResults(
+      '/test/project',
+      packResult,
+      createMockConfig({ output: { tokenCountTree: 0 } }),
+      {},
+      { reportTokenCountTree },
+    );
 
     expect(reportTokenCountTree).toHaveBeenCalledOnce();
   });
 
   test('should not show the tree when it is disabled', () => {
-    reportResults('/test/project', packResult, createMockConfig({ output: { tokenCountTree: false } }));
+    const reportTokenCountTree = vi.fn();
+    reportResults(
+      '/test/project',
+      packResult,
+      createMockConfig({ output: { tokenCountTree: false } }),
+      {},
+      { reportTokenCountTree },
+    );
 
     expect(reportTokenCountTree).not.toHaveBeenCalled();
   });

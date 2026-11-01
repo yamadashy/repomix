@@ -1,94 +1,111 @@
-import * as fs from 'node:fs/promises';
+import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
-import * as prompts from '@clack/prompts';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { runMigrationAction } from '../../../src/cli/actions/migrationAction.js';
-import { logger } from '../../../src/shared/logger.js';
+import { silenceLogger } from '../../testing/cliDoubles.js';
 
-vi.mock('node:fs/promises');
-vi.mock('@clack/prompts');
-vi.mock('../../../src/shared/logger');
+type MigrationDeps = NonNullable<Parameters<typeof runMigrationAction>[1]>;
+
+const pathExists = async (filePath: string) =>
+  fs.access(filePath).then(
+    () => true,
+    () => false,
+  );
 
 describe('migrationAction', () => {
-  const mockRootDir = '/test/dir';
-  const oldConfigPath = path.join(mockRootDir, 'repopack.config.json');
-  const newConfigPath = path.join(mockRootDir, 'repomix.config.json');
-  const oldIgnorePath = path.join(mockRootDir, '.repopackignore');
-  const newIgnorePath = path.join(mockRootDir, '.repomixignore');
-  const oldInstructionPath = path.join(mockRootDir, 'repopack-instruction.md');
-  const newInstructionPath = path.join(mockRootDir, 'repomix-instruction.md');
-  const gitignorePath = path.join(mockRootDir, '.gitignore');
+  let tempDir: string;
+  let rootDir: string;
+  let homeDir: string;
+  let globalDir: string;
+  let logger: ReturnType<typeof silenceLogger>;
+  let mockConfirm: ReturnType<typeof vi.fn>;
+  let deps: MigrationDeps;
 
-  const mockOutputPaths = {
-    oldTxt: path.join(mockRootDir, 'repopack-output.txt'),
-    newTxt: path.join(mockRootDir, 'repomix-output.txt'),
-    oldXml: path.join(mockRootDir, 'repopack-output.xml'),
-    newXml: path.join(mockRootDir, 'repomix-output.xml'),
-    oldMd: path.join(mockRootDir, 'repopack-output.md'),
-    newMd: path.join(mockRootDir, 'repomix-output.md'),
-  };
-
-  beforeEach(() => {
-    vi.resetAllMocks();
+  const paths = () => ({
+    oldConfigPath: path.join(rootDir, 'repopack.config.json'),
+    newConfigPath: path.join(rootDir, 'repomix.config.json'),
+    oldIgnorePath: path.join(rootDir, '.repopackignore'),
+    newIgnorePath: path.join(rootDir, '.repomixignore'),
+    oldInstructionPath: path.join(rootDir, 'repopack-instruction.md'),
+    newInstructionPath: path.join(rootDir, 'repomix-instruction.md'),
+    gitignorePath: path.join(rootDir, '.gitignore'),
+    oldGlobalConfigPath: path.join(homeDir, '.config', 'repopack', 'repopack.config.json'),
+    newGlobalConfigPath: path.join(globalDir, 'repomix.config.json'),
+    oldTxt: path.join(rootDir, 'repopack-output.txt'),
+    newTxt: path.join(rootDir, 'repomix-output.txt'),
+    oldXml: path.join(rootDir, 'repopack-output.xml'),
+    newXml: path.join(rootDir, 'repomix-output.xml'),
+    oldMd: path.join(rootDir, 'repopack-output.md'),
+    newMd: path.join(rootDir, 'repomix-output.md'),
   });
 
-  afterEach(() => {
-    vi.resetAllMocks();
+  const writeFiles = async (files: Record<string, string>) => {
+    for (const [filePath, content] of Object.entries(files)) {
+      await fs.mkdir(path.dirname(filePath), { recursive: true });
+      await fs.writeFile(filePath, content, 'utf8');
+    }
+  };
+
+  beforeEach(async () => {
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-migration-action-'));
+    rootDir = path.join(tempDir, 'project');
+    // The old global config is resolved from $HOME, so point it inside the temp dir
+    // to keep the test away from the developer's real ~/.config/repopack.
+    homeDir = path.join(tempDir, 'home');
+    globalDir = path.join(tempDir, 'global', 'repomix');
+    await fs.mkdir(rootDir, { recursive: true });
+    vi.stubEnv('HOME', homeDir);
+
+    logger = silenceLogger();
+    mockConfirm = vi.fn();
+    deps = {
+      getGlobalDirectory: () => globalDir,
+      loadClack: async () =>
+        ({
+          confirm: mockConfirm,
+          isCancel: vi.fn().mockReturnValue(false),
+        }) as unknown as Awaited<ReturnType<MigrationDeps['loadClack']>>,
+    };
+  });
+
+  afterEach(async () => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+    await fs.rm(tempDir, { recursive: true, force: true });
   });
 
   test('should migrate all files when they exist', async () => {
-    // Mock file existence checks
-    vi.mocked(fs.access).mockImplementation(async (path) => {
-      if (
-        path === oldConfigPath ||
-        path === oldIgnorePath ||
-        path === oldInstructionPath ||
-        path === mockOutputPaths.oldTxt ||
-        path === mockOutputPaths.oldXml
-      ) {
-        return Promise.resolve();
-      }
-      return Promise.reject(new Error('File not found'));
-    });
-
-    // Mock file content
-    const mockConfigContent = JSON.stringify({
-      output: {
-        filePath: 'repopack-output.txt',
-        instructionFilePath: 'repopack-instruction.md',
-      },
-    });
-    const mockIgnoreContent = 'repopack-output.txt\n*.log';
-    const mockInstructionContent = '# Repopack Instructions';
-    const mockOutputContent = 'Repopack output content';
-
-    vi.mocked(fs.readFile).mockImplementation(async (path) => {
-      if (path === oldConfigPath) return mockConfigContent;
-      if (path === oldIgnorePath) return mockIgnoreContent;
-      if (path === oldInstructionPath) return mockInstructionContent;
-      if (path === mockOutputPaths.oldTxt || path === mockOutputPaths.oldXml) {
-        return mockOutputContent;
-      }
-      return '';
+    const p = paths();
+    await writeFiles({
+      [p.oldConfigPath]: JSON.stringify({
+        output: {
+          filePath: 'repopack-output.txt',
+          instructionFilePath: 'repopack-instruction.md',
+        },
+      }),
+      [p.oldIgnorePath]: 'repopack-output.txt\n*.log',
+      [p.oldInstructionPath]: '# Repopack Instructions',
+      [p.oldTxt]: 'Repopack output content',
+      [p.oldXml]: 'Repopack output content',
     });
 
     // Mock user confirmation
-    vi.mocked(prompts.confirm).mockResolvedValue(true);
+    mockConfirm.mockResolvedValue(true);
 
     // Run migration
-    const result = await runMigrationAction(mockRootDir);
+    const result = await runMigrationAction(rootDir, deps);
 
     // Verify results
     expect(result.configMigrated).toBe(true);
     expect(result.ignoreMigrated).toBe(true);
     expect(result.instructionMigrated).toBe(true);
-    expect(result.outputFilesMigrated).toContain(mockOutputPaths.newTxt);
-    expect(result.outputFilesMigrated).toContain(mockOutputPaths.newXml);
+    expect(result.outputFilesMigrated).toContain(p.newTxt);
+    expect(result.outputFilesMigrated).toContain(p.newXml);
     expect(result.error).toBeUndefined();
 
-    // Verify file operations for config
-    expect(fs.writeFile).toHaveBeenCalledWith(
-      newConfigPath,
+    // Verify the migrated config
+    expect(await fs.readFile(p.newConfigPath, 'utf8')).toBe(
       JSON.stringify(
         {
           output: {
@@ -99,110 +116,110 @@ describe('migrationAction', () => {
         null,
         2,
       ),
-      'utf8',
     );
 
-    // Verify other file operations
-    expect(fs.writeFile).toHaveBeenCalledWith(newIgnorePath, 'repomix-output.txt\n*.log', 'utf8');
-    expect(fs.writeFile).toHaveBeenCalledWith(newInstructionPath, '# Repomix Instructions', 'utf8');
+    // Verify other migrated files
+    expect(await fs.readFile(p.newIgnorePath, 'utf8')).toBe('repomix-output.txt\n*.log');
+    expect(await fs.readFile(p.newInstructionPath, 'utf8')).toBe('# Repomix Instructions');
+    expect(await fs.readFile(p.newTxt, 'utf8')).toBe('Repomix output content');
+    expect(await fs.readFile(p.newXml, 'utf8')).toBe('Repomix output content');
 
     // Verify old files were removed
-    expect(fs.unlink).toHaveBeenCalledWith(oldConfigPath);
-    expect(fs.unlink).toHaveBeenCalledWith(oldIgnorePath);
-    expect(fs.unlink).toHaveBeenCalledWith(oldInstructionPath);
-    expect(fs.unlink).toHaveBeenCalledWith(mockOutputPaths.oldTxt);
-    expect(fs.unlink).toHaveBeenCalledWith(mockOutputPaths.oldXml);
+    for (const oldPath of [p.oldConfigPath, p.oldIgnorePath, p.oldInstructionPath, p.oldTxt, p.oldXml]) {
+      expect(await pathExists(oldPath)).toBe(false);
+    }
   });
 
   test('should update gitignore content when it exists and contains repopack references', async () => {
-    // Mock file existence only for gitignore and oldConfig
-    vi.mocked(fs.access).mockImplementation(async (path) => {
-      if (path === gitignorePath || path === oldConfigPath) {
-        return Promise.resolve();
-      }
-      return Promise.reject(new Error('File not found'));
-    });
-
-    // Mock file content only for gitignore
-    const mockGitignoreContent = 'node_modules/\nrepopack-output.txt';
-    vi.mocked(fs.readFile).mockImplementation(async (path) => {
-      if (path === gitignorePath) return mockGitignoreContent;
-      if (path === oldConfigPath) return '{}';
-      return '';
+    const p = paths();
+    await writeFiles({
+      [p.gitignorePath]: 'node_modules/\nrepopack-output.txt',
+      [p.oldConfigPath]: '{}',
     });
 
     // Mock user confirmation
-    vi.mocked(prompts.confirm).mockResolvedValue(true);
+    mockConfirm.mockResolvedValue(true);
 
     // Run migration
-    await runMigrationAction(mockRootDir);
+    await runMigrationAction(rootDir, deps);
 
     // Verify gitignore was updated
-    expect(fs.writeFile).toHaveBeenCalledWith(gitignorePath, 'node_modules/\nrepomix-output.txt', 'utf8');
+    expect(await fs.readFile(p.gitignorePath, 'utf8')).toBe('node_modules/\nrepomix-output.txt');
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Updated repopack references in'));
   });
 
   test('should handle non-updated files correctly', async () => {
-    // Mock file existence only for gitignore and oldConfig
-    vi.mocked(fs.access).mockImplementation(async (path) => {
-      if (path === gitignorePath || path === oldConfigPath) {
-        return Promise.resolve();
-      }
-      return Promise.reject(new Error('File not found'));
-    });
-
-    // Mock file content with no repopack references
-    vi.mocked(fs.readFile).mockImplementation(async (path) => {
-      if (path === gitignorePath) return 'node_modules/\n*.log';
-      if (path === oldConfigPath) return '{}';
-      return '';
+    const p = paths();
+    // gitignore content with no repopack references
+    await writeFiles({
+      [p.gitignorePath]: 'node_modules/\n*.log',
+      [p.oldConfigPath]: '{}',
     });
 
     // Mock user confirmation
-    vi.mocked(prompts.confirm).mockResolvedValue(true);
+    mockConfirm.mockResolvedValue(true);
 
     // Run migration
-    await runMigrationAction(mockRootDir);
+    await runMigrationAction(rootDir, deps);
 
-    // Verify no gitignore update was performed
-    expect(fs.writeFile).not.toHaveBeenCalledWith(gitignorePath, expect.any(String), expect.any(String));
+    // Verify gitignore was left as-is
+    expect(await fs.readFile(p.gitignorePath, 'utf8')).toBe('node_modules/\n*.log');
+    expect(logger.log).not.toHaveBeenCalledWith(expect.stringContaining('Updated repopack references in'));
     // Verify debug message was logged
     expect(logger.debug).toHaveBeenCalledWith(expect.stringContaining('No changes needed in'));
   });
 
   test('should skip migration when no old files exist', async () => {
-    // Mock all files not existing
-    vi.mocked(fs.access).mockRejectedValue(new Error('File not found'));
-
     // Run migration
-    const result = await runMigrationAction(mockRootDir);
+    const result = await runMigrationAction(rootDir, deps);
 
     // Verify no migration occurred
     expect(result.configMigrated).toBe(false);
     expect(result.ignoreMigrated).toBe(false);
     expect(result.instructionMigrated).toBe(false);
     expect(result.outputFilesMigrated).toHaveLength(0);
-    expect(prompts.confirm).not.toHaveBeenCalled();
+    expect(mockConfirm).not.toHaveBeenCalled();
     expect(logger.debug).toHaveBeenCalledWith('No Repopack files found to migrate.');
   });
 
   test('should skip files when they already exist and user declines overwrite', async () => {
-    // Mock old and new files existing
-    vi.mocked(fs.access).mockResolvedValue(undefined);
+    const p = paths();
+    // Old and new files all exist
+    const files = {
+      [p.oldConfigPath]: 'old config',
+      [p.newConfigPath]: 'new config',
+      [p.oldIgnorePath]: 'old ignore',
+      [p.newIgnorePath]: 'new ignore',
+      [p.oldInstructionPath]: 'old instruction',
+      [p.newInstructionPath]: 'new instruction',
+      [p.oldGlobalConfigPath]: 'old global config',
+      [p.newGlobalConfigPath]: 'new global config',
+      [p.oldTxt]: 'old txt',
+      [p.newTxt]: 'new txt',
+      [p.oldXml]: 'old xml',
+      [p.newXml]: 'new xml',
+      [p.oldMd]: 'old md',
+      [p.newMd]: 'new md',
+    };
+    await writeFiles(files);
 
     // Mock user confirming migration but declining overwrites
-    vi.mocked(prompts.confirm)
+    mockConfirm
       .mockResolvedValueOnce(true) // Migration confirmation
       .mockResolvedValue(false); // All overwrite confirmations
 
     // Run migration
-    const result = await runMigrationAction(mockRootDir);
+    const result = await runMigrationAction(rootDir, deps);
 
     // Verify nothing was migrated
     expect(result.configMigrated).toBe(false);
     expect(result.ignoreMigrated).toBe(false);
     expect(result.instructionMigrated).toBe(false);
     expect(result.outputFilesMigrated).toHaveLength(0);
+    expect(result.globalConfigMigrated).toBe(false);
     expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('Skipping migration'));
+    for (const [filePath, content] of Object.entries(files)) {
+      expect(await fs.readFile(filePath, 'utf8')).toBe(content);
+    }
   });
 });

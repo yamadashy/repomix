@@ -1,236 +1,246 @@
-import * as fs from 'node:fs/promises';
+import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
-import * as prompts from '@clack/prompts';
+import type * as prompts from '@clack/prompts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createConfigFile, createIgnoreFile } from '../../../src/cli/actions/initAction.js';
-import { getGlobalDirectory } from '../../../src/config/globalDirectory.js';
 
-vi.mock('node:fs/promises');
-vi.mock('@clack/prompts');
-vi.mock('../../../src/shared/folderUtils');
-vi.mock('../../../src/config/globalDirectory.js');
+const createMockPrompts = () => ({
+  confirm: vi.fn(),
+  group: vi.fn(),
+  isCancel: vi.fn().mockReturnValue(false),
+  cancel: vi.fn(),
+  log: { info: vi.fn(), success: vi.fn() },
+});
+
+const pathExists = async (filePath: string) =>
+  fs.access(filePath).then(
+    () => true,
+    () => false,
+  );
 
 describe('initAction', () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
+  let rootDir: string;
+  let globalDir: string;
+  let mockPrompts: ReturnType<typeof createMockPrompts>;
+  let deps: { prompts: typeof prompts; getGlobalDirectory: () => string };
+
+  beforeEach(async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-init-action-'));
+    rootDir = path.join(tempDir, 'project');
+    globalDir = path.join(tempDir, 'global', 'repomix');
+    await fs.mkdir(rootDir);
+
+    mockPrompts = createMockPrompts();
+    deps = {
+      prompts: mockPrompts as unknown as typeof prompts,
+      getGlobalDirectory: () => globalDir,
+    };
   });
 
-  afterEach(() => {
-    vi.resetAllMocks();
+  afterEach(async () => {
+    await fs.rm(path.dirname(rootDir), { recursive: true, force: true });
+    vi.restoreAllMocks();
   });
 
   describe('createConfigFile', () => {
     it('should create a new local config file when one does not exist', async () => {
-      vi.mocked(fs.access).mockRejectedValue(new Error('File does not exist'));
-      vi.mocked(prompts.group).mockResolvedValue({
+      mockPrompts.group.mockResolvedValue({
         outputFilePath: 'custom-output.txt',
         outputStyle: 'xml',
       });
-      vi.mocked(prompts.confirm).mockResolvedValue(true);
+      mockPrompts.confirm.mockResolvedValue(true);
 
-      await createConfigFile('/test/dir', false);
+      await createConfigFile(rootDir, false, deps);
 
-      const configPath = path.resolve('/test/dir/repomix.config.json');
-
-      expect(fs.writeFile).toHaveBeenCalledWith(configPath, expect.stringContaining('"filePath": "custom-output.txt"'));
-      expect(fs.writeFile).toHaveBeenCalledWith(configPath, expect.stringContaining('"style": "xml"'));
+      const content = await fs.readFile(path.join(rootDir, 'repomix.config.json'), 'utf8');
+      expect(content).toContain('"filePath": "custom-output.txt"');
+      expect(content).toContain('"style": "xml"');
     });
 
     it('should create a new global config file when one does not exist', async () => {
-      vi.mocked(fs.access).mockRejectedValue(new Error('File does not exist'));
-      vi.mocked(prompts.group).mockResolvedValue({
+      mockPrompts.group.mockResolvedValue({
         outputFilePath: 'global-output.txt',
         outputStyle: 'plain',
       });
-      vi.mocked(prompts.confirm).mockResolvedValue(true);
-      vi.mocked(getGlobalDirectory).mockImplementation(() => '/global/repomix');
+      mockPrompts.confirm.mockResolvedValue(true);
 
-      await createConfigFile('/test/dir', true);
+      await createConfigFile(rootDir, true, deps);
 
-      const configPath = path.resolve('/global/repomix/repomix.config.json');
-
-      expect(fs.mkdir).toHaveBeenCalledWith(path.dirname(configPath), { recursive: true });
-      expect(fs.writeFile).toHaveBeenCalledWith(configPath, expect.stringContaining('"filePath": "global-output.txt"'));
-      expect(fs.writeFile).toHaveBeenCalledWith(configPath, expect.stringContaining('"style": "plain"'));
+      // The global directory does not exist beforehand, so this also covers its recursive creation
+      const content = await fs.readFile(path.join(globalDir, 'repomix.config.json'), 'utf8');
+      expect(content).toContain('"filePath": "global-output.txt"');
+      expect(content).toContain('"style": "plain"');
+      expect(await pathExists(path.join(rootDir, 'repomix.config.json'))).toBe(false);
     });
 
     it('should prompt to overwrite when config file already exists', async () => {
-      vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(prompts.confirm).mockResolvedValue(true);
-      vi.mocked(prompts.group).mockResolvedValue({
+      const configPath = path.join(rootDir, 'repomix.config.json');
+      await fs.writeFile(configPath, 'existing');
+      mockPrompts.confirm.mockResolvedValue(true);
+      mockPrompts.group.mockResolvedValue({
         outputFilePath: 'new-output.txt',
         outputStyle: 'xml',
       });
 
-      await createConfigFile('/test/dir', false);
+      await createConfigFile(rootDir, false, deps);
 
-      expect(prompts.confirm).toHaveBeenCalled();
-      expect(fs.writeFile).toHaveBeenCalled();
+      expect(mockPrompts.confirm).toHaveBeenCalled();
+      expect(await fs.readFile(configPath, 'utf8')).toContain('"filePath": "new-output.txt"');
     });
 
     it('should not overwrite when user chooses not to', async () => {
-      vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(prompts.confirm).mockResolvedValue(false);
+      const configPath = path.join(rootDir, 'repomix.config.json');
+      await fs.writeFile(configPath, 'existing');
+      mockPrompts.confirm.mockResolvedValue(false);
 
-      await createConfigFile('/test/dir', false);
+      await createConfigFile(rootDir, false, deps);
 
-      expect(prompts.confirm).toHaveBeenCalled();
-      expect(fs.writeFile).not.toHaveBeenCalled();
+      expect(mockPrompts.confirm).toHaveBeenCalled();
+      expect(await fs.readFile(configPath, 'utf8')).toBe('existing');
     });
 
     it('should handle user cancellation', async () => {
-      vi.mocked(fs.access).mockRejectedValue(new Error('File does not exist'));
-      vi.mocked(prompts.group).mockImplementation(() => {
+      mockPrompts.group.mockImplementation(() => {
         throw new Error('User cancelled');
       });
 
-      await createConfigFile('/test/dir', false);
+      await createConfigFile(rootDir, false, deps);
 
-      expect(fs.writeFile).not.toHaveBeenCalled();
+      expect(await pathExists(path.join(rootDir, 'repomix.config.json'))).toBe(false);
     });
 
     it('should return false when user cancels initial confirmation', async () => {
-      vi.mocked(prompts.confirm).mockResolvedValue(false);
+      mockPrompts.confirm.mockResolvedValue(false);
 
-      const result = await createConfigFile('/test/dir', false);
+      const result = await createConfigFile(rootDir, false, deps);
 
       expect(result).toBe(false);
-      expect(fs.writeFile).not.toHaveBeenCalled();
+      expect(await pathExists(path.join(rootDir, 'repomix.config.json'))).toBe(false);
     });
 
     it('should return false when user cancels via isCancel on initial confirmation', async () => {
       const mockCancelSymbol = Symbol('cancel');
-      vi.mocked(prompts.confirm).mockResolvedValue(mockCancelSymbol as symbol);
-      vi.mocked(prompts.isCancel).mockImplementation((value) => value === mockCancelSymbol);
+      mockPrompts.confirm.mockResolvedValue(mockCancelSymbol);
+      mockPrompts.isCancel.mockImplementation((value) => value === mockCancelSymbol);
 
       const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
-      await createConfigFile('/test/dir', false);
+      await createConfigFile(rootDir, false, deps);
 
       expect(mockExit).toHaveBeenCalledWith(0);
-      expect(fs.writeFile).not.toHaveBeenCalled();
-
-      mockExit.mockRestore();
+      expect(await pathExists(path.join(rootDir, 'repomix.config.json'))).toBe(false);
     });
 
     it('should return false when user cancels via isCancel on overwrite confirmation', async () => {
-      vi.mocked(fs.access).mockResolvedValue(undefined); // File exists
-      vi.mocked(prompts.confirm).mockResolvedValueOnce(true); // Initial confirmation
+      const configPath = path.join(rootDir, 'repomix.config.json');
+      await fs.writeFile(configPath, 'existing'); // File exists
+      mockPrompts.confirm.mockResolvedValueOnce(true); // Initial confirmation
       const mockCancelSymbol = Symbol('cancel');
-      vi.mocked(prompts.confirm).mockResolvedValueOnce(mockCancelSymbol as symbol); // Overwrite cancel
-      vi.mocked(prompts.isCancel).mockImplementation((value) => value === mockCancelSymbol);
+      mockPrompts.confirm.mockResolvedValueOnce(mockCancelSymbol); // Overwrite cancel
+      mockPrompts.isCancel.mockImplementation((value) => value === mockCancelSymbol);
 
       const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
-      await createConfigFile('/test/dir', false);
+      await createConfigFile(rootDir, false, deps);
 
       expect(mockExit).toHaveBeenCalledWith(0);
-      expect(fs.writeFile).not.toHaveBeenCalled();
-
-      mockExit.mockRestore();
+      expect(await fs.readFile(configPath, 'utf8')).toBe('existing');
     });
 
     it('should return true when config file is successfully created', async () => {
-      vi.mocked(fs.access).mockRejectedValue(new Error('File does not exist'));
-      vi.mocked(prompts.confirm).mockResolvedValue(true);
-      vi.mocked(prompts.group).mockResolvedValue({
+      mockPrompts.confirm.mockResolvedValue(true);
+      mockPrompts.group.mockResolvedValue({
         outputFilePath: 'output.txt',
         outputStyle: 'xml',
       });
 
-      const result = await createConfigFile('/test/dir', false);
+      const result = await createConfigFile(rootDir, false, deps);
 
       expect(result).toBe(true);
-      expect(fs.writeFile).toHaveBeenCalled();
+      expect(await pathExists(path.join(rootDir, 'repomix.config.json'))).toBe(true);
     });
   });
 
   describe('createIgnoreFile', () => {
+    const ignoreFilePath = () => path.join(rootDir, '.repomixignore');
+
     it('should not create a new .repomixignore file when global flag is set', async () => {
-      const result = await createIgnoreFile('/test/dir', true);
+      const result = await createIgnoreFile(rootDir, true, deps);
 
       expect(result).toBe(false);
-      expect(fs.writeFile).not.toHaveBeenCalled();
+      expect(await pathExists(ignoreFilePath())).toBe(false);
     });
 
     it('should create a new .repomixignore file when one does not exist', async () => {
-      vi.mocked(fs.access).mockRejectedValue(new Error('File does not exist'));
-      vi.mocked(prompts.confirm).mockResolvedValue(true);
+      mockPrompts.confirm.mockResolvedValue(true);
 
-      await createIgnoreFile('/test/dir', false);
+      await createIgnoreFile(rootDir, false, deps);
 
-      const ignorePath = path.resolve('/test/dir/.repomixignore');
-
-      expect(fs.writeFile).toHaveBeenCalledWith(
-        ignorePath,
-        expect.stringContaining('# Add patterns to ignore here, one per line'),
-      );
+      expect(await fs.readFile(ignoreFilePath(), 'utf8')).toContain('# Add patterns to ignore here, one per line');
     });
 
     it('should prompt to overwrite when .repomixignore file already exists', async () => {
-      vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(prompts.confirm)
+      await fs.writeFile(ignoreFilePath(), 'existing');
+      mockPrompts.confirm
         .mockResolvedValueOnce(true) // First call for creating the file
         .mockResolvedValueOnce(true); // Second call for overwriting
 
-      await createIgnoreFile('/test/dir', false);
+      await createIgnoreFile(rootDir, false, deps);
 
-      expect(prompts.confirm).toHaveBeenCalledTimes(2);
-      expect(fs.writeFile).toHaveBeenCalled();
+      expect(mockPrompts.confirm).toHaveBeenCalledTimes(2);
+      expect(await fs.readFile(ignoreFilePath(), 'utf8')).toContain('# Add patterns to ignore here');
     });
 
     it('should not overwrite when user chooses not to', async () => {
-      vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(prompts.confirm)
+      await fs.writeFile(ignoreFilePath(), 'existing');
+      mockPrompts.confirm
         .mockResolvedValueOnce(true) // First call for creating the file
         .mockResolvedValueOnce(false); // Second call for overwriting
 
-      await createIgnoreFile('/test/dir', false);
+      await createIgnoreFile(rootDir, false, deps);
 
-      expect(prompts.confirm).toHaveBeenCalledTimes(2);
-      expect(fs.writeFile).not.toHaveBeenCalled();
+      expect(mockPrompts.confirm).toHaveBeenCalledTimes(2);
+      expect(await fs.readFile(ignoreFilePath(), 'utf8')).toBe('existing');
     });
 
     it('should return false when user chooses not to create .repomixignore', async () => {
-      vi.mocked(prompts.confirm).mockResolvedValue(false);
+      mockPrompts.confirm.mockResolvedValue(false);
 
-      const result = await createIgnoreFile('/test/dir', false);
+      const result = await createIgnoreFile(rootDir, false, deps);
 
       expect(result).toBe(false);
-      expect(fs.writeFile).not.toHaveBeenCalled();
+      expect(await pathExists(ignoreFilePath())).toBe(false);
     });
 
     it('should handle user cancellation', async () => {
-      vi.mocked(prompts.confirm).mockResolvedValue(false);
+      mockPrompts.confirm.mockResolvedValue(false);
 
-      await createIgnoreFile('/test/dir', false);
+      await createIgnoreFile(rootDir, false, deps);
 
-      expect(fs.writeFile).not.toHaveBeenCalled();
+      expect(await pathExists(ignoreFilePath())).toBe(false);
     });
 
     it('should return false when user cancels via isCancel on initial confirmation', async () => {
       const mockCancelSymbol = Symbol('cancel');
-      vi.mocked(prompts.confirm).mockResolvedValue(mockCancelSymbol as symbol);
-      vi.mocked(prompts.isCancel).mockImplementation((value) => value === mockCancelSymbol);
+      mockPrompts.confirm.mockResolvedValue(mockCancelSymbol);
+      mockPrompts.isCancel.mockImplementation((value) => value === mockCancelSymbol);
 
       const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
-      await createIgnoreFile('/test/dir', false);
+      await createIgnoreFile(rootDir, false, deps);
 
       expect(mockExit).toHaveBeenCalledWith(0);
-      expect(fs.writeFile).not.toHaveBeenCalled();
-
-      mockExit.mockRestore();
+      expect(await pathExists(ignoreFilePath())).toBe(false);
     });
 
     it('should return true when ignore file is successfully created', async () => {
-      vi.mocked(fs.access).mockRejectedValue(new Error('File does not exist'));
-      vi.mocked(prompts.confirm).mockResolvedValue(true);
+      mockPrompts.confirm.mockResolvedValue(true);
 
-      const result = await createIgnoreFile('/test/dir', false);
+      const result = await createIgnoreFile(rootDir, false, deps);
 
       expect(result).toBe(true);
-      expect(fs.writeFile).toHaveBeenCalled();
+      expect(await pathExists(ignoreFilePath())).toBe(true);
     });
   });
 });
