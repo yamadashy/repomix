@@ -1,26 +1,9 @@
 import path from 'node:path';
 import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { runCli } from '../../../src/cli/cliRun.js';
-import {
-  createToolWorkspace,
-  formatPackToolResponse,
-  removeToolWorkspace,
-} from '../../../src/mcp/tools/mcpToolRuntime.js';
+import type { runCliPreservingLogLevel } from '../../../src/mcp/tools/mcpToolRuntime.js';
 import { registerPackRemoteRepositoryTool } from '../../../src/mcp/tools/packRemoteRepositoryTool.js';
 import { createMockConfig } from '../../testing/testUtils.js';
-
-vi.mock('node:path');
-vi.mock('../../../src/cli/cliRun.js');
-vi.mock('../../../src/mcp/tools/mcpToolRuntime.js', async () => {
-  const actual = await vi.importActual('../../../src/mcp/tools/mcpToolRuntime.js');
-  return {
-    ...actual,
-    createToolWorkspace: vi.fn(),
-    formatPackToolResponse: vi.fn(),
-    removeToolWorkspace: vi.fn(),
-  };
-});
 
 describe('PackRemoteRepositoryTool', () => {
   const mockServer = {
@@ -36,6 +19,9 @@ describe('PackRemoteRepositoryTool', () => {
     topFilesLength?: number;
     style?: 'xml' | 'markdown' | 'json' | 'plain';
   }) => Promise<CallToolResult>;
+
+  let deps: NonNullable<Parameters<typeof registerPackRemoteRepositoryTool>[1]>;
+  let runCli: ReturnType<typeof vi.fn<typeof runCliPreservingLogLevel>>;
 
   const defaultPackResult = {
     totalFiles: 10,
@@ -55,17 +41,21 @@ describe('PackRemoteRepositoryTool', () => {
 
   beforeEach(() => {
     vi.resetAllMocks();
-    registerPackRemoteRepositoryTool(mockServer);
-    toolHandler = (mockServer.registerTool as ReturnType<typeof vi.fn>).mock.calls[0][2];
+    runCli = vi.fn<typeof runCliPreservingLogLevel>();
+    deps = {
+      createToolWorkspace: vi.fn().mockResolvedValue('/temp/dir'),
+      formatPackToolResponse: vi.fn().mockResolvedValue({
+        content: [{ type: 'text', text: 'Success response' }],
+      }),
+      removeToolWorkspace: vi.fn(),
+      runCliPreservingLogLevel: runCli,
+    };
+    registerPackRemoteRepositoryTool(mockServer, deps);
+    const handler = (mockServer.registerTool as ReturnType<typeof vi.fn>).mock.calls[0][2];
+    // The SDK applies the schema default for `style` before invoking the handler.
+    toolHandler = (args, ctx?: unknown) => handler({ style: 'xml', ...args }, ctx);
 
-    vi.mocked(path.join).mockImplementation((...args) => args.join('/'));
-
-    vi.mocked(createToolWorkspace).mockResolvedValue('/temp/dir');
-    vi.mocked(formatPackToolResponse).mockResolvedValue({
-      content: [{ type: 'text', text: 'Success response' }],
-    });
-
-    vi.mocked(runCli).mockImplementation(async (_directories, cwd, opts = {}) => ({
+    runCli.mockImplementation(async (_directories, cwd, opts = {}) => ({
       packResult: defaultPackResult,
       config: createMockConfig({
         output: {
@@ -110,13 +100,13 @@ describe('PackRemoteRepositoryTool', () => {
       }),
       undefined,
     );
-    // path is fully determined by mocked createToolWorkspace + mocked path.join
-    // (see beforeEach: '/temp/dir' + '/' + defaultFilePathMap[style]).
+    // path is fully determined by the createToolWorkspace double + path.join
+    // (see beforeEach: '/temp/dir' joined with defaultFilePathMap[style]).
     // Hard-coding instead of expect.any(String) catches arg-swap regressions.
-    expect(formatPackToolResponse).toHaveBeenCalledWith(
+    expect(deps.formatPackToolResponse).toHaveBeenCalledWith(
       { repository: 'yamadashy/repomix' },
       defaultPackResult,
-      '/temp/dir/repomix-output.md',
+      path.join('/temp/dir', 'repomix-output.md'),
       7,
     );
   });
@@ -143,7 +133,7 @@ describe('PackRemoteRepositoryTool', () => {
   });
 
   test('returns an error response when runCli yields no result', async () => {
-    vi.mocked(runCli).mockResolvedValue(undefined);
+    runCli.mockResolvedValue(undefined);
 
     const result = await toolHandler({ remote: 'user/repo' });
 
@@ -153,7 +143,7 @@ describe('PackRemoteRepositoryTool', () => {
   });
 
   test('returns an error response when runCli throws', async () => {
-    vi.mocked(runCli).mockRejectedValue(new Error('Clone failed'));
+    runCli.mockRejectedValue(new Error('Clone failed'));
 
     const result = await toolHandler({ remote: 'user/repo' });
 
@@ -164,7 +154,7 @@ describe('PackRemoteRepositoryTool', () => {
 
   test('passes the request abort signal to runCli and cleans up when cancelled', async () => {
     const controller = new AbortController();
-    vi.mocked(runCli).mockImplementationOnce(async () => {
+    runCli.mockImplementationOnce(async () => {
       controller.abort();
       throw controller.signal.reason;
     });
@@ -181,11 +171,11 @@ describe('PackRemoteRepositoryTool', () => {
       expect.objectContaining({ signal: controller.signal }),
       undefined,
     );
-    expect(removeToolWorkspace).toHaveBeenCalledWith('/temp/dir');
+    expect(deps.removeToolWorkspace).toHaveBeenCalledWith('/temp/dir');
   });
 
   test('returns an error response when workspace creation fails', async () => {
-    vi.mocked(createToolWorkspace).mockRejectedValue(new Error('mkdtemp failed'));
+    vi.mocked(deps.createToolWorkspace).mockRejectedValue(new Error('mkdtemp failed'));
 
     const result = await toolHandler({ remote: 'user/repo' });
 

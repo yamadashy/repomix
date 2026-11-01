@@ -65,7 +65,15 @@ const packRemoteRepositoryOutputSchema = z.object({
   totalTokens: z.number().describe('Total token count of the content'),
 });
 
-export const registerPackRemoteRepositoryTool = (mcpServer: McpServer) => {
+export const registerPackRemoteRepositoryTool = (
+  mcpServer: McpServer,
+  deps = {
+    createToolWorkspace,
+    formatPackToolResponse,
+    removeToolWorkspace,
+    runCliPreservingLogLevel,
+  },
+) => {
   mcpServer.registerTool(
     'pack_remote_repository',
     {
@@ -90,7 +98,7 @@ export const registerPackRemoteRepositoryTool = (mcpServer: McpServer) => {
       const signal = ctx?.mcpReq.signal;
 
       try {
-        tempDir = await createToolWorkspace();
+        tempDir = await deps.createToolWorkspace();
         const outputFileName = defaultFilePathMap[style as keyof typeof defaultFilePathMap];
         const outputFilePath = path.join(tempDir, outputFileName);
 
@@ -109,7 +117,7 @@ export const registerPackRemoteRepositoryTool = (mcpServer: McpServer) => {
         } as CliOptions;
 
         const result = await withMcpProgress(ctx, { sandboxed: false }, (progressCallback) =>
-          runCliPreservingLogLevel(['.'], process.cwd(), cliOptions, progressCallback),
+          deps.runCliPreservingLogLevel(['.'], process.cwd(), cliOptions, progressCallback),
         );
         if (!result) {
           return buildMcpToolErrorResponse({
@@ -123,7 +131,7 @@ export const registerPackRemoteRepositoryTool = (mcpServer: McpServer) => {
         // The echoed repository is descriptive metadata only, so it is redacted:
         // a credentialed remote would otherwise persist in the MCP transcript,
         // the client's logs, and the model's context.
-        return await formatPackToolResponse(
+        return await deps.formatPackToolResponse(
           { repository: redactUrl(remote) },
           packResult,
           outputFilePath,
@@ -134,7 +142,7 @@ export const registerPackRemoteRepositoryTool = (mcpServer: McpServer) => {
       } finally {
         // The SDK never delivers a cancelled request's response, so nothing will read
         // this workspace's output.
-        if (signal?.aborted && tempDir) await removeToolWorkspace(tempDir);
+        if (signal?.aborted && tempDir) await deps.removeToolWorkspace(tempDir);
       }
     },
   );

@@ -3,26 +3,30 @@ import os from 'node:os';
 import path from 'node:path';
 import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import type { runCli } from '../../../src/cli/cliRun.js';
 import { registerFileSystemReadDirectoryTool } from '../../../src/mcp/tools/fileSystemReadDirectoryTool.js';
 import { registerFileSystemReadFileTool } from '../../../src/mcp/tools/fileSystemReadFileTool.js';
 import { registerGrepRepomixOutputTool } from '../../../src/mcp/tools/grepRepomixOutputTool.js';
-import { registerOutputFile } from '../../../src/mcp/tools/mcpToolRuntime.js';
+import {
+  createToolWorkspace,
+  formatPackToolResponse,
+  registerOutputFile,
+  removeToolWorkspace,
+  runCliPreservingLogLevel,
+} from '../../../src/mcp/tools/mcpToolRuntime.js';
 import { registerPackCodebaseTool } from '../../../src/mcp/tools/packCodebaseTool.js';
 import { registerReadRepomixOutputTool } from '../../../src/mcp/tools/readRepomixOutputTool.js';
 import { logger, repomixLogLevels } from '../../../src/shared/logger.js';
 
 // BLACKBOX CONTRACT for --sandbox. Drives the five tool handlers on a REAL temp
 // workspace (no path/fs mocks) and asserts only observable request→response
-// behavior. `runCli` is mocked ONLY to (a) prove the pattern/path guard rejects
+// behavior. `runCli` is a test double ONLY to (a) prove the pattern/path guard rejects
 // BEFORE the pack runs and (b) inject a failure for the error-leak assertions —
 // the real pack pipeline needs the built lib and is exercised in the e2e suite.
 //
 // This suite must remain valid before AND after the internal boundary refactor.
 // If an assertion here breaks without an observable behavior change, THIS test was
 // coupled to implementation — fix the test, not the contract.
-vi.mock('../../../src/cli/cliRun.js', () => ({ runCli: vi.fn() }));
-
-import { runCli } from '../../../src/cli/cliRun.js';
 import { structuredContentOf } from '../../testing/testUtils.js';
 
 // ── escape variants the guard MUST reject (host-aware) ────────────────────────
@@ -76,6 +80,17 @@ const capture = (register: (s: McpServer, c: { sandboxed: boolean; root: string 
   register(server, { sandboxed: true, root });
   return (server.registerTool as ReturnType<typeof vi.fn>).mock.calls[0][2];
 };
+// Stands in for the CLI behind the real log-level-preserving wrapper, so the pack tool
+// keeps its real workspace, response and log-level handling.
+const runCliDouble = vi.fn<typeof runCli>();
+const registerPackWithCliDouble = (s: McpServer, c: { sandboxed: boolean; root: string }) =>
+  registerPackCodebaseTool(s, c, {
+    createToolWorkspace,
+    formatPackToolResponse,
+    removeToolWorkspace,
+    runCliPreservingLogLevel: (directories, cwd, options, progressCallback) =>
+      runCliPreservingLogLevel(directories, cwd, options, progressCallback, { runCli: runCliDouble }),
+  });
 const textOf = (r: CallToolResult): string => (r.content?.[0] as { text?: string })?.text ?? '';
 const rejectedAsEscape = (r: CallToolResult): boolean => r.isError === true && /workspace root/i.test(textOf(r));
 
@@ -91,7 +106,7 @@ describe('sandbox contract', () => {
     await fsp.writeFile(path.join(root, 'src', 'a.ts'), 'const x = 1;\n');
     readFile = capture(registerFileSystemReadFileTool, root);
     readDir = capture(registerFileSystemReadDirectoryTool, root);
-    pack = capture(registerPackCodebaseTool, root);
+    pack = capture(registerPackWithCliDouble, root);
   });
   afterEach(async () => {
     vi.resetAllMocks();
@@ -200,7 +215,7 @@ describe('sandbox contract', () => {
     test.each(ESCAPING)('pack rejects escaping directory %j (guard runs before runCli)', async (p) => {
       const r = await pack({ directory: p, compress: false, topFilesLength: 10, style: 'xml' });
       expect(rejectedAsEscape(r), `pack should reject directory ${p}`).toBe(true);
-      expect(runCli).not.toHaveBeenCalled();
+      expect(runCliDouble).not.toHaveBeenCalled();
       assertNoHostPath(r);
     });
     test.each(ESCAPING_PATTERNS)('pack rejects includePatterns %j', async (pattern) => {
@@ -212,7 +227,7 @@ describe('sandbox contract', () => {
         style: 'xml',
       });
       expect(rejectedAsEscape(r), `includePatterns ${pattern} should be rejected`).toBe(true);
-      expect(runCli).not.toHaveBeenCalled();
+      expect(runCliDouble).not.toHaveBeenCalled();
       assertNoHostPath(r);
     });
     test.each(ESCAPING_PATTERNS)('pack rejects ignorePatterns %j', async (pattern) => {
@@ -224,19 +239,19 @@ describe('sandbox contract', () => {
         style: 'xml',
       });
       expect(rejectedAsEscape(r), `ignorePatterns ${pattern} should be rejected`).toBe(true);
-      expect(runCli).not.toHaveBeenCalled();
+      expect(runCliDouble).not.toHaveBeenCalled();
       assertNoHostPath(r);
     });
     test.each(ALLOWED_PATTERNS)('pack ACCEPTS relative pattern %j (reaches runCli)', async (pattern) => {
       await pack({ directory: '.', includePatterns: pattern, compress: false, topFilesLength: 10, style: 'xml' });
-      expect(runCli, `${pattern} should pass the guard`).toHaveBeenCalled();
+      expect(runCliDouble, `${pattern} should pass the guard`).toHaveBeenCalled();
     });
     test('a sandboxed pack locks down runCli: skips config, confines the search, disables git sort', async () => {
       // The lockdown is what keeps a sandboxed pack from reading the workspace's own
       // repomix.config / .git/config or matching outside root. gitSortByChanges:false
       // in particular stops `git -C <workspace> log` from spawning gpg.program.
       await pack({ directory: '.', compress: false, topFilesLength: 10, style: 'xml' });
-      const cliOptions = vi.mocked(runCli).mock.calls[0]?.[2];
+      const cliOptions = runCliDouble.mock.calls[0]?.[2];
       expect(cliOptions).toMatchObject({
         skipLocalConfig: true,
         skipGlobalConfig: true,
@@ -253,7 +268,7 @@ describe('sandbox contract', () => {
       expect(textOf(r)).toContain('directory not found');
       expect(textOf(r)).toContain('scr');
       expect(textOf(r)).not.toContain('operation failed');
-      expect(runCli).not.toHaveBeenCalled();
+      expect(runCliDouble).not.toHaveBeenCalled();
       assertNoHostPath(r);
     });
     test('a pack restores the log level — it does not permanently silence the operator’s stderr', async () => {
@@ -261,7 +276,7 @@ describe('sandbox contract', () => {
       // it there, or every later tool's logger.error (the operator's only diagnostic
       // channel) is suppressed for the rest of the MCP session.
       logger.setLogLevel(repomixLogLevels.INFO);
-      vi.mocked(runCli).mockImplementationOnce(async () => {
+      runCliDouble.mockImplementationOnce(async () => {
         logger.setLogLevel(repomixLogLevels.SILENT); // mimic quiet:true inside runCli
         return undefined as unknown as Awaited<ReturnType<typeof runCli>>;
       });
@@ -288,7 +303,7 @@ describe('sandbox contract', () => {
       const install = '/opt/fake-install/repomix/lib/core/x.js';
       const err = new Error(`ENOENT: no such file or directory, open '${install}'`);
       err.stack = `Error\n    at f (${install}:1:1)`;
-      vi.mocked(runCli).mockRejectedValueOnce(err);
+      runCliDouble.mockRejectedValueOnce(err);
       const r = await pack({ directory: '.', compress: false, topFilesLength: 10, style: 'xml' });
       expect(r.isError).toBe(true);
       assertNoHostPath(r);
@@ -301,7 +316,7 @@ describe('sandbox contract', () => {
       // name fragment survives. Not forwarding error.message at all closes it.
       const install = '/opt/fake install/repomix lib/core/x.js';
       const err = new Error(`ENOENT: no such file or directory, open '${install}'`);
-      vi.mocked(runCli).mockRejectedValueOnce(err);
+      runCliDouble.mockRejectedValueOnce(err);
       const r = await pack({ directory: '.', compress: false, topFilesLength: 10, style: 'xml' });
       expect(r.isError).toBe(true);
       expect(JSON.stringify(r)).not.toContain('repomix lib'); // no surviving path fragment
@@ -322,7 +337,7 @@ describe('sandbox contract', () => {
         'Processing file... (3/3) C:\\Users\\victim\\src\\a.ts',
         'Calculating metrics... (3/3)',
       ];
-      vi.mocked(runCli).mockImplementationOnce(async (_dirs, _cwd, _opts, progressCallback) => {
+      runCliDouble.mockImplementationOnce(async (_dirs, _cwd, _opts, progressCallback) => {
         for (const message of pipelineMessages) progressCallback?.(message);
         return undefined as unknown as Awaited<ReturnType<typeof runCli>>;
       });

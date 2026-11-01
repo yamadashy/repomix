@@ -1,26 +1,8 @@
-import path from 'node:path';
 import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { runCli } from '../../../src/cli/cliRun.js';
-import {
-  createToolWorkspace,
-  formatPackToolResponse,
-  removeToolWorkspace,
-} from '../../../src/mcp/tools/mcpToolRuntime.js';
+import type { runCliPreservingLogLevel } from '../../../src/mcp/tools/mcpToolRuntime.js';
 import { registerPackCodebaseTool } from '../../../src/mcp/tools/packCodebaseTool.js';
 import { createMockConfig } from '../../testing/testUtils.js';
-
-vi.mock('node:path');
-vi.mock('../../../src/cli/cliRun.js');
-vi.mock('../../../src/mcp/tools/mcpToolRuntime.js', async () => {
-  const actual = await vi.importActual('../../../src/mcp/tools/mcpToolRuntime.js');
-  return {
-    ...actual,
-    createToolWorkspace: vi.fn(),
-    formatPackToolResponse: vi.fn(),
-    removeToolWorkspace: vi.fn(),
-  };
-});
 
 describe('PackCodebaseTool', () => {
   const mockServer = {
@@ -38,6 +20,9 @@ describe('PackCodebaseTool', () => {
     },
     ctx?: unknown,
   ) => Promise<CallToolResult>;
+
+  let deps: NonNullable<Parameters<typeof registerPackCodebaseTool>[2]>;
+  let runCli: ReturnType<typeof vi.fn<typeof runCliPreservingLogLevel>>;
 
   const defaultPackResult = {
     totalFiles: 10,
@@ -57,20 +42,21 @@ describe('PackCodebaseTool', () => {
 
   beforeEach(() => {
     vi.resetAllMocks();
-    registerPackCodebaseTool(mockServer);
-    toolHandler = (mockServer.registerTool as ReturnType<typeof vi.fn>).mock.calls[0][2];
+    runCli = vi.fn<typeof runCliPreservingLogLevel>();
+    deps = {
+      createToolWorkspace: vi.fn().mockResolvedValue('/temp/dir'),
+      formatPackToolResponse: vi.fn().mockResolvedValue({
+        content: [{ type: 'text', text: 'Success response' }],
+      }),
+      removeToolWorkspace: vi.fn(),
+      runCliPreservingLogLevel: runCli,
+    };
+    registerPackCodebaseTool(mockServer, undefined, deps);
+    const handler = (mockServer.registerTool as ReturnType<typeof vi.fn>).mock.calls[0][2];
+    // The SDK applies the schema default for `style` before invoking the handler.
+    toolHandler = (args, ctx?) => handler({ style: 'xml', ...args }, ctx);
 
-    // デフォルトのパスの動作をモック
-    vi.mocked(path.join).mockImplementation((...args) => args.join('/'));
-
-    // mcpToolRuntimeのデフォルトの動作をモック
-    vi.mocked(createToolWorkspace).mockResolvedValue('/temp/dir');
-    vi.mocked(formatPackToolResponse).mockResolvedValue({
-      content: [{ type: 'text', text: 'Success response' }],
-    });
-
-    // runCliのデフォルト動作
-    vi.mocked(runCli).mockImplementation(async (_directories, cwd, opts = {}) => ({
+    runCli.mockImplementation(async (_directories, cwd, opts = {}) => ({
       packResult: defaultPackResult,
       config: createMockConfig({
         input: {
@@ -148,9 +134,9 @@ describe('PackCodebaseTool', () => {
   });
 
   test('forwards pipeline progress as notifications/progress when the client sent a progressToken', async () => {
-    vi.mocked(runCli).mockImplementationOnce(async (_dirs, _cwd, _opts, progressCallback) => {
+    runCli.mockImplementationOnce(async (_dirs, _cwd, _opts, progressCallback) => {
       progressCallback?.('Searching for files...');
-      return undefined as unknown as Awaited<ReturnType<typeof runCli>>;
+      return undefined as unknown as Awaited<ReturnType<typeof runCliPreservingLogLevel>>;
     });
     const notify = vi.fn().mockResolvedValue(undefined);
 
@@ -168,12 +154,12 @@ describe('PackCodebaseTool', () => {
     await toolHandler({ directory: '/test/project' }, { mcpReq: { _meta: {}, notify: vi.fn(), signal } });
 
     expect(runCli).toHaveBeenCalledWith(['.'], '/test/project', expect.objectContaining({ signal }), undefined);
-    expect(removeToolWorkspace).not.toHaveBeenCalled();
+    expect(deps.removeToolWorkspace).not.toHaveBeenCalled();
   });
 
   test('removes the tool workspace when the request is cancelled', async () => {
     const controller = new AbortController();
-    vi.mocked(runCli).mockImplementationOnce(async () => {
+    runCli.mockImplementationOnce(async () => {
       controller.abort();
       throw controller.signal.reason;
     });
@@ -183,13 +169,13 @@ describe('PackCodebaseTool', () => {
       { mcpReq: { _meta: {}, notify: vi.fn(), signal: controller.signal } },
     );
 
-    expect(removeToolWorkspace).toHaveBeenCalledWith('/temp/dir');
+    expect(deps.removeToolWorkspace).toHaveBeenCalledWith('/temp/dir');
   });
 
   test('passes no progress callback when the client sent no progressToken', async () => {
     const notify = vi.fn();
     await toolHandler({ directory: '/test/project' }, { mcpReq: { _meta: {}, notify } });
-    expect(vi.mocked(runCli).mock.calls[0][3]).toBeUndefined();
+    expect(runCli.mock.calls[0][3]).toBeUndefined();
     expect(notify).not.toHaveBeenCalled();
   });
 
@@ -216,7 +202,7 @@ describe('PackCodebaseTool', () => {
 
   test('should handle CLI execution failure', async () => {
     const testDir = '/test/project';
-    vi.mocked(runCli).mockResolvedValue(undefined);
+    runCli.mockResolvedValue(undefined);
 
     const result = await toolHandler({ directory: testDir });
 
@@ -231,7 +217,7 @@ describe('PackCodebaseTool', () => {
   test('should handle general error', async () => {
     const testDir = '/test/project';
     const error = new Error('Pack failed');
-    vi.mocked(runCli).mockRejectedValue(error);
+    runCli.mockRejectedValue(error);
 
     const result = await toolHandler({ directory: testDir });
 
@@ -246,7 +232,7 @@ describe('PackCodebaseTool', () => {
   test('should handle workspace creation error', async () => {
     const testDir = '/test/project';
     const error = new Error('Workspace creation failed');
-    vi.mocked(createToolWorkspace).mockRejectedValue(error);
+    vi.mocked(deps.createToolWorkspace).mockRejectedValue(error);
 
     const result = await toolHandler({ directory: testDir });
 
@@ -260,7 +246,7 @@ describe('PackCodebaseTool', () => {
 
   test('rejects a directory outside the allowed root when sandboxed', async () => {
     const server = { registerTool: vi.fn().mockReturnThis() } as unknown as McpServer;
-    registerPackCodebaseTool(server, { sandboxed: true, root: '/allowed/dir' });
+    registerPackCodebaseTool(server, { sandboxed: true, root: '/allowed/dir' }, deps);
     const handler = (server.registerTool as ReturnType<typeof vi.fn>).mock.calls[0][2];
 
     const result = await handler({ directory: '../../etc', compress: false, topFilesLength: 10, style: 'xml' });
