@@ -2,20 +2,24 @@ import pc from 'picocolors';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { logger, repomixLogLevels } from '../../src/shared/logger.js';
 
-vi.mock('picocolors', () => ({
-  default: {
-    red: vi.fn((str) => `RED:${str}`),
-    yellow: vi.fn((str) => `YELLOW:${str}`),
-    green: vi.fn((str) => `GREEN:${str}`),
-    cyan: vi.fn((str) => `CYAN:${str}`),
-    dim: vi.fn((str) => `DIM:${str}`),
-    blue: vi.fn((str) => `BLUE:${str}`),
-    gray: vi.fn((str) => `GRAY:${str}`),
-  },
-}));
+// Tag each color so assertions do not depend on whether the terminal supports colors.
+const stubColors = () => {
+  for (const [color, tag] of [
+    ['red', 'RED'],
+    ['yellow', 'YELLOW'],
+    ['green', 'GREEN'],
+    ['cyan', 'CYAN'],
+    ['dim', 'DIM'],
+    ['blue', 'BLUE'],
+    ['gray', 'GRAY'],
+  ] as const) {
+    vi.spyOn(pc, color).mockImplementation((str) => `${tag}:${str}`);
+  }
+};
 
 describe('logger', () => {
   beforeEach(() => {
+    stubColors();
     vi.spyOn(console, 'error').mockImplementation(vi.fn());
     vi.spyOn(console, 'log').mockImplementation(vi.fn());
     logger.init();
