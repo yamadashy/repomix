@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793518405419,
+  "lastUpdate": 1793531520493,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -15923,6 +15923,51 @@ window.BENCHMARK_DATA = {
             "range": "±25",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1324ms, Q3: 1349ms\nAll times: 1312, 1313, 1320, 1321, 1323, 1324, 1332, 1337, 1338, 1342, 1343, 1343, 1344, 1349, 1349, 1349, 1350, 1356, 1357, 1359ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5e4c6bef2f77b7e366f78b0a685fc8fdd9112bfd",
+          "message": "Merge pull request #1165 from hztBUAA/fix/ignore-file-with-custom-patterns\n\nfix: respect .ignore file when customPatterns is defined",
+          "timestamp": "2026-11-01T20:10:09+09:00",
+          "tree_id": "6970f4fc6859d49f36a86c11a97b424173e1558e",
+          "url": "https://github.com/yamadashy/repomix/commit/5e4c6bef2f77b7e366f78b0a685fc8fdd9112bfd"
+        },
+        "date": 1793531518807,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 860,
+            "range": "±73",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 823ms, Q3: 896ms\nAll times: 754, 768, 785, 802, 806, 813, 821, 823, 824, 836, 840, 843, 856, 860, 860, 860, 864, 868, 869, 869, 884, 890, 896, 903, 932, 941, 944, 1021, 1033, 1104ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 742,
+            "range": "±41",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 729ms, Q3: 770ms\nAll times: 715, 718, 723, 726, 727, 729, 731, 734, 735, 742, 742, 744, 745, 745, 746, 770, 828, 835, 844, 845ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1358,
+            "range": "±25",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1353ms, Q3: 1378ms\nAll times: 1330, 1331, 1340, 1342, 1346, 1353, 1353, 1354, 1357, 1357, 1358, 1359, 1360, 1371, 1375, 1378, 1378, 1393, 1395, 1404ms"
           }
         ]
       }
