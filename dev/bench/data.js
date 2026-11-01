@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793515873338,
+  "lastUpdate": 1793516717820,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -15833,6 +15833,51 @@ window.BENCHMARK_DATA = {
             "range": "±31",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1354ms, Q3: 1385ms\nAll times: 1340, 1341, 1347, 1352, 1353, 1354, 1358, 1360, 1366, 1366, 1368, 1374, 1374, 1382, 1383, 1385, 1385, 1386, 1388, 1435ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "55c0faff56fef965f9bafa3daa7674bff728244f",
+          "message": "Merge pull request #1980 from yamadashy/fix/remote-subpath-warning\n\nfix(remote): Warn when a remote URL path is ignored",
+          "timestamp": "2026-11-01T16:03:04+09:00",
+          "tree_id": "e341e5b6f3b72aa288f734b6f6e9372af1f2bcfa",
+          "url": "https://github.com/yamadashy/repomix/commit/55c0faff56fef965f9bafa3daa7674bff728244f"
+        },
+        "date": 1793516716391,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 615,
+            "range": "±27",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 602ms, Q3: 629ms\nAll times: 575, 576, 582, 582, 591, 594, 600, 602, 608, 608, 608, 609, 610, 613, 614, 615, 615, 616, 617, 618, 619, 625, 629, 631, 631, 633, 636, 645, 656, 742ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 617,
+            "range": "±23",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 610ms, Q3: 633ms\nAll times: 595, 598, 599, 608, 608, 610, 613, 613, 614, 614, 617, 619, 620, 622, 624, 633, 639, 643, 645, 654ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1006,
+            "range": "±24",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 997ms, Q3: 1021ms\nAll times: 987, 989, 990, 990, 995, 997, 998, 1002, 1004, 1005, 1006, 1011, 1015, 1020, 1021, 1021, 1025, 1049, 1060, 5246ms"
           }
         ]
       }
