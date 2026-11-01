@@ -5,6 +5,7 @@ import { applyLightweightTransforms, processFiles } from '../../../src/core/file
 import { processContent } from '../../../src/core/file/fileProcessContent.js';
 import type { ProcessedFile, RawFile } from '../../../src/core/file/fileTypes.js';
 import type { FileProcessTask } from '../../../src/core/file/workers/fileProcessWorker.js';
+import fileProcessWorker from '../../../src/core/file/workers/fileProcessWorker.js';
 import type { parseFile as parseFileType } from '../../../src/core/treeSitter/parseFile.js';
 import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
 import { silenceLogger } from '../../testing/coreFileGitLogger.js';
@@ -236,6 +237,39 @@ describe('fileProcess inclusion levels (output.patterns)', () => {
       );
 
       expect(result).toEqual([{ path: 'src/index.ts', content: 'Line 1\nLine 2' }]);
+    });
+  });
+
+  // The task runner above bypasses the worker entry point, so these run the real
+  // fileProcessWorker (with the real Tree-sitter parser) to pin that it forwards
+  // the precomputed level instead of re-deriving it from config.
+  describe('fileProcessWorker level forwarding', () => {
+    const source = 'export function add(a: number, b: number): number {\n  return a + b;\n}\n';
+
+    it('keeps full content when the task level is full even if global compress is on', async () => {
+      const config = createMockConfig({ output: { compress: true } });
+
+      const result = await fileProcessWorker({
+        rawFile: { path: 'src/add.ts', content: source },
+        config,
+        level: 'full',
+      });
+
+      expect(result).toEqual({ path: 'src/add.ts', content: source });
+    });
+
+    it('compresses when the task level is compress even if global compress is off', async () => {
+      const config = createMockConfig({ output: { compress: false } });
+
+      const result = await fileProcessWorker({
+        rawFile: { path: 'src/add.ts', content: source },
+        config,
+        level: 'compress',
+      });
+
+      expect(result.path).toBe('src/add.ts');
+      expect(result.content).not.toBe(source);
+      expect(result.content).toContain('add(a: number, b: number)');
     });
   });
 });
