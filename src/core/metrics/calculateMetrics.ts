@@ -81,8 +81,11 @@ export const createMetricsTaskRunner = (
   numOfTasks: number,
   encoding: TokenEncoding,
   signal?: AbortSignal,
+  deps = {
+    initTaskRunner,
+  },
 ): MetricsTaskRunnerWithWarmup => {
-  const taskRunner = initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
+  const taskRunner = deps.initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
     numOfTasks,
     workerType: 'calculateMetrics',
     runtime: 'worker_threads',
@@ -105,6 +108,7 @@ const defaultDeps = {
   calculateOutputMetrics,
   calculateGitDiffMetrics,
   calculateGitLogMetrics,
+  initTaskRunner,
   taskRunner: undefined as MetricsTaskRunner | undefined,
 };
 
@@ -166,7 +170,7 @@ export const calculateMetrics = async (
   // Initialize a single task runner for all metrics calculations
   const taskRunner =
     deps.taskRunner ??
-    initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
+    deps.initTaskRunner<MetricsWorkerTask, MetricsWorkerResult>({
       numOfTasks: processedFiles.length,
       workerType: 'calculateMetrics',
       runtime: 'worker_threads',

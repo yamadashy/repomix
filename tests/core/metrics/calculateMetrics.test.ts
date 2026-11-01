@@ -4,36 +4,19 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
 import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
-import { calculateFileMetrics } from '../../../src/core/metrics/calculateFileMetrics.js';
 import { calculateMetrics, createMetricsTaskRunner } from '../../../src/core/metrics/calculateMetrics.js';
 import { getRepoSeenMarkerPath } from '../../../src/core/metrics/tokenCountCache.js';
 import { getWorkerThreadCount } from '../../../src/shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../../src/shared/types.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
-vi.mock('../../../src/shared/processConcurrency.js', async (importOriginal) => {
-  const original = await importOriginal<typeof import('../../../src/shared/processConcurrency.js')>();
-  return {
-    ...original,
-    initTaskRunner: vi.fn(() => ({
-      run: vi.fn().mockResolvedValue(0),
-      cleanup: vi.fn().mockResolvedValue(undefined),
-    })),
-  };
-});
-vi.mock('../../../src/core/metrics/TokenCounter.js', () => {
-  return {
-    TOKEN_ENCODINGS: ['o200k_base', 'cl100k_base', 'p50k_base', 'p50k_edit', 'r50k_base'],
-    TokenCounter: vi.fn().mockImplementation(() => ({
-      countTokens: vi.fn().mockReturnValue(10),
-      free: vi.fn(),
-    })),
-  };
-});
-vi.mock('../../../src/core/metrics/aggregateMetrics.js');
-vi.mock('../../../src/core/metrics/calculateFileMetrics.js', () => ({
-  calculateFileMetrics: vi.fn(),
-}));
+// Stand-in for initTaskRunner: every created runner resolves tasks to 0 and
+// exposes its spies so tests can assert on warm-up dispatches.
+const createMockInitTaskRunner = () =>
+  vi.fn(() => ({
+    run: vi.fn().mockResolvedValue(0),
+    cleanup: vi.fn().mockResolvedValue(undefined),
+  }));
 
 describe('calculateMetrics', () => {
   it('should calculate metrics and return the result', async () => {
@@ -48,7 +31,7 @@ describe('calculateMetrics', () => {
       { path: 'file1.txt', charCount: 100, tokenCount: 10 },
       { path: 'file2.txt', charCount: 200, tokenCount: 20 },
     ];
-    (calculateFileMetrics as unknown as Mock).mockResolvedValue(fileMetrics);
+    const calculateFileMetrics = vi.fn().mockResolvedValue(fileMetrics);
 
     const aggregatedResult = {
       totalFiles: 2,
@@ -218,12 +201,8 @@ describe('calculateMetrics fast/slow path equivalence', () => {
     };
 
     // No taskRunner in deps means calculateMetrics owns the lifecycle.
-    // We need to mock initTaskRunner to return our spy so we can assert cleanup.
-    // Reset first so the override is unambiguously consumed by THIS calculateMetrics
-    // call, not silently picked up by an earlier test that omits taskRunner.
-    const { initTaskRunner } = await import('../../../src/shared/processConcurrency.js');
-    vi.mocked(initTaskRunner).mockReset();
-    vi.mocked(initTaskRunner).mockReturnValueOnce(failingTaskRunner);
+    // Inject initTaskRunner to return our spy so we can assert cleanup.
+    const initTaskRunner = vi.fn().mockReturnValue(failingTaskRunner);
 
     await expect(
       calculateMetrics(
@@ -240,18 +219,22 @@ describe('calculateMetrics fast/slow path equivalence', () => {
           calculateOutputMetrics: lengthBasedOutputMetrics,
           calculateGitDiffMetrics: () => Promise.resolve(0),
           calculateGitLogMetrics: () => Promise.resolve({ gitLogTokenCount: 0 }),
+          initTaskRunner,
           // Intentionally omit taskRunner so calculateMetrics creates and owns one.
         },
       ),
     ).rejects.toThrow('file metrics failed');
 
+    expect(initTaskRunner).toHaveBeenCalledTimes(1);
     expect(failingTaskRunner.cleanup).toHaveBeenCalledTimes(1);
   });
 });
 
 describe('createMetricsTaskRunner', () => {
   it('should return a taskRunner and warmupPromise', async () => {
-    const result = createMetricsTaskRunner([], 100, 'o200k_base');
+    const result = createMetricsTaskRunner([], 100, 'o200k_base', undefined, {
+      initTaskRunner: createMockInitTaskRunner(),
+    });
 
     expect(result).toHaveProperty('taskRunner');
     expect(result).toHaveProperty('warmupPromise');
@@ -263,7 +246,9 @@ describe('createMetricsTaskRunner', () => {
   });
 
   it('should fire a warmup task with empty content', async () => {
-    const result = createMetricsTaskRunner([], 50, 'cl100k_base');
+    const result = createMetricsTaskRunner([], 50, 'cl100k_base', undefined, {
+      initTaskRunner: createMockInitTaskRunner(),
+    });
 
     await result.warmupPromise;
 
@@ -271,13 +256,12 @@ describe('createMetricsTaskRunner', () => {
   });
 
   it('should swallow warmup task errors', async () => {
-    const { initTaskRunner } = await import('../../../src/shared/processConcurrency.js');
-    (initTaskRunner as Mock).mockReturnValueOnce({
+    const initTaskRunner = vi.fn().mockReturnValue({
       run: vi.fn().mockRejectedValue(new Error('init failed')),
       cleanup: vi.fn(),
     });
 
-    const result = createMetricsTaskRunner([], 10, 'o200k_base');
+    const result = createMetricsTaskRunner([], 10, 'o200k_base', undefined, { initTaskRunner });
 
     // warmupPromise should resolve (errors swallowed by .catch on each task)
     const resolved = await result.warmupPromise;
@@ -327,7 +311,9 @@ describe('createMetricsTaskRunner — cache-aware prewarm count', () => {
     await fs.mkdir(path.dirname(markerPath), { recursive: true });
     await fs.writeFile(markerPath, '');
 
-    const result = createMetricsTaskRunner([REPO_DIR], 1000, 'o200k_base');
+    const result = createMetricsTaskRunner([REPO_DIR], 1000, 'o200k_base', undefined, {
+      initTaskRunner: createMockInitTaskRunner(),
+    });
     await result.warmupPromise;
 
     expect(result.taskRunner.run).toHaveBeenCalledTimes(1);
@@ -339,7 +325,9 @@ describe('createMetricsTaskRunner — cache-aware prewarm count', () => {
     await fs.mkdir(path.dirname(cacheFile), { recursive: true });
     await fs.writeFile(cacheFile, '{"version":1,"entries":{}}');
 
-    const result = createMetricsTaskRunner([OTHER_REPO_DIR], 1000, 'o200k_base');
+    const result = createMetricsTaskRunner([OTHER_REPO_DIR], 1000, 'o200k_base', undefined, {
+      initTaskRunner: createMockInitTaskRunner(),
+    });
     await result.warmupPromise;
 
     // Compute the expected `maxThreads` from the same heuristic the production
@@ -351,7 +339,9 @@ describe('createMetricsTaskRunner — cache-aware prewarm count', () => {
 
   it('prewarms the full maxThreads when shared cache file is missing (cold)', async () => {
     // No cache file, no marker.
-    const result = createMetricsTaskRunner([REPO_DIR], 1000, 'o200k_base');
+    const result = createMetricsTaskRunner([REPO_DIR], 1000, 'o200k_base', undefined, {
+      initTaskRunner: createMockInitTaskRunner(),
+    });
     await result.warmupPromise;
 
     const { maxThreads } = getWorkerThreadCount(1000);

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { calculateOutputMetrics } from '../../../src/core/metrics/calculateOutputMetrics.js';
 import type { MetricsTaskRunner } from '../../../src/core/metrics/metricsWorkerRunner.js';
 import {
@@ -8,8 +8,7 @@ import {
 } from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
 import { logger } from '../../../src/shared/logger.js';
 import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
-
-vi.mock('../../../src/shared/logger');
+import { silenceLogger } from '../../testing/coreMetricsOutputDoubles.js';
 
 const mockInitTaskRunner = (_options: WorkerOptions): MetricsTaskRunner => {
   return {
@@ -23,6 +22,14 @@ const mockInitTaskRunner = (_options: WorkerOptions): MetricsTaskRunner => {
 };
 
 describe('calculateOutputMetrics', () => {
+  beforeEach(() => {
+    silenceLogger();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('should calculate metrics for output content', async () => {
     const content = 'test content';
     const encoding = 'o200k_base';

@@ -1,15 +1,9 @@
 import process from 'node:process';
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import { generateOutput } from '../../../../src/core/output/outputGenerate.js';
 import { createMockConfig } from '../../../testing/testUtils.js';
 
-vi.mock('fs/promises');
-
 describe('plainStyle', () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-  });
-
   test('generateOutput for plain should include user-provided header text', async () => {
     const mockConfig = createMockConfig({
       output: {

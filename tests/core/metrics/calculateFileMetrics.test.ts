@@ -12,10 +12,6 @@ import {
 import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../../src/shared/types.js';
 
-vi.mock('../../shared/processConcurrency', () => ({
-  getProcessConcurrency: () => 1,
-}));
-
 const mockInitTaskRunner = (_options: WorkerOptions): MetricsTaskRunner => {
   return {
     run: async (task: MetricsWorkerTask) => {
