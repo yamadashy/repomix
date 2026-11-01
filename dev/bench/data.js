@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793513584084,
+  "lastUpdate": 1793515068865,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -15743,6 +15743,51 @@ window.BENCHMARK_DATA = {
             "range": "±21",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1356ms, Q3: 1377ms\nAll times: 1333, 1343, 1349, 1351, 1351, 1356, 1359, 1360, 1365, 1365, 1368, 1370, 1371, 1372, 1375, 1377, 1385, 1390, 1391, 1453ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5a2f0655d9ff1f8cb9fab310cd5a1d811232d548",
+          "message": "Merge pull request #1982 from yamadashy/fix/scp-host-linear\n\nfix(security): Read scp-like remote hosts in linear time",
+          "timestamp": "2026-11-01T15:35:49+09:00",
+          "tree_id": "f5b444e76191d2761da6ce4eb39914b197c4ec1f",
+          "url": "https://github.com/yamadashy/repomix/commit/5a2f0655d9ff1f8cb9fab310cd5a1d811232d548"
+        },
+        "date": 1793515067286,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 636,
+            "range": "±39",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 623ms, Q3: 662ms\nAll times: 605, 611, 613, 616, 618, 621, 622, 623, 624, 624, 626, 627, 627, 631, 632, 636, 639, 646, 648, 658, 659, 659, 662, 671, 677, 689, 701, 766, 793, 901ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1014,
+            "range": "±36",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1005ms, Q3: 1041ms\nAll times: 991, 994, 1002, 1004, 1004, 1005, 1008, 1010, 1010, 1014, 1014, 1015, 1017, 1023, 1028, 1041, 1086, 1130, 1135, 1141ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1030,
+            "range": "±19",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1021ms, Q3: 1040ms\nAll times: 1010, 1012, 1013, 1017, 1019, 1021, 1026, 1026, 1028, 1029, 1030, 1034, 1035, 1036, 1039, 1040, 1045, 1050, 1067, 1087ms"
           }
         ]
       }
