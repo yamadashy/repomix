@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793510648152,
+  "lastUpdate": 1793512110991,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -15608,6 +15608,51 @@ window.BENCHMARK_DATA = {
             "range": "±26",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1311ms, Q3: 1337ms\nAll times: 1283, 1286, 1297, 1307, 1310, 1311, 1312, 1314, 1317, 1318, 1324, 1326, 1330, 1330, 1331, 1337, 1339, 1341, 1348, 1348ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ccbd7326ef3e5fd0ac9f54c97b966e91b3351c61",
+          "message": "Merge pull request #1922 from lux-liang/fix/windows-stdin-nested-paths\n\nfix(core): Preserve nested stdin paths on Windows",
+          "timestamp": "2026-11-01T14:46:50+09:00",
+          "tree_id": "3f43c5cd59db585949b0a9ad1d0dad5af014e3dd",
+          "url": "https://github.com/yamadashy/repomix/commit/ccbd7326ef3e5fd0ac9f54c97b966e91b3351c61"
+        },
+        "date": 1793512109397,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 860,
+            "range": "±213",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 761ms, Q3: 974ms\nAll times: 634, 668, 682, 683, 713, 726, 741, 761, 764, 818, 824, 827, 836, 842, 851, 860, 884, 889, 904, 941, 942, 955, 974, 1011, 1040, 1045, 1049, 1058, 1103, 1262ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 759,
+            "range": "±26",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 745ms, Q3: 771ms\nAll times: 736, 736, 739, 740, 745, 745, 749, 750, 753, 754, 759, 759, 760, 761, 767, 771, 788, 791, 792, 807ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1380,
+            "range": "±22",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1363ms, Q3: 1385ms\nAll times: 1346, 1357, 1359, 1359, 1362, 1363, 1363, 1368, 1370, 1376, 1380, 1382, 1382, 1383, 1384, 1385, 1388, 1393, 1396, 1406ms"
           }
         ]
       }
