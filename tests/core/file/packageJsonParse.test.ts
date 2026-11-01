@@ -1,14 +1,13 @@
-import * as fs from 'node:fs/promises';
 import path from 'node:path';
-import * as url from 'node:url';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { getVersion } from '../../../src/core/file/packageJsonParse.js';
 import { logger } from '../../../src/shared/logger.js';
 
-vi.mock('fs/promises');
-vi.mock('url');
-
 describe('packageJsonParse', () => {
+  const readFile = vi.fn<(filePath: string, encoding: 'utf-8') => Promise<string>>();
+  const fileURLToPath = vi.fn<(url: URL) => string>();
+  const deps = { readFile, fileURLToPath };
+
   beforeEach(() => {
     vi.resetAllMocks();
   });
@@ -23,14 +22,14 @@ describe('packageJsonParse', () => {
       version: '1.2.3',
     };
 
-    vi.mocked(url.fileURLToPath).mockReturnValue('/mock/path/to/src/core/file');
-    vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockPackageJson));
+    fileURLToPath.mockReturnValue('/mock/path/to/src/core/file');
+    readFile.mockResolvedValue(JSON.stringify(mockPackageJson));
 
-    const version = await getVersion();
+    const version = await getVersion(deps);
 
     expect(version).toBe('1.2.3');
-    expect(url.fileURLToPath).toHaveBeenCalledWith(expect.any(URL));
-    expect(fs.readFile).toHaveBeenCalledWith(
+    expect(fileURLToPath).toHaveBeenCalledWith(expect.any(URL));
+    expect(readFile).toHaveBeenCalledWith(
       path.join('/mock/path/to/src/core/file', '..', '..', '..', 'package.json'),
       'utf-8',
     );
@@ -43,10 +42,10 @@ describe('packageJsonParse', () => {
 
     const loggerSpy = vi.spyOn(logger, 'warn').mockImplementation(vi.fn());
 
-    vi.mocked(url.fileURLToPath).mockReturnValue('/mock/path/to/src/core/file2');
-    vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockPackageJson));
+    fileURLToPath.mockReturnValue('/mock/path/to/src/core/file2');
+    readFile.mockResolvedValue(JSON.stringify(mockPackageJson));
 
-    const version = await getVersion();
+    const version = await getVersion(deps);
 
     expect(loggerSpy).toHaveBeenCalledWith(expect.stringContaining('No version found in package.json'));
 

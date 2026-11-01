@@ -1,26 +1,32 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FileInclusionLevel } from '../../../src/core/file/fileLevelResolve.js';
 import type { FileManipulator } from '../../../src/core/file/fileManipulate.js';
 import { applyLightweightTransforms, processFiles } from '../../../src/core/file/fileProcess.js';
+import { processContent } from '../../../src/core/file/fileProcessContent.js';
 import type { ProcessedFile, RawFile } from '../../../src/core/file/fileTypes.js';
 import type { FileProcessTask } from '../../../src/core/file/workers/fileProcessWorker.js';
-import fileProcessWorker from '../../../src/core/file/workers/fileProcessWorker.js';
-import { parseFile } from '../../../src/core/treeSitter/parseFile.js';
+import type { parseFile as parseFileType } from '../../../src/core/treeSitter/parseFile.js';
 import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
+import { silenceLogger } from '../../testing/coreFileGitLogger.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
-// parseFile is the Tree-sitter compression entry point. Mock it so these tests
+// parseFile is the Tree-sitter compression entry point. Stub it so these tests
 // assert routing/decisions (which files get compressed) without depending on
 // the exact compressed output of the real parser.
-vi.mock('../../../src/core/treeSitter/parseFile.js');
-vi.mock('../../../src/shared/logger.js');
+const parseFile = vi.fn<typeof parseFileType>();
 
 const mockGetFileManipulator = (_filePath: string): FileManipulator | null => null;
 
+// Runs each task in-process the way fileProcessWorker does, with the stubbed parseFile injected.
 const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
   return {
     run: async (task: T) => {
-      return (await fileProcessWorker(task as FileProcessTask)) as R;
+      const { rawFile, config, level } = task as FileProcessTask;
+      const content = await processContent(rawFile, config, level, {
+        getFileManipulator: mockGetFileManipulator,
+        parseFile,
+      });
+      return { path: rawFile.path, content } as R;
     },
     cleanup: async () => {
       // no-op for tests
@@ -33,7 +39,12 @@ const byPath = (files: ProcessedFile[]): Record<string, string> =>
 
 describe('fileProcess inclusion levels (output.patterns)', () => {
   beforeEach(() => {
-    vi.mocked(parseFile).mockResolvedValue('<<compressed>>');
+    silenceLogger();
+    parseFile.mockResolvedValue('<<compressed>>');
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('processFiles', () => {

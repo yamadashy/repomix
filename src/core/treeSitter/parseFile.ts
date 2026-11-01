@@ -45,13 +45,16 @@ export const parseFile = async (
   fileContent: string,
   filePath: string,
   config: RepomixConfigMerged,
+  deps = {
+    createLanguageParser: (): LanguageParser => new LanguageParser(),
+  },
 ): Promise<string | undefined> => {
   // Split the file content into individual lines
   const lines = fileContent.split('\n');
 
   let tree: Tree | null | undefined;
   try {
-    const languageParser = await getLanguageParserSingleton();
+    const languageParser = await getLanguageParserSingleton(deps.createLanguageParser);
 
     const lang: SupportedLang | undefined = languageParser.guessTheLang(filePath);
     if (lang === undefined) {
@@ -126,13 +129,13 @@ export const parseFile = async (
   }
 };
 
-const getLanguageParserSingleton = async () => {
+const getLanguageParserSingleton = async (createLanguageParser: () => LanguageParser) => {
   if (!languageParserSingleton) {
     // Assign only after init() succeeds. Otherwise a failed init would leave an
     // uninitialized parser cached for the rest of the worker's lifetime, so
     // every subsequent file would throw "not initialized" and silently lose
     // compression. Keeping the singleton null lets the next call retry init.
-    const parser = new LanguageParser();
+    const parser = createLanguageParser();
     await parser.init();
     languageParserSingleton = parser;
   }

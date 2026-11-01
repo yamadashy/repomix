@@ -18,10 +18,14 @@ export const processContent = async (
   rawFile: RawFile,
   config: RepomixConfigMerged,
   level?: FileInclusionLevel,
+  deps = {
+    getFileManipulator,
+    parseFile,
+  },
 ): Promise<string> => {
   const processStartAt = process.hrtime.bigint();
   let processedContent = rawFile.content;
-  const manipulator = getFileManipulator(rawFile.path);
+  const manipulator = deps.getFileManipulator(rawFile.path);
 
   logger.trace(`Processing file: ${rawFile.path}`);
 
@@ -41,7 +45,7 @@ export const processContent = async (
     // content so a single file's failure never aborts the entire pack. The
     // catch is a safety net: parseFile is designed not to throw.
     try {
-      const parsedContent = await parseFile(processedContent, rawFile.path, config);
+      const parsedContent = await deps.parseFile(processedContent, rawFile.path, config);
       if (parsedContent === undefined) {
         logger.trace(`Could not compress ${rawFile.path}. Using uncompressed content.`);
       }

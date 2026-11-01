@@ -1,9 +1,16 @@
-import { describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createArchiveEntryFilter } from '../../../src/core/git/archiveEntryFilter.js';
-
-vi.mock('../../../src/shared/logger');
+import { silenceLogger } from '../../testing/coreFileGitLogger.js';
 
 describe('archiveEntryFilter', () => {
+  beforeEach(() => {
+    silenceLogger();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   describe('createArchiveEntryFilter', () => {
     test('should allow text files', () => {
       const filter = createArchiveEntryFilter();

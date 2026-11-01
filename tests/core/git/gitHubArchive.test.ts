@@ -2,7 +2,7 @@ import { Transform, Writable } from 'node:stream';
 import type { pipeline as pipelineType } from 'node:stream/promises';
 import type * as zlib from 'node:zlib';
 import type { extract as tarExtractType } from 'tar';
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { createArchiveEntryFilter as createArchiveEntryFilterType } from '../../../src/core/git/archiveEntryFilter.js';
 import {
   type ArchiveDownloadOptions,
@@ -12,9 +12,7 @@ import {
 } from '../../../src/core/git/gitHubArchive.js';
 import type { GitHubRepoInfo } from '../../../src/core/git/gitRemoteParse.js';
 import { RepomixError } from '../../../src/shared/errorHandle.js';
-
-// Mock modules
-vi.mock('../../../src/shared/logger');
+import { silenceLogger } from '../../testing/coreFileGitLogger.js';
 
 // Type for the deps parameter of downloadGitHubArchive
 interface MockDeps {
@@ -39,6 +37,7 @@ describe('gitHubArchive', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    silenceLogger();
 
     mockFetch = vi.fn<typeof globalThis.fetch>();
     mockPipeline = vi.fn<typeof pipelineType>().mockResolvedValue(undefined);
@@ -66,6 +65,10 @@ describe('gitHubArchive', () => {
       createGunzip: mockCreateGunzip as unknown as typeof zlib.createGunzip,
       createArchiveEntryFilter: mockCreateArchiveEntryFilter,
     };
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('downloadGitHubArchive', () => {

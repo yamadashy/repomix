@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   isExplicitRemoteUrl,
   isGitHubRepository,
@@ -6,12 +6,16 @@ import {
   parseRemoteValue,
 } from '../../../src/core/git/gitRemoteParse.js';
 import { isValidRemoteValue } from '../../../src/index.js';
-
-vi.mock('../../../src/shared/logger');
+import { silenceLogger } from '../../testing/coreFileGitLogger.js';
 
 describe('remoteAction functions', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    silenceLogger();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('parseRemoteValue', () => {

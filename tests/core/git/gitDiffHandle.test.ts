@@ -1,13 +1,17 @@
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { getGitDiffs, getStagedDiff, getWorkTreeDiff } from '../../../src/core/git/gitDiffHandle.js';
 import { logger } from '../../../src/shared/logger.js';
+import { silenceLogger } from '../../testing/coreFileGitLogger.js';
 import { createMockConfig } from '../../testing/testUtils.js';
-
-vi.mock('../../../src/shared/logger');
 
 describe('gitDiffHandle', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    silenceLogger();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('getWorkTreeDiff', () => {

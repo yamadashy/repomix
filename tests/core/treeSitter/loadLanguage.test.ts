@@ -1,56 +1,45 @@
-import fs from 'node:fs/promises';
 import { describe, expect, it, vi } from 'vitest';
-import { Language } from 'web-tree-sitter';
+import type { Language } from 'web-tree-sitter';
 import { loadLanguage } from '../../../src/core/treeSitter/loadLanguage.js';
 
-vi.mock('node:fs/promises');
-vi.mock('web-tree-sitter', () => ({
-  Language: {
-    load: vi.fn(),
-  },
-}));
-vi.mock('node:module', () => ({
-  createRequire: () => ({
-    resolve: (path: string) => `/mock/path/${path}`,
-  }),
-}));
+const createDeps = () => ({
+  access: vi.fn<(filePath: string) => Promise<void>>(),
+  resolveModule: (specifier: string) => `/mock/path/${specifier}`,
+  loadLanguageWasm: vi.fn<(wasmPath: string) => Promise<Language>>(),
+});
 
 describe('loadLanguage', () => {
   it('should throw error for empty language name', async () => {
-    await expect(loadLanguage('')).rejects.toThrow('Invalid language name');
+    await expect(loadLanguage('', createDeps())).rejects.toThrow('Invalid language name');
   });
 
   it('should load language successfully', async () => {
-    const mockAccess = vi.mocked(fs.access);
-    mockAccess.mockResolvedValue(undefined);
+    const deps = createDeps();
+    deps.access.mockResolvedValue(undefined);
+    deps.loadLanguageWasm.mockResolvedValue({ success: true } as unknown as Language);
 
-    const mockLoadLanguage = vi.fn().mockResolvedValue({ success: true });
-    Language.load = mockLoadLanguage;
+    await loadLanguage('javascript', deps);
 
-    await loadLanguage('javascript');
-
-    expect(mockAccess).toHaveBeenCalledWith('/mock/path/@repomix/tree-sitter-wasms/out/tree-sitter-javascript.wasm');
-    expect(mockLoadLanguage).toHaveBeenCalledWith(
+    expect(deps.access).toHaveBeenCalledWith('/mock/path/@repomix/tree-sitter-wasms/out/tree-sitter-javascript.wasm');
+    expect(deps.loadLanguageWasm).toHaveBeenCalledWith(
       '/mock/path/@repomix/tree-sitter-wasms/out/tree-sitter-javascript.wasm',
     );
   });
 
   it('should throw error when WASM file is not found', async () => {
-    const mockAccess = vi.mocked(fs.access);
-    mockAccess.mockRejectedValue(new Error('File not found'));
+    const deps = createDeps();
+    deps.access.mockRejectedValue(new Error('File not found'));
 
-    await expect(loadLanguage('javascript')).rejects.toThrow(
+    await expect(loadLanguage('javascript', deps)).rejects.toThrow(
       'WASM file not found for language javascript: /mock/path/@repomix/tree-sitter-wasms/out/tree-sitter-javascript.wasm',
     );
   });
 
   it('should handle language load error', async () => {
-    const mockAccess = vi.mocked(fs.access);
-    mockAccess.mockResolvedValue(undefined);
+    const deps = createDeps();
+    deps.access.mockResolvedValue(undefined);
+    deps.loadLanguageWasm.mockRejectedValue(new Error('Load failed'));
 
-    const mockLoadLanguage = vi.fn().mockRejectedValue(new Error('Load failed'));
-    Language.load = mockLoadLanguage;
-
-    await expect(loadLanguage('javascript')).rejects.toThrow('Failed to load language javascript: Load failed');
+    await expect(loadLanguage('javascript', deps)).rejects.toThrow('Failed to load language javascript: Load failed');
   });
 });

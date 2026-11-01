@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   execGitDiff,
   execGitLog,
@@ -15,8 +15,7 @@ import {
   execLsRemoteHead,
 } from '../../../src/core/git/gitCommand.js';
 import { logger } from '../../../src/shared/logger.js';
-
-vi.mock('../../../src/shared/logger');
+import { silenceLogger } from '../../testing/coreFileGitLogger.js';
 
 const expectGitRemoteOpts = expect.objectContaining({
   timeout: 30000,
@@ -32,6 +31,11 @@ const expectGitProbeOpts = expect.objectContaining({
 describe('gitCommand', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    silenceLogger();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('execGitLogFilenames', () => {

@@ -1,29 +1,30 @@
 import { constants } from 'node:fs';
-import * as fs from 'node:fs/promises';
-import { platform } from 'node:os';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { checkDirectoryPermissions, PermissionError } from '../../../src/core/file/permissionCheck.js';
 
-vi.mock('node:fs/promises');
-vi.mock('node:os');
-
 describe('permissionCheck', () => {
   const testDirPath = '/test/directory';
+  const fs = {
+    readdir: vi.fn<(dirPath: string) => Promise<unknown>>(),
+    access: vi.fn<(dirPath: string, mode: number) => Promise<void>>(),
+  };
+  const platform = vi.fn<() => NodeJS.Platform>();
+  const deps = { ...fs, platform };
 
   beforeEach(() => {
     vi.resetAllMocks();
-    vi.mocked(platform).mockReturnValue('linux');
+    platform.mockReturnValue('linux');
   });
 
   describe('successful cases', () => {
     test('should return success when all permissions are available', async () => {
       // Mock successful readdir
-      vi.mocked(fs.readdir).mockResolvedValue([]);
+      fs.readdir.mockResolvedValue([]);
 
       // Mock successful access checks
-      vi.mocked(fs.access).mockResolvedValue(undefined);
+      fs.access.mockResolvedValue(undefined);
 
-      const result = await checkDirectoryPermissions(testDirPath);
+      const result = await checkDirectoryPermissions(testDirPath, deps);
 
       expect(result).toEqual({
         hasAllPermission: true,
@@ -42,17 +43,17 @@ describe('permissionCheck', () => {
 
     test('should pass with only required permissions', async () => {
       // Mock successful readdir
-      vi.mocked(fs.readdir).mockResolvedValue([]);
+      fs.readdir.mockResolvedValue([]);
 
       // Mock mixed permission check results
-      vi.mocked(fs.access).mockImplementation(async (_path, mode) => {
+      fs.access.mockImplementation(async (_path, mode) => {
         if (mode === constants.R_OK || mode === constants.X_OK) {
           return Promise.resolve(undefined);
         }
         return Promise.reject(new Error('Permission denied'));
       });
 
-      const result = await checkDirectoryPermissions(testDirPath);
+      const result = await checkDirectoryPermissions(testDirPath, deps);
 
       expect(result).toEqual({
         hasAllPermission: false,
@@ -69,9 +70,9 @@ describe('permissionCheck', () => {
     test('should handle EPERM error', async () => {
       const error = new Error('Permission denied');
       (error as NodeJS.ErrnoException).code = 'EPERM';
-      vi.mocked(fs.readdir).mockRejectedValue(error);
+      fs.readdir.mockRejectedValue(error);
 
-      const result = await checkDirectoryPermissions(testDirPath);
+      const result = await checkDirectoryPermissions(testDirPath, deps);
 
       expect(result).toEqual({
         hasAllPermission: false,
@@ -84,9 +85,9 @@ describe('permissionCheck', () => {
     test('should handle EACCES error', async () => {
       const error = new Error('Access denied');
       (error as NodeJS.ErrnoException).code = 'EACCES';
-      vi.mocked(fs.readdir).mockRejectedValue(error);
+      fs.readdir.mockRejectedValue(error);
 
-      const result = await checkDirectoryPermissions(testDirPath);
+      const result = await checkDirectoryPermissions(testDirPath, deps);
 
       expect(result).toEqual({
         hasAllPermission: false,
@@ -99,9 +100,9 @@ describe('permissionCheck', () => {
     test('should handle EISDIR error', async () => {
       const error = new Error('Is a directory');
       (error as NodeJS.ErrnoException).code = 'EISDIR';
-      vi.mocked(fs.readdir).mockRejectedValue(error);
+      fs.readdir.mockRejectedValue(error);
 
-      const result = await checkDirectoryPermissions(testDirPath);
+      const result = await checkDirectoryPermissions(testDirPath, deps);
 
       expect(result).toEqual({
         hasAllPermission: false,
@@ -110,9 +111,9 @@ describe('permissionCheck', () => {
     });
 
     test('should handle non-Error objects', async () => {
-      vi.mocked(fs.readdir).mockRejectedValue('String error');
+      fs.readdir.mockRejectedValue('String error');
 
-      const result = await checkDirectoryPermissions(testDirPath);
+      const result = await checkDirectoryPermissions(testDirPath, deps);
 
       expect(result).toEqual({
         hasAllPermission: false,
@@ -124,13 +125,13 @@ describe('permissionCheck', () => {
   describe('platform specific behavior', () => {
     test('should return macOS specific error message', async () => {
       // Mock platform as macOS
-      vi.mocked(platform).mockReturnValue('darwin');
+      platform.mockReturnValue('darwin');
 
       const error = new Error('Permission denied');
       (error as NodeJS.ErrnoException).code = 'EACCES';
-      vi.mocked(fs.readdir).mockRejectedValue(error);
+      fs.readdir.mockRejectedValue(error);
 
-      const result = await checkDirectoryPermissions(testDirPath);
+      const result = await checkDirectoryPermissions(testDirPath, deps);
 
       expect(result.error).toBeInstanceOf(PermissionError);
       expect(result.error?.message).toContain('macOS security restrictions');
@@ -140,13 +141,13 @@ describe('permissionCheck', () => {
 
     test('should return standard error message for non-macOS platforms', async () => {
       // Mock platform as Windows
-      vi.mocked(platform).mockReturnValue('win32');
+      platform.mockReturnValue('win32');
 
       const error = new Error('Permission denied');
       (error as NodeJS.ErrnoException).code = 'EACCES';
-      vi.mocked(fs.readdir).mockRejectedValue(error);
+      fs.readdir.mockRejectedValue(error);
 
-      const result = await checkDirectoryPermissions(testDirPath);
+      const result = await checkDirectoryPermissions(testDirPath, deps);
 
       expect(result.error).toBeInstanceOf(PermissionError);
       expect(result.error?.message).toBe(`Permission denied: Cannot access '${testDirPath}'`);
@@ -185,12 +186,12 @@ describe('permissionCheck', () => {
 
   describe('edge cases', () => {
     test('should handle EPERM error on macOS with specific message', async () => {
-      vi.mocked(platform).mockReturnValue('darwin');
+      platform.mockReturnValue('darwin');
       const error = new Error('Permission denied');
       (error as NodeJS.ErrnoException).code = 'EPERM';
-      vi.mocked(fs.readdir).mockRejectedValue(error);
+      fs.readdir.mockRejectedValue(error);
 
-      const result = await checkDirectoryPermissions(testDirPath);
+      const result = await checkDirectoryPermissions(testDirPath, deps);
 
       expect(result.error).toBeInstanceOf(PermissionError);
       expect((result.error as PermissionError).code).toBe('EPERM');
@@ -198,12 +199,12 @@ describe('permissionCheck', () => {
     });
 
     test('should handle EISDIR error on macOS with specific message', async () => {
-      vi.mocked(platform).mockReturnValue('darwin');
+      platform.mockReturnValue('darwin');
       const error = new Error('Is a directory');
       (error as NodeJS.ErrnoException).code = 'EISDIR';
-      vi.mocked(fs.readdir).mockRejectedValue(error);
+      fs.readdir.mockRejectedValue(error);
 
-      const result = await checkDirectoryPermissions(testDirPath);
+      const result = await checkDirectoryPermissions(testDirPath, deps);
 
       expect(result.error).toBeInstanceOf(PermissionError);
       expect((result.error as PermissionError).code).toBe('EISDIR');
@@ -213,9 +214,9 @@ describe('permissionCheck', () => {
     test('should handle unknown error code with default case', async () => {
       const error = new Error('Unknown error');
       (error as NodeJS.ErrnoException).code = 'EUNKNOWN';
-      vi.mocked(fs.readdir).mockRejectedValue(error);
+      fs.readdir.mockRejectedValue(error);
 
-      const result = await checkDirectoryPermissions(testDirPath);
+      const result = await checkDirectoryPermissions(testDirPath, deps);
 
       expect(result).toEqual({
         hasAllPermission: false,
@@ -225,9 +226,9 @@ describe('permissionCheck', () => {
 
     test('should handle undefined error code', async () => {
       const error = new Error('Permission denied');
-      vi.mocked(fs.readdir).mockRejectedValue(error);
+      fs.readdir.mockRejectedValue(error);
 
-      const result = await checkDirectoryPermissions(testDirPath);
+      const result = await checkDirectoryPermissions(testDirPath, deps);
 
       expect(result).toEqual({
         hasAllPermission: false,
@@ -237,17 +238,17 @@ describe('permissionCheck', () => {
 
     test('should handle partial permission checks failing', async () => {
       // Mock successful readdir
-      vi.mocked(fs.readdir).mockResolvedValue([]);
+      fs.readdir.mockResolvedValue([]);
 
       // Mock access to fail for write permission only
-      vi.mocked(fs.access).mockImplementation(async (_path, mode) => {
+      fs.access.mockImplementation(async (_path, mode) => {
         if (mode === constants.W_OK) {
           throw new Error('Write permission denied');
         }
         return Promise.resolve(undefined);
       });
 
-      const result = await checkDirectoryPermissions(testDirPath);
+      const result = await checkDirectoryPermissions(testDirPath, deps);
 
       expect(result).toEqual({
         hasAllPermission: false,
@@ -261,12 +262,12 @@ describe('permissionCheck', () => {
 
     test('should handle all permission checks failing', async () => {
       // Mock successful readdir
-      vi.mocked(fs.readdir).mockResolvedValue([]);
+      fs.readdir.mockResolvedValue([]);
 
       // Mock all access checks to fail
-      vi.mocked(fs.access).mockRejectedValue(new Error('Permission denied'));
+      fs.access.mockRejectedValue(new Error('Permission denied'));
 
-      const result = await checkDirectoryPermissions(testDirPath);
+      const result = await checkDirectoryPermissions(testDirPath, deps);
 
       expect(result).toEqual({
         hasAllPermission: false,
