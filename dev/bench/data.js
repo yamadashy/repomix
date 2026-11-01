@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793515068865,
+  "lastUpdate": 1793515873338,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -15788,6 +15788,51 @@ window.BENCHMARK_DATA = {
             "range": "±19",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1021ms, Q3: 1040ms\nAll times: 1010, 1012, 1013, 1017, 1019, 1021, 1026, 1026, 1028, 1029, 1030, 1034, 1035, 1036, 1039, 1040, 1045, 1050, 1067, 1087ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cbf77efb194408329b10f966c2e138ffa72b4874",
+          "message": "Merge pull request #1983 from yamadashy/chore/coderabbit-incremental\n\nchore(ci): Strengthen CodeRabbit reviews",
+          "timestamp": "2026-11-01T15:49:05+09:00",
+          "tree_id": "555f42135c4c71346d11e609df0adea6ec14d64b",
+          "url": "https://github.com/yamadashy/repomix/commit/cbf77efb194408329b10f966c2e138ffa72b4874"
+        },
+        "date": 1793515871827,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 855,
+            "range": "±170",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 756ms, Q3: 926ms\nAll times: 701, 718, 721, 721, 732, 746, 751, 756, 768, 773, 820, 829, 831, 845, 848, 855, 861, 876, 883, 885, 902, 903, 926, 969, 1000, 1019, 1032, 1100, 1133, 1175ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1022,
+            "range": "±16",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1017ms, Q3: 1033ms\nAll times: 1001, 1002, 1002, 1011, 1016, 1017, 1017, 1018, 1019, 1022, 1022, 1023, 1023, 1028, 1032, 1033, 1034, 1041, 1046, 1101ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1368,
+            "range": "±31",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1354ms, Q3: 1385ms\nAll times: 1340, 1341, 1347, 1352, 1353, 1354, 1358, 1360, 1366, 1366, 1368, 1374, 1374, 1382, 1383, 1385, 1385, 1386, 1388, 1435ms"
           }
         ]
       }
