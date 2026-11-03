@@ -121,10 +121,13 @@ const getWorkerTypeFromWorkerData = (workerData: unknown): WorkerType | undefine
  * In bundled environments where Tinypool may reuse child processes across different
  * worker pools, we use task-based inference to determine the correct handler.
  */
-export default async (task: unknown, deps = { workerData, workerModuleLoaders }): Promise<unknown> => {
+export default async (
+  task: unknown,
+  deps = { workerData, workerModuleLoaders, env: process.env },
+): Promise<unknown> => {
   // Determine worker type: try workerData/env first, then infer from task
   let workerType: WorkerType | undefined =
-    getWorkerTypeFromWorkerData(deps.workerData) ?? (process.env.REPOMIX_WORKER_TYPE as WorkerType | undefined);
+    getWorkerTypeFromWorkerData(deps.workerData) ?? (deps.env.REPOMIX_WORKER_TYPE as WorkerType | undefined);
 
   // In bundled environments, Tinypool may reuse child processes.
   // If the task doesn't match the initially configured worker type, infer from task.

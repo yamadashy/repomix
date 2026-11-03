@@ -29,20 +29,9 @@ export const runRemoteAction = async (
   repoUrl: string,
   cliOptions: CliOptions,
   progressCallback?: RepomixProgressCallback,
-  deps = {
-    isGitInstalled,
-    execGitShallowClone,
-    getRemoteRefs,
-    runDefaultAction,
-    downloadGitHubArchive,
-    isGitHubRepository,
-    parseGitHubRepoInfo,
-    isArchiveDownloadSupported,
-    confirmRemoteConfigTrust,
-    copyOutputToCurrentDirectory,
-    Spinner,
-  },
+  overrideDeps: Partial<typeof defaultDeps> = {},
 ): Promise<DefaultActionRunnerResult> => {
+  const deps = { ...defaultDeps, ...overrideDeps };
   const reportProgress = createSafeProgressCallback(progressCallback);
   const { signal } = cliOptions;
 
@@ -136,7 +125,7 @@ export const runRemoteAction = async (
       downloadMethod = 'git';
     }
 
-    const trustRemoteConfig = cliOptions.remoteTrustConfig || process.env.REPOMIX_REMOTE_TRUST_CONFIG === 'true';
+    const trustRemoteConfig = cliOptions.remoteTrustConfig || deps.env.REPOMIX_REMOTE_TRUST_CONFIG === 'true';
 
     // When trusting a remote repo's config, confirm with the user first (unless
     // --force / non-interactive / already trusted). Throws if the user declines.
@@ -406,4 +395,21 @@ Please try one of the following:
 
     throw new RepomixError(`Failed to copy output file: ${(error as Error).message}`);
   }
+};
+
+// Declared after the helpers it references (copyOutputToCurrentDirectory) to avoid a TDZ error;
+// runRemoteAction only reads it at call time.
+const defaultDeps = {
+  isGitInstalled,
+  execGitShallowClone,
+  getRemoteRefs,
+  runDefaultAction,
+  downloadGitHubArchive,
+  isGitHubRepository,
+  parseGitHubRepoInfo,
+  isArchiveDownloadSupported,
+  confirmRemoteConfigTrust,
+  copyOutputToCurrentDirectory,
+  Spinner,
+  env: process.env,
 };

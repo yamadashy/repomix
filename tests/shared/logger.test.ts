@@ -145,45 +145,31 @@ describe('logger', () => {
 });
 
 describe('setLogLevelByWorkerData', () => {
-  // setLogLevelByWorkerData reads process.env at call time; workerData is injected through deps.
+  // The env and workerData are both injected through deps, so no test touches process.env.
   const originalLevel = logger.getLogLevel();
-  const originalEnvLogLevel = process.env.REPOMIX_LOG_LEVEL;
-
-  beforeEach(() => {
-    delete process.env.REPOMIX_LOG_LEVEL;
-  });
 
   afterEach(() => {
     logger.setLogLevel(originalLevel);
-    if (originalEnvLogLevel === undefined) {
-      delete process.env.REPOMIX_LOG_LEVEL;
-    } else {
-      process.env.REPOMIX_LOG_LEVEL = originalEnvLogLevel;
-    }
   });
 
   it('sets log level from REPOMIX_LOG_LEVEL env var', () => {
-    process.env.REPOMIX_LOG_LEVEL = String(repomixLogLevels.DEBUG);
-
-    setLogLevelByWorkerData();
+    setLogLevelByWorkerData({ workerData: undefined, env: { REPOMIX_LOG_LEVEL: String(repomixLogLevels.DEBUG) } });
 
     expect(logger.getLogLevel()).toBe(repomixLogLevels.DEBUG);
   });
 
   it('ignores non-numeric REPOMIX_LOG_LEVEL', () => {
-    process.env.REPOMIX_LOG_LEVEL = 'not-a-number';
     const before = logger.getLogLevel();
 
-    setLogLevelByWorkerData();
+    setLogLevelByWorkerData({ workerData: undefined, env: { REPOMIX_LOG_LEVEL: 'not-a-number' } });
 
     expect(logger.getLogLevel()).toBe(before);
   });
 
   it('ignores out-of-range REPOMIX_LOG_LEVEL', () => {
-    process.env.REPOMIX_LOG_LEVEL = '999';
     const before = logger.getLogLevel();
 
-    setLogLevelByWorkerData();
+    setLogLevelByWorkerData({ workerData: undefined, env: { REPOMIX_LOG_LEVEL: '999' } });
 
     expect(logger.getLogLevel()).toBe(before);
   });
@@ -191,6 +177,7 @@ describe('setLogLevelByWorkerData', () => {
   it('falls back to workerData when env var is unset', () => {
     setLogLevelByWorkerData({
       workerData: ['some-task', { logLevel: repomixLogLevels.ERROR }],
+      env: {},
     });
 
     expect(logger.getLogLevel()).toBe(repomixLogLevels.ERROR);
@@ -201,6 +188,7 @@ describe('setLogLevelByWorkerData', () => {
 
     setLogLevelByWorkerData({
       workerData: ['some-task', { logLevel: 42 }],
+      env: {},
     });
 
     expect(logger.getLogLevel()).toBe(before);
@@ -209,7 +197,7 @@ describe('setLogLevelByWorkerData', () => {
   it('does nothing when workerData is null and env var is unset', () => {
     const before = logger.getLogLevel();
 
-    setLogLevelByWorkerData({ workerData: null });
+    setLogLevelByWorkerData({ workerData: null, env: {} });
 
     expect(logger.getLogLevel()).toBe(before);
   });

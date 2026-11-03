@@ -714,84 +714,64 @@ describe('remoteAction functions', () => {
     });
 
     test('should set skipLocalConfig to false when REPOMIX_REMOTE_TRUST_CONFIG env var is true', async () => {
-      const originalEnv = process.env.REPOMIX_REMOTE_TRUST_CONFIG;
-      process.env.REPOMIX_REMOTE_TRUST_CONFIG = 'true';
+      const runDefaultActionMock = vi.fn(async () => createMockDefaultActionResult());
 
-      try {
-        const runDefaultActionMock = vi.fn(async () => createMockDefaultActionResult());
+      const deps = {
+        isGitInstalled: async () => Promise.resolve(true),
+        execGitShallowClone: vi.fn(async (_url: string, directory: string) => {
+          await fs.writeFile(path.join(directory, 'README.md'), 'Hello');
+        }),
+        getRemoteRefs: async () => Promise.resolve(['main']),
+        runDefaultAction: runDefaultActionMock,
+        downloadGitHubArchive: vi.fn(),
+        isGitHubRepository: vi.fn().mockReturnValue(false),
+        parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
+        isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
+        confirmRemoteConfigTrust: vi.fn(),
+        copyOutputToCurrentDirectory: copyOutputToCurrentDirectoryMock,
+        Spinner: MockSpinner,
+        env: { REPOMIX_REMOTE_TRUST_CONFIG: 'true' },
+      };
 
-        const deps = {
-          isGitInstalled: async () => Promise.resolve(true),
-          execGitShallowClone: vi.fn(async (_url: string, directory: string) => {
-            await fs.writeFile(path.join(directory, 'README.md'), 'Hello');
-          }),
-          getRemoteRefs: async () => Promise.resolve(['main']),
-          runDefaultAction: runDefaultActionMock,
-          downloadGitHubArchive: vi.fn(),
-          isGitHubRepository: vi.fn().mockReturnValue(false),
-          parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
-          isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
-          confirmRemoteConfigTrust: vi.fn(),
-          copyOutputToCurrentDirectory: copyOutputToCurrentDirectoryMock,
-          Spinner: MockSpinner,
-        };
+      await runRemoteAction('https://gitlab.com/owner/repo.git', {}, undefined, deps);
 
-        await runRemoteAction('https://gitlab.com/owner/repo.git', {}, undefined, deps);
-
-        expect(runDefaultActionMock).toHaveBeenCalledWith(
-          expect.any(Array),
-          expect.any(String),
-          expect.objectContaining({ skipLocalConfig: false }),
-          undefined,
-        );
-        // The env var is the second way to trust remote config, so it must reach the
-        // same confirmation the flag does rather than becoming a silent bypass.
-        expect(deps.confirmRemoteConfigTrust).toHaveBeenCalledTimes(1);
-      } finally {
-        if (originalEnv === undefined) {
-          delete process.env.REPOMIX_REMOTE_TRUST_CONFIG;
-        } else {
-          process.env.REPOMIX_REMOTE_TRUST_CONFIG = originalEnv;
-        }
-      }
+      expect(runDefaultActionMock).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.any(String),
+        expect.objectContaining({ skipLocalConfig: false }),
+        undefined,
+      );
+      // The env var is the second way to trust remote config, so it must reach the
+      // same confirmation the flag does rather than becoming a silent bypass.
+      expect(deps.confirmRemoteConfigTrust).toHaveBeenCalledTimes(1);
     });
 
     test('should keep skipLocalConfig true when REPOMIX_REMOTE_TRUST_CONFIG is not "true"', async () => {
-      const originalEnv = process.env.REPOMIX_REMOTE_TRUST_CONFIG;
-      process.env.REPOMIX_REMOTE_TRUST_CONFIG = 'yes';
+      const runDefaultActionMock = vi.fn(async () => createMockDefaultActionResult());
 
-      try {
-        const runDefaultActionMock = vi.fn(async () => createMockDefaultActionResult());
+      await runRemoteAction('https://gitlab.com/owner/repo.git', {}, undefined, {
+        isGitInstalled: async () => Promise.resolve(true),
+        execGitShallowClone: vi.fn(async (_url: string, directory: string) => {
+          await fs.writeFile(path.join(directory, 'README.md'), 'Hello');
+        }),
+        getRemoteRefs: async () => Promise.resolve(['main']),
+        runDefaultAction: runDefaultActionMock,
+        downloadGitHubArchive: vi.fn(),
+        isGitHubRepository: vi.fn().mockReturnValue(false),
+        parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
+        isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
+        confirmRemoteConfigTrust: vi.fn(),
+        copyOutputToCurrentDirectory: copyOutputToCurrentDirectoryMock,
+        Spinner: MockSpinner,
+        env: { REPOMIX_REMOTE_TRUST_CONFIG: 'yes' },
+      });
 
-        await runRemoteAction('https://gitlab.com/owner/repo.git', {}, undefined, {
-          isGitInstalled: async () => Promise.resolve(true),
-          execGitShallowClone: vi.fn(async (_url: string, directory: string) => {
-            await fs.writeFile(path.join(directory, 'README.md'), 'Hello');
-          }),
-          getRemoteRefs: async () => Promise.resolve(['main']),
-          runDefaultAction: runDefaultActionMock,
-          downloadGitHubArchive: vi.fn(),
-          isGitHubRepository: vi.fn().mockReturnValue(false),
-          parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
-          isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
-          confirmRemoteConfigTrust: vi.fn(),
-          copyOutputToCurrentDirectory: copyOutputToCurrentDirectoryMock,
-          Spinner: MockSpinner,
-        });
-
-        expect(runDefaultActionMock).toHaveBeenCalledWith(
-          expect.any(Array),
-          expect.any(String),
-          expect.objectContaining({ skipLocalConfig: true }),
-          undefined,
-        );
-      } finally {
-        if (originalEnv === undefined) {
-          delete process.env.REPOMIX_REMOTE_TRUST_CONFIG;
-        } else {
-          process.env.REPOMIX_REMOTE_TRUST_CONFIG = originalEnv;
-        }
-      }
+      expect(runDefaultActionMock).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.any(String),
+        expect.objectContaining({ skipLocalConfig: true }),
+        undefined,
+      );
     });
   });
 

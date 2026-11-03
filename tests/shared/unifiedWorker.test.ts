@@ -9,14 +9,14 @@ const createWorkerModules = () => ({
   calculateMetrics: { default: vi.fn().mockResolvedValue(100), onWorkerTermination: vi.fn() },
 });
 
-const createDeps = (workerData: unknown = undefined) => {
+const createDeps = (workerData: unknown = undefined, env: NodeJS.ProcessEnv = {}) => {
   const modules = createWorkerModules();
   const workerModuleLoaders = {
     fileProcess: vi.fn(async () => modules.fileProcess),
     securityCheck: vi.fn(async () => modules.securityCheck),
     calculateMetrics: vi.fn(async () => modules.calculateMetrics),
   };
-  return { modules, deps: { workerData, workerModuleLoaders } };
+  return { modules, deps: { workerData, workerModuleLoaders, env } };
 };
 
 describe('unifiedWorker', () => {
@@ -140,16 +140,11 @@ describe('unifiedWorker', () => {
     });
 
     it('falls back to REPOMIX_WORKER_TYPE env var', async () => {
-      const { modules, deps } = createDeps(undefined);
-      vi.stubEnv('REPOMIX_WORKER_TYPE', 'calculateMetrics');
+      const { modules, deps } = createDeps(undefined, { REPOMIX_WORKER_TYPE: 'calculateMetrics' });
 
-      try {
-        await handler({ ambiguous: true }, deps);
+      await handler({ ambiguous: true }, deps);
 
-        expect(modules.calculateMetrics.default).toHaveBeenCalled();
-      } finally {
-        vi.unstubAllEnvs();
-      }
+      expect(modules.calculateMetrics.default).toHaveBeenCalled();
     });
   });
 

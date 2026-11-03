@@ -55,7 +55,6 @@ describe('migrationAction', () => {
     homeDir = path.join(tempDir, 'home');
     globalDir = path.join(tempDir, 'global', 'repomix');
     await fs.mkdir(rootDir, { recursive: true });
-    vi.stubEnv('HOME', homeDir);
 
     logger = silenceLogger();
     mockConfirm = vi.fn();
@@ -66,11 +65,11 @@ describe('migrationAction', () => {
           confirm: mockConfirm,
           isCancel: vi.fn().mockReturnValue(false),
         }) as unknown as Awaited<ReturnType<MigrationDeps['loadClack']>>,
+      env: { HOME: homeDir },
     };
   });
 
   afterEach(async () => {
-    vi.unstubAllEnvs();
     vi.restoreAllMocks();
     await fs.rm(tempDir, { recursive: true, force: true });
   });
