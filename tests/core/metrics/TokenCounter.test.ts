@@ -1,20 +1,20 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { TokenCounter } from '../../../src/core/metrics/TokenCounter.js';
 import { logger } from '../../../src/shared/logger.js';
-
-vi.mock('../../../src/shared/logger');
+import { silenceLogger } from '../../testing/coreMetricsOutputDoubles.js';
 
 describe('TokenCounter', () => {
   let tokenCounter: TokenCounter;
 
   beforeEach(async () => {
+    silenceLogger();
     tokenCounter = new TokenCounter('o200k_base');
     await tokenCounter.init();
   });
 
   afterEach(() => {
     tokenCounter.free();
-    vi.resetAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should correctly count tokens for simple text', () => {

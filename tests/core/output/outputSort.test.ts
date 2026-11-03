@@ -1,12 +1,25 @@
+import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
-vi.mock('node:fs/promises');
-
 describe('outputSort', () => {
   const sep = path.sep;
+
+  // sortOutputFiles only consults git when `<cwd>/.git` exists, so run against a
+  // real temp directory that contains an empty `.git` folder.
+  let repoDir: string;
+
+  beforeAll(async () => {
+    repoDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-output-sort-'));
+    await fs.mkdir(path.join(repoDir, '.git'));
+  });
+
+  afterAll(async () => {
+    await fs.rm(repoDir, { recursive: true, force: true });
+  });
 
   // Reset module cache before each test to ensure clean state for caching tests
   beforeEach(async () => {
@@ -14,14 +27,18 @@ describe('outputSort', () => {
   });
 
   describe('sort by git changes', () => {
-    const mockConfig = createMockConfig({
-      output: {
-        git: {
-          sortByChanges: true,
-          sortByChangesMaxCommits: 150,
+    let mockConfig: ReturnType<typeof createMockConfig>;
+
+    beforeEach(() => {
+      mockConfig = createMockConfig({
+        output: {
+          git: {
+            sortByChanges: true,
+            sortByChangesMaxCommits: 150,
+          },
         },
-      },
-      cwd: '/test',
+        cwd: repoDir,
+      });
     });
 
     test('should sort files by git change count', async () => {

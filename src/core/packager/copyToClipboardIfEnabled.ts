@@ -8,6 +8,10 @@ export const copyToClipboardIfEnabled = async (
   output: string,
   progressCallback: RepomixProgressCallback,
   config: RepomixConfigMerged,
+  deps = {
+    spawn,
+    writeClipboardText: clipboard.writeText,
+  },
 ): Promise<void> => {
   if (!config.output.copyToClipboard) return;
   progressCallback('Copying to clipboard...');
@@ -16,7 +20,7 @@ export const copyToClipboardIfEnabled = async (
     logger.trace('Wayland detected; attempting wl-copy.');
     try {
       await new Promise<void>((resolve, reject) => {
-        const proc = spawn('wl-copy', [], { stdio: ['pipe', 'ignore', 'ignore'] });
+        const proc = deps.spawn('wl-copy', [], { stdio: ['pipe', 'ignore', 'ignore'] });
         proc.on('error', (err) => reject(new Error(`Failed to execute wl-copy: ${err.message}`)));
         proc.on('close', (code) => (code ? reject(new Error(`wl-copy exited with code ${code}`)) : resolve()));
         proc.stdin.end(output);
@@ -31,7 +35,7 @@ export const copyToClipboardIfEnabled = async (
 
   try {
     logger.trace('Using tinyclip.');
-    await clipboard.writeText(output);
+    await deps.writeClipboardText(output);
     logger.trace('Copied using tinyclip.');
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'unknown error';

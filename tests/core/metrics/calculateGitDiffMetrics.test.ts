@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
 import { calculateGitDiffMetrics } from '../../../src/core/metrics/calculateGitDiffMetrics.js';
@@ -10,8 +10,7 @@ import {
 } from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
 import { logger } from '../../../src/shared/logger.js';
 import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
-
-vi.mock('../../../src/shared/logger');
+import { silenceLogger } from '../../testing/coreMetricsOutputDoubles.js';
 
 const mockInitTaskRunner = (_options: WorkerOptions): MetricsTaskRunner => {
   return {
@@ -80,7 +79,11 @@ describe('calculateGitDiffMetrics', () => {
   });
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    silenceLogger();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('when git diffs are disabled', () => {

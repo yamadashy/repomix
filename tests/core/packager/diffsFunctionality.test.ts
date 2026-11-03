@@ -1,26 +1,17 @@
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, type Mock, test, vi } from 'vitest';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
-import * as gitDiffModule from '../../../src/core/git/gitDiffHandle.js';
-import * as gitRepositoryModule from '../../../src/core/git/gitRepositoryHandle.js';
+import { getGitDiffs } from '../../../src/core/git/gitDiffHandle.js';
 import { pack } from '../../../src/core/packager.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
-// Mock the dependencies
-vi.mock('../../../src/core/git/gitDiffHandle.js', () => ({
-  getWorkTreeDiff: vi.fn(),
-  getStagedDiff: vi.fn(),
-  getGitDiffs: vi.fn(),
-}));
-
-vi.mock('../../../src/core/git/gitRepositoryHandle.js', () => ({
-  isGitRepository: vi.fn(),
-  isGitInstalled: vi.fn().mockResolvedValue(false),
-  getFileChangeCount: vi.fn().mockResolvedValue({}),
-}));
-
 describe('Git Diffs Functionality', () => {
   let mockConfig: RepomixConfigMerged;
+  let mockGetWorkTreeDiff: Mock<(directory: string) => Promise<string>>;
+  let mockGetStagedDiff: Mock<(directory: string) => Promise<string>>;
+  // Run the real getGitDiffs so its includeDiffs gate is exercised, but route the
+  // git commands to spies. Git sort is stubbed out so no git subprocess runs.
+  let gitDeps: Pick<NonNullable<Parameters<typeof pack>[3]>, 'getGitDiffs' | 'prefetchSortData' | 'sortOutputFiles'>;
   const mockRootDir = '/test/repo';
   const sampleDiff = `diff --git a/file1.js b/file1.js
 index 123..456 100644
@@ -32,8 +23,6 @@ index 123..456 100644
 `;
 
   beforeEach(() => {
-    vi.resetAllMocks();
-
     // Sample minimal config using createMockConfig utility
     mockConfig = createMockConfig({
       cwd: mockRootDir,
@@ -46,10 +35,14 @@ index 123..456 100644
       },
     });
 
-    // Set up our mocks
-    vi.mocked(gitRepositoryModule.isGitRepository).mockResolvedValue(true);
-    vi.mocked(gitDiffModule.getWorkTreeDiff).mockResolvedValue(sampleDiff);
-    vi.mocked(gitDiffModule.getStagedDiff).mockResolvedValue('');
+    mockGetWorkTreeDiff = vi.fn<(directory: string) => Promise<string>>().mockResolvedValue(sampleDiff);
+    mockGetStagedDiff = vi.fn<(directory: string) => Promise<string>>().mockResolvedValue('');
+    gitDeps = {
+      getGitDiffs: (rootDirs, config) =>
+        getGitDiffs(rootDirs, config, { getWorkTreeDiff: mockGetWorkTreeDiff, getStagedDiff: mockGetStagedDiff }),
+      prefetchSortData: vi.fn().mockResolvedValue(undefined),
+      sortOutputFiles: vi.fn().mockImplementation(async (files) => files),
+    };
   });
 
   test('should not fetch diffs when includeDiffs is disabled', async () => {
@@ -95,10 +88,11 @@ index 123..456 100644
       calculateMetrics: mockCalculateMetrics,
       createMetricsTaskRunner: mockCreateMetricsTaskRunner,
       sortPaths: mockSortPaths,
+      ...gitDeps,
     });
 
     // Should not call getWorkTreeDiff
-    expect(gitDiffModule.getWorkTreeDiff).not.toHaveBeenCalled();
+    expect(mockGetWorkTreeDiff).not.toHaveBeenCalled();
   });
 
   test('should calculate diff token count correctly', async () => {
@@ -153,7 +147,21 @@ index 123..456 100644
       calculateMetrics: mockCalculateMetrics,
       createMetricsTaskRunner: mockCreateMetricsTaskRunner,
       sortPaths: mockSortPaths,
+      ...gitDeps,
     });
+
+    // The enabled diff must be fetched and handed to metrics, not just echoed from the stub
+    expect(mockGetWorkTreeDiff).toHaveBeenCalledWith(mockRootDir);
+    expect(mockGetStagedDiff).toHaveBeenCalledWith(mockRootDir);
+    expect(mockCalculateMetrics).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      mockConfig,
+      { workTreeDiffContent: sampleDiff, stagedDiffContent: '' },
+      undefined,
+      expect.anything(),
+    );
 
     // Check gitDiffTokenCount in the result
     expect(result.gitDiffTokenCount).toBe(15);
