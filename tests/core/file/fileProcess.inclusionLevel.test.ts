@@ -7,8 +7,8 @@ import type { ProcessedFile, RawFile } from '../../../src/core/file/fileTypes.js
 import type { FileProcessTask } from '../../../src/core/file/workers/fileProcessWorker.js';
 import fileProcessWorker from '../../../src/core/file/workers/fileProcessWorker.js';
 import type { parseFile as parseFileType } from '../../../src/core/treeSitter/parseFile.js';
-import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
 import { silenceLogger } from '../../testing/loggerDoubles.js';
+import { inlineInitTaskRunner } from '../../testing/taskRunnerDoubles.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 // parseFile is the Tree-sitter compression entry point. Stub it so these tests
@@ -19,21 +19,13 @@ const parseFile = vi.fn<typeof parseFileType>();
 const mockGetFileManipulator = (_filePath: string): FileManipulator | null => null;
 
 // Runs each task in-process the way fileProcessWorker does, with the stubbed parseFile injected.
-const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
-  return {
-    run: async (task: T) => {
-      const { rawFile, config, level } = task as FileProcessTask;
-      const content = await processContent(rawFile, config, level, {
-        getFileManipulator: mockGetFileManipulator,
-        parseFile,
-      });
-      return { path: rawFile.path, content } as R;
-    },
-    cleanup: async () => {
-      // no-op for tests
-    },
-  };
-};
+const mockInitTaskRunner = inlineInitTaskRunner(async ({ rawFile, config, level }: FileProcessTask) => {
+  const content = await processContent(rawFile, config, level, {
+    getFileManipulator: mockGetFileManipulator,
+    parseFile,
+  });
+  return { path: rawFile.path, content };
+});
 
 const byPath = (files: ProcessedFile[]): Record<string, string> =>
   Object.fromEntries(files.map((f) => [f.path, f.content]));

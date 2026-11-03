@@ -14,6 +14,7 @@ import { produceOutput } from '../../../src/core/packager/produceOutput.js';
 import { pack } from '../../../src/core/packager.js';
 import { filterOutUntrustedFiles } from '../../../src/core/security/filterOutUntrustedFiles.js';
 import { validateFileSafety } from '../../../src/core/security/validateFileSafety.js';
+import { createMetricsTaskRunnerDouble } from '../../testing/taskRunnerDoubles.js';
 
 // Behavior-level regression tests for multi-root packing.
 //
@@ -75,10 +76,7 @@ const runPack = (rootDirs: string[], config: RepomixConfigMerged) =>
         filterOutUntrustedFiles,
       }),
     produceOutput,
-    createMetricsTaskRunner: () => ({
-      taskRunner: { run: async () => 0, cleanup: async () => {} },
-      warmupPromise: Promise.resolve(),
-    }),
+    createMetricsTaskRunner: createMetricsTaskRunnerDouble().createMetricsTaskRunner,
     calculateMetrics: async (processedFiles) => ({
       totalFiles: processedFiles.length,
       totalCharacters: processedFiles.reduce((acc, f) => acc + f.content.length, 0),

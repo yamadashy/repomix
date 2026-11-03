@@ -3,6 +3,7 @@ import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
 import { getGitDiffs } from '../../../src/core/git/gitDiffHandle.js';
 import { pack } from '../../../src/core/packager.js';
+import { createMetricsTaskRunnerDouble } from '../../testing/taskRunnerDoubles.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 describe('Git Diffs Functionality', () => {
@@ -66,13 +67,7 @@ index 123..456 100644
       fileTokenCounts: {},
     });
     const mockSortPaths = vi.fn().mockImplementation((paths) => paths);
-    const mockCreateMetricsTaskRunner = vi.fn().mockReturnValue({
-      taskRunner: {
-        run: vi.fn().mockResolvedValue(0),
-        cleanup: vi.fn().mockResolvedValue(undefined),
-      },
-      warmupPromise: Promise.resolve(),
-    });
+    const mockCreateMetricsTaskRunner = createMetricsTaskRunnerDouble().createMetricsTaskRunner;
 
     // Config with diffs disabled
     if (mockConfig.output.git) {
@@ -125,13 +120,7 @@ index 123..456 100644
       gitDiffTokenCount: 15, // Mock diff token count
     });
     const mockSortPaths = vi.fn().mockImplementation((paths) => paths);
-    const mockCreateMetricsTaskRunner = vi.fn().mockReturnValue({
-      taskRunner: {
-        run: vi.fn().mockResolvedValue(0),
-        cleanup: vi.fn().mockResolvedValue(undefined),
-      },
-      warmupPromise: Promise.resolve(),
-    });
+    const mockCreateMetricsTaskRunner = createMetricsTaskRunnerDouble().createMetricsTaskRunner;
 
     // Config with diffs enabled
     if (mockConfig.output.git) {

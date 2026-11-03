@@ -19,7 +19,7 @@ import { produceOutput } from '../../src/core/packager/produceOutput.js';
 import { pack } from '../../src/core/packager.js';
 import { filterOutUntrustedFiles } from '../../src/core/security/filterOutUntrustedFiles.js';
 import { validateFileSafety } from '../../src/core/security/validateFileSafety.js';
-
+import { createMetricsTaskRunnerDouble } from '../testing/taskRunnerDoubles.js';
 import { isWindows } from '../testing/testUtils.js';
 
 const fixturesDir = path.join(__dirname, 'fixtures', 'packager');
@@ -117,13 +117,7 @@ describe.runIf(!isWindows)('packager integration', () => {
           });
         },
         produceOutput,
-        createMetricsTaskRunner: () => ({
-          taskRunner: {
-            run: async () => 0,
-            cleanup: async () => {},
-          },
-          warmupPromise: Promise.resolve(),
-        }),
+        createMetricsTaskRunner: createMetricsTaskRunnerDouble().createMetricsTaskRunner,
         calculateMetrics: async (
           processedFiles,
           _output,
