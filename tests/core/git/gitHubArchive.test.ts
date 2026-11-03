@@ -5,6 +5,7 @@ import type { extract as tarExtractType } from 'tar';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { createArchiveEntryFilter as createArchiveEntryFilterType } from '../../../src/core/git/archiveEntryFilter.js';
 import {
+  type ArchiveDownloadDeps,
   type ArchiveDownloadOptions,
   downloadGitHubArchive,
   isArchiveDownloadSupported,
@@ -12,59 +13,47 @@ import {
 } from '../../../src/core/git/gitHubArchive.js';
 import type { GitHubRepoInfo } from '../../../src/core/git/gitRemoteParse.js';
 import { RepomixError } from '../../../src/shared/errorHandle.js';
+import { type MockedDeps, mockOverloaded } from '../../testing/depsDoubles.js';
 import { silenceLogger } from '../../testing/loggerDoubles.js';
-
-// Type for the deps parameter of downloadGitHubArchive
-interface MockDeps {
-  fetch: typeof globalThis.fetch;
-  pipeline: typeof pipelineType;
-  Transform: typeof Transform;
-  tarExtract: typeof tarExtractType;
-  createGunzip: typeof zlib.createGunzip;
-  createArchiveEntryFilter: typeof createArchiveEntryFilterType;
-}
 
 // Simple test data
 const mockStreamData = new Uint8Array([0x1f, 0x8b, 0x08, 0x00]); // gzip magic bytes
 
 describe('gitHubArchive', () => {
-  let mockFetch: ReturnType<typeof vi.fn<typeof globalThis.fetch>>;
-  let mockPipeline: ReturnType<typeof vi.fn<typeof pipelineType>>;
-  let mockTarExtract: ReturnType<typeof vi.fn<typeof tarExtractType>>;
-  let mockCreateGunzip: ReturnType<typeof vi.fn<typeof zlib.createGunzip>>;
-  let mockCreateArchiveEntryFilter: ReturnType<typeof vi.fn<typeof createArchiveEntryFilterType>>;
-  let mockDeps: MockDeps;
+  let mockDeps: MockedDeps<ArchiveDownloadDeps>;
+  let mockFetch: MockedDeps<ArchiveDownloadDeps>['fetch'];
+  let mockPipeline: MockedDeps<ArchiveDownloadDeps>['pipeline'];
 
   beforeEach(() => {
     vi.clearAllMocks();
     silenceLogger();
 
-    mockFetch = vi.fn<typeof globalThis.fetch>();
-    mockPipeline = vi.fn<typeof pipelineType>().mockResolvedValue(undefined);
-    mockTarExtract = vi.fn<typeof tarExtractType>().mockReturnValue(
+    mockDeps = {
+      fetch: vi.fn<typeof globalThis.fetch>(),
+      pipeline: mockOverloaded<typeof pipelineType>(),
+      Transform,
+      tarExtract: mockOverloaded<typeof tarExtractType>(),
+      createGunzip: mockOverloaded<typeof zlib.createGunzip>(),
+      createArchiveEntryFilter: vi.fn<typeof createArchiveEntryFilterType>(() => () => true),
+    };
+    mockFetch = mockDeps.fetch;
+    mockPipeline = mockDeps.pipeline;
+    mockPipeline.mockResolvedValue(undefined);
+    // Stream stand-ins: only their place in the pipeline matters, since pipeline itself is a double.
+    mockDeps.tarExtract.mockReturnValue(
       new Writable({
         write(_chunk, _enc, cb) {
           cb();
         },
       }) as unknown as ReturnType<typeof tarExtractType>,
     );
-    mockCreateGunzip = vi.fn<typeof zlib.createGunzip>().mockReturnValue(
+    mockDeps.createGunzip.mockReturnValue(
       new Transform({
         transform(chunk, _enc, cb) {
           cb(null, chunk);
         },
       }) as unknown as ReturnType<typeof zlib.createGunzip>,
     );
-    mockCreateArchiveEntryFilter = vi.fn<typeof createArchiveEntryFilterType>().mockReturnValue(() => true);
-
-    mockDeps = {
-      fetch: mockFetch,
-      pipeline: mockPipeline as unknown as typeof pipelineType,
-      Transform,
-      tarExtract: mockTarExtract as unknown as typeof tarExtractType,
-      createGunzip: mockCreateGunzip as unknown as typeof zlib.createGunzip,
-      createArchiveEntryFilter: mockCreateArchiveEntryFilter,
-    };
   });
 
   afterEach(() => {
@@ -84,19 +73,20 @@ describe('gitHubArchive', () => {
       retries: 3,
     };
 
-    const createMockResponse = (overrides: Partial<Response> = {}): Response => {
-      return {
-        ok: true,
-        status: 200,
-        headers: new Map([['content-length', mockStreamData.length.toString()]]),
-        body: new ReadableStream({
+    // A real Response that streams the gzip bytes with a content-length, or has no body at all.
+    const createMockResponse = ({ status = 200, body }: { status?: number; body?: null } = {}): Response => {
+      if (body === null) {
+        return new Response(null, { status });
+      }
+      return new Response(
+        new ReadableStream({
           start(controller) {
             controller.enqueue(mockStreamData);
             controller.close();
           },
         }),
-        ...overrides,
-      } as unknown as Response;
+        { status, headers: { 'content-length': mockStreamData.length.toString() } },
+      );
     };
 
     test('should successfully download and extract archive', async () => {
@@ -113,7 +103,7 @@ describe('gitHubArchive', () => {
       );
 
       // Verify tar extract was called with correct options including filter
-      expect(mockTarExtract).toHaveBeenCalledWith({
+      expect(mockDeps.tarExtract).toHaveBeenCalledWith({
         cwd: mockTargetDirectory,
         strip: 1,
         filter: expect.any(Function),
@@ -186,11 +176,9 @@ describe('gitHubArchive', () => {
       mockFetch
         .mockResolvedValueOnce(
           createMockResponse({
-            ok: false,
             status: 404,
-            headers: new Map(),
             body: null,
-          } as unknown as Partial<Response>),
+          }),
         )
         .mockResolvedValueOnce(createMockResponse());
 
@@ -230,7 +218,7 @@ describe('gitHubArchive', () => {
     });
 
     test('should handle missing response body', async () => {
-      mockFetch.mockResolvedValue(createMockResponse({ body: null } as unknown as Partial<Response>));
+      mockFetch.mockResolvedValue(createMockResponse({ body: null }));
 
       await expect(
         downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, { retries: 1 }, undefined, mockDeps),

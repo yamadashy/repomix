@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import type { FileManipulator } from '../../../src/core/file/fileManipulate.js';
 import { applyLightweightTransforms, processFiles } from '../../../src/core/file/fileProcess.js';
 import type { ProcessedFile, RawFile } from '../../../src/core/file/fileTypes.js';
-import type { FileProcessTask } from '../../../src/core/file/workers/fileProcessWorker.js';
 import fileProcessWorker from '../../../src/core/file/workers/fileProcessWorker.js';
 import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
+import { inlineInitTaskRunner } from '../../testing/taskRunnerDoubles.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 const createMockFileManipulator = (): FileManipulator => ({
@@ -19,16 +19,7 @@ const mockGetFileManipulator = (filePath: string): FileManipulator | null => {
   return null;
 };
 
-const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
-  return {
-    run: async (task: T) => {
-      return (await fileProcessWorker(task as FileProcessTask)) as R;
-    },
-    cleanup: async () => {
-      // Mock cleanup - no-op for tests
-    },
-  };
-};
+const mockInitTaskRunner = inlineInitTaskRunner(fileProcessWorker);
 
 describe('fileProcess', () => {
   describe('processFiles', () => {

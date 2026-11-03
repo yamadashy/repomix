@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { pack } from '../../src/core/packager.js';
+import { createMetricsTaskRunnerDouble } from '../testing/taskRunnerDoubles.js';
 import { createMockConfig } from '../testing/testUtils.js';
 
 describe('packager', () => {
@@ -41,13 +42,7 @@ describe('packager', () => {
       produceOutput: vi.fn().mockResolvedValue({
         outputForMetrics: mockOutput,
       }),
-      createMetricsTaskRunner: vi.fn().mockReturnValue({
-        taskRunner: {
-          run: vi.fn().mockResolvedValue(0),
-          cleanup: vi.fn().mockResolvedValue(undefined),
-        },
-        warmupPromise: Promise.resolve(),
-      }),
+      createMetricsTaskRunner: createMetricsTaskRunnerDouble().createMetricsTaskRunner,
       calculateMetrics: vi.fn().mockResolvedValue({
         totalFiles: 2,
         totalCharacters: 11,
@@ -158,10 +153,7 @@ describe('packager', () => {
         suspiciousGitLogResults: [],
       }),
       produceOutput: vi.fn().mockResolvedValue({ outputForMetrics: 'out' }),
-      createMetricsTaskRunner: vi.fn().mockReturnValue({
-        taskRunner: { run: vi.fn().mockResolvedValue(0), cleanup: vi.fn().mockResolvedValue(undefined) },
-        warmupPromise: Promise.resolve(),
-      }),
+      createMetricsTaskRunner: createMetricsTaskRunnerDouble().createMetricsTaskRunner,
       calculateMetrics: vi.fn().mockResolvedValue({
         totalFiles: 1,
         totalCharacters: 0,
@@ -209,9 +201,9 @@ describe('packager', () => {
     const mockProcessedFiles = [{ path: 'file1.txt', content: 'processed' }];
 
     const baseDeps = () => {
-      const cleanup = vi.fn().mockResolvedValue(undefined);
+      const metricsTaskRunner = createMetricsTaskRunnerDouble();
       return {
-        cleanup,
+        cleanup: metricsTaskRunner.taskRunner.cleanup,
         deps: {
           searchFiles: vi.fn().mockResolvedValue({ filePaths: mockFilePaths, emptyDirPaths: [] }),
           sortPaths: vi.fn().mockImplementation((p) => p),
@@ -239,10 +231,7 @@ describe('packager', () => {
               gitLogTokenCount: 0,
             };
           }),
-          createMetricsTaskRunner: vi.fn().mockReturnValue({
-            taskRunner: { run: vi.fn().mockResolvedValue(0), cleanup },
-            warmupPromise: Promise.resolve(),
-          }),
+          createMetricsTaskRunner: metricsTaskRunner.createMetricsTaskRunner,
           getGitDiffs: vi.fn().mockResolvedValue(undefined),
           getGitLogs: vi.fn().mockResolvedValue(undefined),
           prefetchSortData: vi.fn().mockResolvedValue(undefined),
@@ -291,21 +280,19 @@ describe('packager', () => {
     });
 
     test('cleans up the metrics worker pool even when the warmup promise rejects', async () => {
-      const { cleanup, deps } = baseDeps();
+      const { deps } = baseDeps();
       // Pre-attach a no-op handler so the rejection is observed at construction time,
       // before pack() reaches `await metricsWarmupPromise`. Production code mirrors this
       // with `.catch(() => {})` in packager.ts:262, so the warmup rejection is fully
       // contained — but vitest's unhandled-rejection detector can flag it eagerly here.
       const warmupPromise = Promise.reject(new Error('warmup failed'));
       warmupPromise.catch(() => {});
-      deps.createMetricsTaskRunner = vi.fn().mockReturnValue({
-        taskRunner: { run: vi.fn().mockResolvedValue(0), cleanup },
-        warmupPromise,
-      });
+      const metricsTaskRunner = createMetricsTaskRunnerDouble({ warmupPromise });
+      deps.createMetricsTaskRunner = metricsTaskRunner.createMetricsTaskRunner;
 
       await expect(pack(['root'], createMockConfig(), vi.fn(), deps)).rejects.toThrow('warmup failed');
 
-      expect(cleanup).toHaveBeenCalled();
+      expect(metricsTaskRunner.taskRunner.cleanup).toHaveBeenCalled();
     });
 
     describe('cancellation', () => {

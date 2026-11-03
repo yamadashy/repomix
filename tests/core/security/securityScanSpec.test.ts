@@ -15,11 +15,8 @@ import { pack } from '../../../src/core/packager.js';
 import { filterOutUntrustedFiles } from '../../../src/core/security/filterOutUntrustedFiles.js';
 import { runSecurityCheck } from '../../../src/core/security/securityCheck.js';
 import { validateFileSafety } from '../../../src/core/security/validateFileSafety.js';
-import securityCheckWorker, {
-  type SecurityCheckTask,
-  type SuspiciousFileResult as WorkerSuspiciousFileResult,
-} from '../../../src/core/security/workers/securityCheckWorker.js';
-import type { TaskRunner } from '../../../src/shared/processConcurrency.js';
+import securityCheckWorker from '../../../src/core/security/workers/securityCheckWorker.js';
+import { createMetricsTaskRunnerDouble, inlineInitTaskRunner } from '../../testing/taskRunnerDoubles.js';
 
 // Behavior-level regression tests for the security-scan pipeline.
 //
@@ -36,14 +33,11 @@ import type { TaskRunner } from '../../../src/shared/processConcurrency.js';
 const FAKE_AWS_SECRET = 'AWS_SECRET_ACCESS_KEY = wJalrXUtnFEMI/K7MDENG/bPxRfiCYSECRETSKEY';
 // secretlint-enable
 
-// An inline TaskRunner backed by the worker module's default export so the
+// An inline task runner backed by the worker module's default export so the
 // orchestration logic inside runSecurityCheck (batching, prefired-promise
 // handling, result aggregation) is exercised end-to-end without the cost or
 // flakiness of spawning real worker_threads.
-const inlineSecurityTaskRunner = (): TaskRunner<SecurityCheckTask, (WorkerSuspiciousFileResult | null)[]> => ({
-  run: (task) => securityCheckWorker(task),
-  cleanup: async () => {},
-});
+const inlineSecurityTaskRunner = inlineInitTaskRunner(securityCheckWorker);
 
 const buildMergedConfig = (
   rootDir: string,
@@ -80,17 +74,13 @@ const runPack = async (rootDir: string, config: RepomixConfigMerged) =>
       validateFileSafety(rawFiles, progressCallback, cfg, gitDiff, gitLog, {
         runSecurityCheck: (files, progress, diff, log) =>
           runSecurityCheck(files, progress, diff, log, {
-            initTaskRunner: (() =>
-              inlineSecurityTaskRunner()) as typeof import('../../../src/shared/processConcurrency.js').initTaskRunner,
+            initTaskRunner: inlineSecurityTaskRunner,
             getProcessConcurrency: () => 1,
           }),
         filterOutUntrustedFiles,
       }),
     produceOutput,
-    createMetricsTaskRunner: () => ({
-      taskRunner: { run: async () => 0, cleanup: async () => {} },
-      warmupPromise: Promise.resolve(),
-    }),
+    createMetricsTaskRunner: createMetricsTaskRunnerDouble().createMetricsTaskRunner,
     calculateMetrics: async (processedFiles) => ({
       totalFiles: processedFiles.length,
       totalCharacters: processedFiles.reduce((acc, f) => acc + f.content.length, 0),

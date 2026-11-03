@@ -1,8 +1,9 @@
 import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
-import { describe, expect, test, vi } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import { registerGrepRepomixOutputTool } from '../../../src/mcp/tools/grepRepomixOutputTool.js';
 import { registerOutputFile } from '../../../src/mcp/tools/mcpToolRuntime.js';
 import { registerReadRepomixOutputTool } from '../../../src/mcp/tools/readRepomixOutputTool.js';
+import { createMcpServerDouble } from '../../testing/mcpServerDoubles.js';
 
 // No fs mock: the outputId resolves (via the real registry) to a host temp path
 // that does not exist, so the real fs.access fails and we assert the sandboxed
@@ -12,9 +13,9 @@ const HOST_PATH = '/tmp/repomix/mcp-outputs/xxxxxx/repomix-output.xml';
 const captureHandler = (
   register: (s: McpServer, c: { sandboxed: boolean; root: string }) => void,
 ): ((args: Record<string, unknown>) => Promise<CallToolResult>) => {
-  const server = { registerTool: vi.fn().mockReturnThis() } as unknown as McpServer;
-  register(server, { sandboxed: true, root: '/allowed/dir' });
-  return (server.registerTool as ReturnType<typeof vi.fn>).mock.calls[0][2];
+  const server = createMcpServerDouble();
+  register(server.server, { sandboxed: true, root: '/allowed/dir' });
+  return server.toolHandler();
 };
 
 describe('read/grep output tools (sandboxed) omit host temp paths from errors', () => {

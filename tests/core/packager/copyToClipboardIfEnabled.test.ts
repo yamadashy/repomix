@@ -1,25 +1,21 @@
 import type { spawn } from 'node:child_process';
-import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import { copyToClipboardIfEnabled } from '../../../src/core/packager/copyToClipboardIfEnabled.js';
 import type { RepomixProgressCallback } from '../../../src/shared/types.js';
+import { type MockedDeps, mockOverloaded } from '../../testing/depsDoubles.js';
 import { silenceLogger } from '../../testing/loggerDoubles.js';
 
-// spawn is overloaded, so a single-signature mock needs a cast to fit the deps type.
 type CopyDeps = NonNullable<Parameters<typeof copyToClipboardIfEnabled>[3]>;
 
 describe('copyToClipboardIfEnabled', () => {
-  let deps: {
-    spawn: Mock<typeof spawn>;
-    writeClipboardText: Mock<(text: string) => Promise<void>>;
-    env: NodeJS.ProcessEnv;
-  };
+  let deps: MockedDeps<CopyDeps>;
 
   beforeEach(() => {
     silenceLogger();
     deps = {
-      spawn: vi.fn<typeof spawn>(),
-      writeClipboardText: vi.fn<(text: string) => Promise<void>>().mockResolvedValue(undefined),
+      spawn: mockOverloaded<typeof spawn>(),
+      writeClipboardText: vi.fn<CopyDeps['writeClipboardText']>().mockResolvedValue(undefined),
       // No WAYLAND_DISPLAY, so the tinyclip path is taken unless a test opts into Wayland.
       env: {},
     };
@@ -36,7 +32,7 @@ describe('copyToClipboardIfEnabled', () => {
     } as RepomixConfigMerged;
     const progressCallback: RepomixProgressCallback = vi.fn();
 
-    await copyToClipboardIfEnabled(output, progressCallback, config, deps as unknown as CopyDeps);
+    await copyToClipboardIfEnabled(output, progressCallback, config, deps);
 
     expect(progressCallback).toHaveBeenCalledWith('Copying to clipboard...');
     expect(deps.writeClipboardText).toHaveBeenCalledWith(output);
@@ -49,7 +45,7 @@ describe('copyToClipboardIfEnabled', () => {
     } as RepomixConfigMerged;
     const progressCallback: RepomixProgressCallback = vi.fn();
 
-    await copyToClipboardIfEnabled(output, progressCallback, config, deps as unknown as CopyDeps);
+    await copyToClipboardIfEnabled(output, progressCallback, config, deps);
 
     expect(progressCallback).not.toHaveBeenCalled();
     expect(deps.writeClipboardText).not.toHaveBeenCalled();
@@ -83,7 +79,7 @@ describe('copyToClipboardIfEnabled', () => {
       return mockProc;
     });
 
-    await copyToClipboardIfEnabled(output, progressCallback, config, deps as unknown as CopyDeps);
+    await copyToClipboardIfEnabled(output, progressCallback, config, deps);
 
     expect(deps.spawn).toHaveBeenCalledWith('wl-copy', [], { stdio: ['pipe', 'ignore', 'ignore'] });
     expect(mockProc.stdin.end).toHaveBeenCalledWith(output);
@@ -118,7 +114,7 @@ describe('copyToClipboardIfEnabled', () => {
       return mockProc;
     });
 
-    await copyToClipboardIfEnabled(output, progressCallback, config, deps as unknown as CopyDeps);
+    await copyToClipboardIfEnabled(output, progressCallback, config, deps);
 
     expect(deps.spawn).toHaveBeenCalledWith('wl-copy', [], { stdio: ['pipe', 'ignore', 'ignore'] });
     expect(deps.writeClipboardText).toHaveBeenCalledWith(output);
@@ -133,7 +129,7 @@ describe('copyToClipboardIfEnabled', () => {
 
     deps.writeClipboardText.mockRejectedValue(new Error('Clipboard access denied'));
 
-    await copyToClipboardIfEnabled(output, progressCallback, config, deps as unknown as CopyDeps);
+    await copyToClipboardIfEnabled(output, progressCallback, config, deps);
 
     expect(progressCallback).toHaveBeenCalledWith('Copying to clipboard...');
     expect(deps.writeClipboardText).toHaveBeenCalledWith(output);

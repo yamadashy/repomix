@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { pack } from '../../../src/core/packager.js';
+import { createMetricsTaskRunnerDouble } from '../../testing/taskRunnerDoubles.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 describe('packager split output', () => {
@@ -55,13 +56,7 @@ describe('packager split output', () => {
       getGitLogs: vi.fn().mockResolvedValue(undefined),
       produceOutput,
       calculateMetrics,
-      createMetricsTaskRunner: vi.fn().mockReturnValue({
-        taskRunner: {
-          run: vi.fn().mockResolvedValue(0),
-          cleanup: vi.fn().mockResolvedValue(undefined),
-        },
-        warmupPromise: Promise.resolve(),
-      }),
+      createMetricsTaskRunner: createMetricsTaskRunnerDouble().createMetricsTaskRunner,
     });
 
     expect(produceOutput).toHaveBeenCalledWith(

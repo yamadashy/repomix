@@ -1,11 +1,9 @@
-import type { McpServer } from '@modelcontextprotocol/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { registerPackRemoteRepositoryPrompt } from '../../../src/mcp/prompts/packRemoteRepositoryPrompts.js';
+import { createMcpServerDouble, type McpServerDouble } from '../../testing/mcpServerDoubles.js';
 
 describe('packRemoteRepositoryPrompts', () => {
-  const mockMcpServer = {
-    registerPrompt: vi.fn(),
-  };
+  let mockMcpServer: McpServerDouble;
 
   type PromptHandlerType = (args: {
     repository: string;
@@ -18,9 +16,10 @@ describe('packRemoteRepositoryPrompts', () => {
   beforeEach(() => {
     vi.resetAllMocks();
 
-    registerPackRemoteRepositoryPrompt(mockMcpServer as unknown as McpServer);
+    mockMcpServer = createMcpServerDouble();
+    registerPackRemoteRepositoryPrompt(mockMcpServer.server);
 
-    promptHandler = mockMcpServer.registerPrompt.mock.calls[0][2];
+    promptHandler = mockMcpServer.promptHandler<PromptHandlerType>();
   });
 
   it('should register the prompt with correct parameters', () => {

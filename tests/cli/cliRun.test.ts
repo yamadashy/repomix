@@ -25,9 +25,10 @@ const createDeps = () => ({
 
 describe('cliRun', () => {
   let deps: ReturnType<typeof createDeps>;
+  let loggerSpies: ReturnType<typeof silenceLogger>;
 
   beforeEach(() => {
-    const loggerSpies = silenceLogger();
+    loggerSpies = silenceLogger();
     // Keep the real level and stream setters (still spied) so the log level assertions below
     // observe what runCli actually set; afterEach puts the shared logger back to its defaults.
     loggerSpies.setLogLevel.mockReset();
@@ -647,8 +648,7 @@ describe('cliRun', () => {
         verbose: true,
       };
 
-      const setOutputStream = vi.mocked(logger.setOutputStream);
-      const trace = vi.mocked(logger.trace);
+      const { setOutputStream, trace } = loggerSpies;
 
       await runCli(['.'], process.cwd(), options, undefined, deps);
 
@@ -667,7 +667,7 @@ describe('cliRun', () => {
 
       await runCli(['.'], process.cwd(), options, undefined, deps);
 
-      expect(vi.mocked(logger.setOutputStream)).not.toHaveBeenCalled();
+      expect(loggerSpies.setOutputStream).not.toHaveBeenCalled();
     });
   });
 
@@ -675,7 +675,7 @@ describe('cliRun', () => {
     test('lazily loads the real version action', async () => {
       await runCli([], process.cwd(), { version: true });
 
-      expect(vi.mocked(logger.log)).toHaveBeenCalledWith(await getVersion());
+      expect(loggerSpies.log).toHaveBeenCalledWith(await getVersion());
     });
   });
 });

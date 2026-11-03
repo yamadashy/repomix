@@ -3,25 +3,9 @@ import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
 import { calculateGitDiffMetrics } from '../../../src/core/metrics/calculateGitDiffMetrics.js';
 import type { MetricsTaskRunner } from '../../../src/core/metrics/metricsWorkerRunner.js';
-import {
-  countTokens,
-  type MetricsWorkerTask,
-  type TokenCountTask,
-} from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
 import { logger } from '../../../src/shared/logger.js';
-import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
 import { silenceLogger } from '../../testing/loggerDoubles.js';
-
-const mockInitTaskRunner = (_options: WorkerOptions): MetricsTaskRunner => {
-  return {
-    run: async (task: MetricsWorkerTask) => {
-      return await countTokens(task as TokenCountTask);
-    },
-    cleanup: async () => {
-      // Mock cleanup - no-op for tests
-    },
-  };
-};
+import { createInlineMetricsTaskRunner } from '../../testing/taskRunnerDoubles.js';
 
 describe('calculateGitDiffMetrics', () => {
   const mockConfig: RepomixConfigMerged = {
@@ -72,11 +56,7 @@ describe('calculateGitDiffMetrics', () => {
     cwd: '/test/project',
   };
 
-  const mockTaskRunner = mockInitTaskRunner({
-    numOfTasks: 1,
-    workerType: 'calculateMetrics',
-    runtime: 'worker_threads',
-  });
+  const mockTaskRunner = createInlineMetricsTaskRunner();
 
   beforeEach(() => {
     silenceLogger();

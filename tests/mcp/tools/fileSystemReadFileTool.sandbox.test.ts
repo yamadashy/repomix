@@ -1,9 +1,10 @@
 import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import type { CallToolResult } from '@modelcontextprotocol/server';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { registerFileSystemReadFileTool } from '../../../src/mcp/tools/fileSystemReadFileTool.js';
+import { createMcpServerDouble } from '../../testing/mcpServerDoubles.js';
 import { structuredContentOf } from '../../testing/testUtils.js';
 
 // No module mocks here: the sandboxed branch relies on real fs + realpath so
@@ -15,9 +16,9 @@ describe('FileSystemReadFileTool (sandboxed)', () => {
   beforeEach(async () => {
     root = await fsp.realpath(await fsp.mkdtemp(path.join(os.tmpdir(), 'iso-read-')));
     await fsp.writeFile(path.join(root, 'a.ts'), 'const x = 1;\n');
-    const server = { registerTool: vi.fn().mockReturnThis() } as unknown as McpServer;
-    registerFileSystemReadFileTool(server, { sandboxed: true, root });
-    handler = (server.registerTool as ReturnType<typeof vi.fn>).mock.calls[0][2];
+    const server = createMcpServerDouble();
+    registerFileSystemReadFileTool(server.server, { sandboxed: true, root });
+    handler = server.toolHandler();
   });
 
   afterEach(async () => {

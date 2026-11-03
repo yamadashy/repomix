@@ -6,11 +6,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RawFile } from '../../../src/core/file/fileTypes.js';
 import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
 import { runSecurityCheck } from '../../../src/core/security/securityCheck.js';
-import type { SecurityCheckTask } from '../../../src/core/security/workers/securityCheckWorker.js';
 import securityCheckWorker from '../../../src/core/security/workers/securityCheckWorker.js';
 import { logger, repomixLogLevels } from '../../../src/shared/logger.js';
 import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
 import { silenceLogger } from '../../testing/loggerDoubles.js';
+import { inlineInitTaskRunner } from '../../testing/taskRunnerDoubles.js';
 
 const mockFiles: RawFile[] = [
   {
@@ -27,16 +27,7 @@ const mockFiles: RawFile[] = [
 
 const mockGetProcessConcurrency = () => 4;
 
-const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
-  return {
-    run: async (task: T) => {
-      return (await securityCheckWorker(task as SecurityCheckTask)) as R;
-    },
-    cleanup: async () => {
-      // Mock cleanup - no-op for tests
-    },
-  };
-};
+const mockInitTaskRunner = inlineInitTaskRunner(securityCheckWorker);
 
 describe('runSecurityCheck', () => {
   beforeEach(() => {
