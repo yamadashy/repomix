@@ -65,15 +65,6 @@ const createFlowDeps = () => {
 };
 
 describe('watch option conflicts', () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-    vi.clearAllMocks();
-  });
-
-  afterEach(() => {
-    vi.resetAllMocks();
-  });
-
   it('should throw when --watch is used with --remote', async () => {
     const { runCli } = await import('../../../src/cli/cliRun.js');
     const options: CliOptions = { watch: true, remote: 'user/repo' };

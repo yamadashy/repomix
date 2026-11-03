@@ -670,6 +670,14 @@ describe('cliRun', () => {
       expect(vi.mocked(logger.setOutputStream)).not.toHaveBeenCalled();
     });
   });
+
+  describe('default deps', () => {
+    test('lazily loads the real version action', async () => {
+      await runCli([], process.cwd(), { version: true });
+
+      expect(vi.mocked(logger.log)).toHaveBeenCalledWith(await getVersion());
+    });
+  });
 });
 
 describe('canonicalizeSandboxRoot', () => {
