@@ -120,9 +120,8 @@ function parseRequirementsTxt(content: string): Partial<TechStackInfo> {
   return { dependencies, frameworks: [...new Set(frameworks)] };
 }
 
-// Matches a TOML table header line such as `[project]` or `[[tool.foo]]`. Lines inside a
-// multi-line array never start with `[` followed by a bare key, so dependency strings with
-// extras like `"fastapi[all]"` are not mistaken for headers.
+// Matches a TOML table header line such as `[project]` or `[[tool.foo]]`. Dependency strings
+// with extras like `"fastapi[all]"` start with a quote, so they are not mistaken for headers.
 const TOML_TABLE_HEADER = /^\s*\[\[?\s*([^\]]+?)\s*\]\]?\s*(?:#.*)?$/;
 
 // Returns the body lines of the TOML table named `tableName`, up to the next table header.
@@ -208,7 +207,13 @@ function parsePyprojectToml(content: string): Partial<TechStackInfo> {
 
   const dependencies: DependencyInfo[] = [];
   const frameworks: string[] = [];
+  // Poetry 2.x projects may declare the same package in both [project] and [tool.poetry.dependencies];
+  // package names are case-insensitive (PEP 503), so keep only the first occurrence.
+  const seen = new Set<string>();
   for (const name of names) {
+    const normalizedName = name.toLowerCase().replace(/[-_.]+/g, '-');
+    if (seen.has(normalizedName)) continue;
+    seen.add(normalizedName);
     dependencies.push({ name });
     if (name.toLowerCase() === 'django') frameworks.push('Django');
     if (name.toLowerCase() === 'flask') frameworks.push('Flask');

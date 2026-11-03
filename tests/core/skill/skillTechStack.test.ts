@@ -492,6 +492,22 @@ pytest = "^7.0"`,
       expect(result.frameworks).toEqual(['Django', 'FastAPI']);
     });
 
+    test('should list a package declared in both [project] and Poetry tables only once', () => {
+      const result = detectSingle(
+        'pyproject.toml',
+        `[project]
+dependencies = ["Django>=4.2", "typing_extensions"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+django = "^4.2"
+typing-extensions = "^4.0"`,
+      );
+
+      expect(result.dependencies.map((dep) => dep.name)).toEqual(['Django', 'typing_extensions']);
+      expect(result.frameworks).toEqual(['Django']);
+    });
+
     test('should report no dependencies for a pyproject.toml without any dependency declarations', () => {
       const result = detectSingle('pyproject.toml', '[tool.ruff]\nline-length = 100\n');
 
