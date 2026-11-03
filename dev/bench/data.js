@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793699683276,
+  "lastUpdate": 1793700604109,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -16328,6 +16328,51 @@ window.BENCHMARK_DATA = {
             "range": "±21",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1275ms, Q3: 1296ms\nAll times: 1263, 1267, 1270, 1270, 1272, 1275, 1278, 1279, 1282, 1284, 1284, 1288, 1292, 1295, 1296, 1296, 1298, 1302, 1335, 1360ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2a522fc76ae8c4323fdc20faab8589a728d31785",
+          "message": "Merge pull request #1993 from yamadashy/test/typed-doubles\n\ntest: Type test doubles and share them instead of vi.mocked",
+          "timestamp": "2026-11-03T19:08:34+09:00",
+          "tree_id": "6c0a8a7fbb884cad6a9659eee163395c745c63f3",
+          "url": "https://github.com/yamadashy/repomix/commit/2a522fc76ae8c4323fdc20faab8589a728d31785"
+        },
+        "date": 1793700602824,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1029,
+            "range": "±96",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 973ms, Q3: 1069ms\nAll times: 889, 931, 935, 936, 950, 967, 971, 973, 976, 980, 1007, 1009, 1012, 1019, 1029, 1029, 1039, 1044, 1059, 1060, 1061, 1062, 1069, 1070, 1108, 1117, 1131, 1146, 1214, 1222ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 728,
+            "range": "±12",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 722ms, Q3: 734ms\nAll times: 711, 712, 717, 718, 719, 722, 723, 724, 725, 727, 728, 729, 729, 731, 734, 734, 734, 737, 738, 746ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1272,
+            "range": "±27",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1250ms, Q3: 1277ms\nAll times: 1218, 1230, 1235, 1243, 1245, 1250, 1254, 1258, 1263, 1272, 1272, 1274, 1275, 1275, 1276, 1277, 1281, 1294, 1303, 1310ms"
           }
         ]
       }
