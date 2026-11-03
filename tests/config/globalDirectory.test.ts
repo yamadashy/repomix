@@ -1,11 +1,10 @@
-import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { getGlobalDirectory } from '../../src/config/globalDirectory.js';
 
-vi.mock('node:os');
-
 describe('getGlobalDirectory', () => {
+  const homedir = vi.fn<() => string>();
+  const deps = { homedir };
   const originalPlatform = process.platform;
   const originalEnv = process.env;
 
@@ -24,16 +23,16 @@ describe('getGlobalDirectory', () => {
       Object.defineProperty(process, 'platform', { value: 'win32' });
       process.env.LOCALAPPDATA = 'C:\\Users\\Test\\AppData\\Local';
 
-      const result = getGlobalDirectory();
+      const result = getGlobalDirectory(deps);
       expect(result).toBe(path.join('C:\\Users\\Test\\AppData\\Local', 'Repomix'));
     });
 
     test('should fall back to homedir when LOCALAPPDATA is not available', () => {
       Object.defineProperty(process, 'platform', { value: 'win32' });
       process.env.LOCALAPPDATA = undefined;
-      vi.mocked(os.homedir).mockReturnValue('C:\\Users\\Test');
+      homedir.mockReturnValue('C:\\Users\\Test');
 
-      const result = getGlobalDirectory();
+      const result = getGlobalDirectory(deps);
       expect(result).toBe(path.join('C:\\Users\\Test', 'AppData', 'Local', 'Repomix'));
     });
   });
@@ -43,25 +42,25 @@ describe('getGlobalDirectory', () => {
       Object.defineProperty(process, 'platform', { value: 'linux' });
       process.env.XDG_CONFIG_HOME = '/custom/config';
 
-      const result = getGlobalDirectory();
+      const result = getGlobalDirectory(deps);
       expect(result).toBe(path.join('/custom/config', 'repomix'));
     });
 
     test('should fall back to ~/.config on Linux', () => {
       Object.defineProperty(process, 'platform', { value: 'linux' });
       process.env.XDG_CONFIG_HOME = undefined;
-      vi.mocked(os.homedir).mockReturnValue('/home/test');
+      homedir.mockReturnValue('/home/test');
 
-      const result = getGlobalDirectory();
+      const result = getGlobalDirectory(deps);
       expect(result).toBe(path.join('/home/test', '.config', 'repomix'));
     });
 
     test('should fall back to ~/.config on macOS', () => {
       Object.defineProperty(process, 'platform', { value: 'darwin' });
       process.env.XDG_CONFIG_HOME = undefined;
-      vi.mocked(os.homedir).mockReturnValue('/Users/test');
+      homedir.mockReturnValue('/Users/test');
 
-      const result = getGlobalDirectory();
+      const result = getGlobalDirectory(deps);
       expect(result).toBe(path.join('/Users/test', '.config', 'repomix'));
     });
   });
@@ -70,9 +69,9 @@ describe('getGlobalDirectory', () => {
     test('should handle empty homedir', () => {
       Object.defineProperty(process, 'platform', { value: 'linux' });
       process.env.XDG_CONFIG_HOME = undefined;
-      vi.mocked(os.homedir).mockReturnValue('');
+      homedir.mockReturnValue('');
 
-      const result = getGlobalDirectory();
+      const result = getGlobalDirectory(deps);
       expect(result).toBe(path.join('', '.config', 'repomix'));
     });
 
@@ -80,7 +79,7 @@ describe('getGlobalDirectory', () => {
       Object.defineProperty(process, 'platform', { value: 'linux' });
       process.env.XDG_CONFIG_HOME = '////multiple///slashes///';
 
-      const result = getGlobalDirectory();
+      const result = getGlobalDirectory(deps);
       expect(result).toBe(path.join('////multiple///slashes///', 'repomix'));
     });
   });

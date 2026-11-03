@@ -29,25 +29,37 @@ const defaultConfigPaths = [
   'repomix.config.json',
 ];
 
-const getGlobalConfigPaths = () => {
-  const globalDir = getGlobalDirectory();
+// Narrow signatures (rather than `typeof fs.stat` etc.) keep test doubles easy to type.
+interface ConfigLoadDeps {
+  jitiImport: (fileUrl: string) => Promise<unknown>;
+  stat: (filePath: string) => Promise<{ isFile: () => boolean }>;
+  readFile: (filePath: string, encoding: 'utf-8') => Promise<string>;
+  getGlobalDirectory: () => string;
+}
+
+const getGlobalConfigPaths = (deps: Pick<ConfigLoadDeps, 'getGlobalDirectory'>) => {
+  const globalDir = deps.getGlobalDirectory();
   return defaultConfigPaths.map((configPath) => path.join(globalDir, configPath));
 };
 
-const checkFileExists = async (filePath: string): Promise<boolean> => {
+const checkFileExists = async (filePath: string, deps: Pick<ConfigLoadDeps, 'stat'>): Promise<boolean> => {
   try {
-    const stats = await fs.stat(filePath);
+    const stats = await deps.stat(filePath);
     return stats.isFile();
   } catch {
     return false;
   }
 };
 
-const findConfigFile = async (configPaths: string[], logPrefix: string): Promise<string | null> => {
+const findConfigFile = async (
+  configPaths: string[],
+  logPrefix: string,
+  deps: Pick<ConfigLoadDeps, 'stat'>,
+): Promise<string | null> => {
   for (const configPath of configPaths) {
     logger.trace(`Checking for ${logPrefix} config at:`, configPath);
 
-    const fileExists = await checkFileExists(configPath);
+    const fileExists = await checkFileExists(configPath, deps);
 
     if (fileExists) {
       logger.trace(`Found ${logPrefix} config at:`, configPath);
@@ -63,9 +75,12 @@ const findConfigFile = async (configPaths: string[], logPrefix: string): Promise
  * so callers (e.g. the remote-config trust prompt) resolve exactly the file
  * that would be loaded.
  */
-export const findLocalConfigPath = async (rootDir: string): Promise<string | null> => {
+export const findLocalConfigPath = async (
+  rootDir: string,
+  deps: Pick<ConfigLoadDeps, 'stat'> = { stat: fs.stat },
+): Promise<string | null> => {
   const localConfigPaths = defaultConfigPaths.map((configPath) => path.resolve(rootDir, configPath));
-  return findConfigFile(localConfigPaths, 'local');
+  return findConfigFile(localConfigPaths, 'local', deps);
 };
 
 // Default jiti import implementation for loading JS/TS config files
@@ -82,20 +97,26 @@ const defaultJitiImport = async (fileUrl: string): Promise<unknown> => {
   return await jiti.import(fileUrl);
 };
 
+const defaultDeps: ConfigLoadDeps = {
+  jitiImport: defaultJitiImport,
+  stat: fs.stat,
+  readFile: fs.readFile,
+  getGlobalDirectory,
+};
+
 export const loadFileConfig = async (
   rootDir: string,
   argConfigPath: string | null,
   options: { skipLocalConfig?: boolean; skipGlobalConfig?: boolean } = {},
-  deps = {
-    jitiImport: defaultJitiImport,
-  },
+  overrideDeps: Partial<ConfigLoadDeps> = {},
 ): Promise<RepomixConfigFile> => {
+  const deps = { ...defaultDeps, ...overrideDeps };
   if (argConfigPath) {
     // Explicit --config flag is always respected (user's intentional choice)
     const fullPath = path.resolve(rootDir, argConfigPath);
     logger.trace('Loading local config from:', fullPath);
 
-    const isLocalFileExists = await checkFileExists(fullPath);
+    const isLocalFileExists = await checkFileExists(fullPath, deps);
 
     if (isLocalFileExists) {
       return await loadAndValidateConfig(fullPath, deps);
@@ -104,7 +125,7 @@ export const loadFileConfig = async (
   }
 
   // Try to find a local config file using the priority order
-  const localConfigPath = await findLocalConfigPath(rootDir);
+  const localConfigPath = await findLocalConfigPath(rootDir, deps);
 
   if (localConfigPath) {
     if (!options.skipLocalConfig) {
@@ -121,8 +142,8 @@ export const loadFileConfig = async (
   // (set for untrusted-agent contexts like --sandbox) skips it too: even the
   // operator's own global config can set output.instructionFilePath to read an
   // out-of-workspace file into the output shown to the untrusted agent.
-  const globalConfigPaths = getGlobalConfigPaths();
-  const globalConfigPath = options.skipGlobalConfig ? null : await findConfigFile(globalConfigPaths, 'global');
+  const globalConfigPaths = getGlobalConfigPaths(deps);
+  const globalConfigPath = options.skipGlobalConfig ? null : await findConfigFile(globalConfigPaths, 'global', deps);
 
   if (globalConfigPath) {
     return await loadAndValidateConfig(globalConfigPath, deps);
@@ -159,9 +180,7 @@ export const isExecutableConfigPath = (filePath: string): boolean =>
 // causing coverage instability (results varied by ~2% on each test run).
 const loadAndValidateConfig = async (
   filePath: string,
-  deps = {
-    jitiImport: defaultJitiImport,
-  },
+  deps: Pick<ConfigLoadDeps, 'jitiImport' | 'readFile'>,
 ): Promise<RepomixConfigFile> => {
   try {
     let config: unknown;
@@ -191,7 +210,7 @@ const loadAndValidateConfig = async (
       case 'jsonc':
       case 'json': {
         // Use JSON5 for JSON/JSON5/JSONC files
-        const fileContent = await fs.readFile(filePath, 'utf-8');
+        const fileContent = await deps.readFile(filePath, 'utf-8');
         config = JSON5.parse(fileContent);
         break;
       }

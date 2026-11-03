@@ -1,7 +1,7 @@
 // src/core/security/securityCheck.test.ts
 
 import pc from 'picocolors';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RawFile } from '../../../src/core/file/fileTypes.js';
 import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
 import { runSecurityCheck } from '../../../src/core/security/securityCheck.js';
@@ -9,8 +9,10 @@ import type { SecurityCheckTask } from '../../../src/core/security/workers/secur
 import securityCheckWorker from '../../../src/core/security/workers/securityCheckWorker.js';
 import { logger, repomixLogLevels } from '../../../src/shared/logger.js';
 import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
+import { silenceLogger } from '../../testing/coreFileGitLogger.js';
 
-vi.mock('../../../src/shared/logger');
+// Kept as a module mock: the "default deps" test below calls runSecurityCheck without deps, and the real
+// initTaskRunner would start a Tinypool worker from a .js worker path that does not exist under src/.
 vi.mock('../../../src/shared/processConcurrency', () => ({
   getProcessConcurrency: vi.fn(() => 4),
   initWorker: vi.fn(() => ({
@@ -54,6 +56,14 @@ const mockInitTaskRunner = <T, R>(_options: WorkerOptions) => {
 };
 
 describe('runSecurityCheck', () => {
+  beforeEach(() => {
+    silenceLogger();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('should identify files with security issues', async () => {
     const result = await runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
       initTaskRunner: mockInitTaskRunner,
@@ -150,8 +160,8 @@ describe('runSecurityCheck', () => {
 
   it('should use default initTaskRunner when no deps provided', async () => {
     // Test the default initTaskRunner function (lines 16-18)
-    // Mock logger.getLogLevel to return a valid value
-    vi.mocked(logger.getLogLevel).mockReturnValue(repomixLogLevels.INFO);
+    // Pin logger.getLogLevel to a valid value
+    vi.spyOn(logger, 'getLogLevel').mockReturnValue(repomixLogLevels.INFO);
 
     const result = await runSecurityCheck(mockFiles, () => {});
 

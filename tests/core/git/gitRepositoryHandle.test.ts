@@ -1,12 +1,16 @@
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { getFileChangeCount, isGitInstalled, isGitRepository } from '../../../src/core/git/gitRepositoryHandle.js';
 import { logger } from '../../../src/shared/logger.js';
-
-vi.mock('../../../src/shared/logger');
+import { silenceLogger } from '../../testing/coreFileGitLogger.js';
 
 describe('gitRepositoryHandle', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    silenceLogger();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('getFileChangeCount', () => {

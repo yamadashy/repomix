@@ -1,12 +1,16 @@
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { checkRemoteRepoExists, getRemoteRefs } from '../../../src/core/git/gitRemoteHandle.js';
 import { logger } from '../../../src/shared/logger.js';
-
-vi.mock('../../../src/shared/logger');
+import { silenceLogger } from '../../testing/coreFileGitLogger.js';
 
 describe('gitRemoteHandle', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    silenceLogger();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('checkRemoteRepoExists', () => {

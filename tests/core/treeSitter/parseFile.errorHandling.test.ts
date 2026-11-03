@@ -1,6 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { LanguageParser } from '../../../src/core/treeSitter/languageParser.js';
 import { cleanupLanguageParser, parseFile } from '../../../src/core/treeSitter/parseFile.js';
 import { logger } from '../../../src/shared/logger.js';
+import { silenceLogger } from '../../testing/coreFileGitLogger.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 // A single mock LanguageParser instance reused via the module singleton in
@@ -15,28 +17,11 @@ const mockParser = {
   dispose: vi.fn(),
 };
 
-vi.mock('../../../src/core/treeSitter/languageParser.js', () => ({
-  // A class so `new LanguageParser()` works; it delegates to the shared
-  // mockParser whose method behaviors each test reconfigures.
-  LanguageParser: class {
-    init = mockParser.init;
-    guessTheLang = mockParser.guessTheLang;
-    getQueryForLang = mockParser.getQueryForLang;
-    getParserForLang = mockParser.getParserForLang;
-    getStrategyForLang = mockParser.getStrategyForLang;
-    dispose = mockParser.dispose;
-  },
-}));
-
-vi.mock('../../../src/shared/logger.js', () => ({
-  logger: {
-    warn: vi.fn(),
-    debug: vi.fn(),
-    trace: vi.fn(),
-    log: vi.fn(),
-    error: vi.fn(),
-  },
-}));
+// parseFile caches the parser built by this factory as its module singleton, so every test
+// shares mockParser and only reconfigures its methods.
+const deps = {
+  createLanguageParser: () => mockParser as unknown as LanguageParser,
+};
 
 // Shared mock tree so tests can assert tree.delete() is invoked for WASM cleanup.
 // vi.clearAllMocks() in beforeEach resets its call history between tests.
@@ -61,6 +46,11 @@ describe('parseFile error handling', () => {
     mockParser.getQueryForLang.mockResolvedValue(makeWorkingQuery());
     mockParser.getParserForLang.mockResolvedValue(makeWorkingParser());
     mockParser.getStrategyForLang.mockResolvedValue(makeWorkingStrategy());
+    silenceLogger();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('returns undefined (not an empty string) and warns when language preparation throws', async () => {
@@ -69,7 +59,7 @@ describe('parseFile error handling', () => {
       new Error('Failed to prepare language cpp: table index is out of bounds'),
     );
 
-    const result = await parseFile('int main() { return 0; }', 'main.cpp', config);
+    const result = await parseFile('int main() { return 0; }', 'main.cpp', config, deps);
 
     expect(result).toBeUndefined();
     expect(result).not.toBe('');
@@ -83,7 +73,7 @@ describe('parseFile error handling', () => {
       }),
     });
 
-    const result = await parseFile('int main() { return 0; }', 'main.cpp', config);
+    const result = await parseFile('int main() { return 0; }', 'main.cpp', config, deps);
 
     expect(result).toBeUndefined();
     expect(logger.warn).toHaveBeenCalledTimes(1);
@@ -96,7 +86,7 @@ describe('parseFile error handling', () => {
       }),
     });
 
-    const result = await parseFile('const x = 1;', 'main.js', config);
+    const result = await parseFile('const x = 1;', 'main.js', config, deps);
 
     expect(result).toBeUndefined();
     expect(logger.warn).toHaveBeenCalledTimes(1);
@@ -111,7 +101,7 @@ describe('parseFile error handling', () => {
       }),
     });
 
-    const result = await parseFile('const x = 1;', 'main.js', config);
+    const result = await parseFile('const x = 1;', 'main.js', config, deps);
 
     expect(result).toBeUndefined();
     expect(logger.warn).toHaveBeenCalledTimes(1);
@@ -124,7 +114,7 @@ describe('parseFile error handling', () => {
     // undefined means "could not compress, fall back". The default mock yields
     // zero captures, exercising the success-with-empty-result path; the caller
     // preserves '' via `parsedContent ?? processedContent`.
-    const result = await parseFile('const x = 1;', 'main.js', config);
+    const result = await parseFile('const x = 1;', 'main.js', config, deps);
 
     expect(result).toBe('');
     expect(logger.warn).not.toHaveBeenCalled();
@@ -135,7 +125,7 @@ describe('parseFile error handling', () => {
     // debug level (not warn), and falls back to uncompressed content.
     mockParser.getParserForLang.mockResolvedValue({ parse: vi.fn().mockReturnValue(null) });
 
-    const result = await parseFile('const x = 1;', 'main.js', config);
+    const result = await parseFile('const x = 1;', 'main.js', config, deps);
 
     expect(result).toBeUndefined();
     expect(logger.warn).not.toHaveBeenCalled();
@@ -144,7 +134,7 @@ describe('parseFile error handling', () => {
   it('returns undefined without warning for unsupported languages', async () => {
     mockParser.guessTheLang.mockReturnValue(undefined);
 
-    const result = await parseFile('some content', 'file.unknown', config);
+    const result = await parseFile('some content', 'file.unknown', config, deps);
 
     expect(result).toBeUndefined();
     expect(logger.warn).not.toHaveBeenCalled();
@@ -157,7 +147,7 @@ describe('parseFile error handling', () => {
       parseCapture: vi.fn().mockReturnValue('function foo()'),
     });
 
-    const result = await parseFile('function foo() {}', 'foo.js', config);
+    const result = await parseFile('function foo() {}', 'foo.js', config, deps);
 
     expect(result).toBe('function foo()');
     expect(logger.warn).not.toHaveBeenCalled();
@@ -175,11 +165,11 @@ describe('parseFile error handling', () => {
       parseCapture: vi.fn().mockReturnValue('function foo()'),
     });
 
-    const firstResult = await parseFile('function foo() {}', 'foo.js', config);
+    const firstResult = await parseFile('function foo() {}', 'foo.js', config, deps);
     expect(firstResult).toBeUndefined();
     expect(logger.warn).toHaveBeenCalledTimes(1);
 
-    const secondResult = await parseFile('function foo() {}', 'foo.js', config);
+    const secondResult = await parseFile('function foo() {}', 'foo.js', config, deps);
     expect(secondResult).toBe('function foo()');
     expect(mockParser.init).toHaveBeenCalledTimes(2);
   });
@@ -194,8 +184,8 @@ describe('parseFile error handling', () => {
       new Error('Failed to prepare language cpp: table index is out of bounds'),
     );
 
-    const first = await parseFile('int main() { return 0; }', 'a.cpp', config);
-    const second = await parseFile('int main() { return 0; }', 'b.cpp', config);
+    const first = await parseFile('int main() { return 0; }', 'a.cpp', config, deps);
+    const second = await parseFile('int main() { return 0; }', 'b.cpp', config, deps);
 
     expect(first).toBeUndefined();
     expect(second).toBeUndefined();

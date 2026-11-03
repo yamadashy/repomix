@@ -24,10 +24,23 @@ export class PermissionError extends Error {
   }
 }
 
-export const checkDirectoryPermissions = async (dirPath: string): Promise<PermissionCheckResult> => {
+interface PermissionCheckDeps {
+  readdir: (dirPath: string) => Promise<unknown>;
+  access: (dirPath: string, mode: number) => Promise<void>;
+  platform: () => NodeJS.Platform;
+}
+
+export const checkDirectoryPermissions = async (
+  dirPath: string,
+  deps: PermissionCheckDeps = {
+    readdir: fs.readdir,
+    access: fs.access,
+    platform,
+  },
+): Promise<PermissionCheckResult> => {
   try {
     // First try to read directory contents
-    await fs.readdir(dirPath);
+    await deps.readdir(dirPath);
 
     // Check specific permissions
     const details = {
@@ -37,17 +50,17 @@ export const checkDirectoryPermissions = async (dirPath: string): Promise<Permis
     };
 
     try {
-      await fs.access(dirPath, constants.R_OK);
+      await deps.access(dirPath, constants.R_OK);
       details.read = true;
     } catch {}
 
     try {
-      await fs.access(dirPath, constants.W_OK);
+      await deps.access(dirPath, constants.W_OK);
       details.write = true;
     } catch {}
 
     try {
-      await fs.access(dirPath, constants.X_OK);
+      await deps.access(dirPath, constants.X_OK);
       details.execute = true;
     } catch {}
 
@@ -72,7 +85,11 @@ export const checkDirectoryPermissions = async (dirPath: string): Promise<Permis
         case 'EISDIR':
           return {
             hasAllPermission: false,
-            error: new PermissionError(getMacOSPermissionMessage(dirPath, error.code), dirPath, error.code),
+            error: new PermissionError(
+              getMacOSPermissionMessage(dirPath, error.code, deps.platform),
+              dirPath,
+              error.code,
+            ),
           };
         default:
           logger.debug('Directory permission check error:', error);
@@ -89,8 +106,12 @@ export const checkDirectoryPermissions = async (dirPath: string): Promise<Permis
   }
 };
 
-const getMacOSPermissionMessage = (dirPath: string, errorCode?: string): string => {
-  if (platform() === 'darwin') {
+const getMacOSPermissionMessage = (
+  dirPath: string,
+  errorCode: string | undefined,
+  getPlatform: () => NodeJS.Platform,
+): string => {
+  if (getPlatform() === 'darwin') {
     return `Permission denied: Cannot access '${dirPath}', error code: ${errorCode}.
 
 This error often occurs when macOS security restrictions prevent access to the directory.

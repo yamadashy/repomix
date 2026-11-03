@@ -27,21 +27,27 @@ function getWasmBasePath(): string | null {
   return customWasmBasePath ?? process.env.REPOMIX_WASM_DIR ?? null;
 }
 
-export async function loadLanguage(langName: string): Promise<Language> {
+const defaultDeps = {
+  access: (filePath: string): Promise<void> => fs.access(filePath),
+  resolveModule: (specifier: string): string => require.resolve(specifier),
+  loadLanguageWasm: (wasmPath: string): Promise<Language> => Language.load(wasmPath),
+};
+
+export async function loadLanguage(langName: string, deps = defaultDeps): Promise<Language> {
   if (!langName) {
     throw new Error('Invalid language name');
   }
 
   try {
-    const wasmPath = await getWasmPath(langName);
-    return await Language.load(wasmPath);
+    const wasmPath = await getWasmPath(langName, deps);
+    return await deps.loadLanguageWasm(wasmPath);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to load language ${langName}: ${message}`);
   }
 }
 
-async function getWasmPath(langName: string): Promise<string> {
+async function getWasmPath(langName: string, deps: typeof defaultDeps): Promise<string> {
   const wasmBasePath = getWasmBasePath();
 
   let wasmPath: string;
@@ -50,11 +56,11 @@ async function getWasmPath(langName: string): Promise<string> {
     wasmPath = path.join(wasmBasePath, `tree-sitter-${langName}.wasm`);
   } else {
     // Use require.resolve for standard node_modules environments
-    wasmPath = require.resolve(`@repomix/tree-sitter-wasms/out/tree-sitter-${langName}.wasm`);
+    wasmPath = deps.resolveModule(`@repomix/tree-sitter-wasms/out/tree-sitter-${langName}.wasm`);
   }
 
   try {
-    await fs.access(wasmPath);
+    await deps.access(wasmPath);
     return wasmPath;
   } catch {
     throw new Error(`WASM file not found for language ${langName}: ${wasmPath}`);

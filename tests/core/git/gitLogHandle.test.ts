@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import {
   GIT_LOG_FORMAT_SEPARATOR,
@@ -8,12 +8,16 @@ import {
 } from '../../../src/core/git/gitLogHandle.js';
 import { RepomixError } from '../../../src/shared/errorHandle.js';
 import { logger } from '../../../src/shared/logger.js';
-
-vi.mock('../../../src/shared/logger');
+import { silenceLogger } from '../../testing/coreFileGitLogger.js';
 
 describe('gitLogHandle', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    silenceLogger();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('getGitLog', () => {
