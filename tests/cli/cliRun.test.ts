@@ -3,70 +3,38 @@ import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { Command, program } from 'commander';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import * as defaultAction from '../../src/cli/actions/defaultAction.js';
-import * as initAction from '../../src/cli/actions/initAction.js';
-import * as remoteAction from '../../src/cli/actions/remoteAction.js';
-import * as versionAction from '../../src/cli/actions/versionAction.js';
 import { canonicalizeSandboxRoot, commanderActionEndpoint, run, runCli } from '../../src/cli/cliRun.js';
 import type { CliOptions } from '../../src/cli/types.js';
-import * as gitRemoteHandle from '../../src/core/git/gitRemoteHandle.js';
+import { getVersion } from '../../src/core/file/packageJsonParse.js';
 import type { PackResult } from '../../src/core/packager.js';
-import { logger, type RepomixLogLevel, repomixLogLevels } from '../../src/shared/logger.js';
+import { logger, repomixLogLevels } from '../../src/shared/logger.js';
+import { silenceLogger } from '../testing/cliDoubles.js';
 import { createMockConfig } from '../testing/testUtils.js';
 
-let logLevel: RepomixLogLevel;
-
-vi.mock('../../src/shared/logger', () => ({
-  repomixLogLevels: {
-    SILENT: -1,
-    ERROR: 0,
-    WARN: 1,
-    INFO: 2,
-    DEBUG: 3,
-  },
-  logger: {
-    log: vi.fn(),
-    trace: vi.fn(),
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    success: vi.fn(),
-    note: vi.fn(),
-    setLogLevel: vi.fn((level: RepomixLogLevel) => {
-      logLevel = level;
-    }),
-    getLogLevel: vi.fn(() => logLevel),
-    setOutputStream: vi.fn(),
-  },
-  setLogLevelByWorkerData: vi.fn(),
-}));
-
-vi.mock('../../src/cli/actions/defaultAction');
-vi.mock('../../src/cli/actions/initAction');
-vi.mock('../../src/cli/actions/mcpAction');
-vi.mock('../../src/cli/actions/remoteAction');
-vi.mock('../../src/core/git/gitRemoteHandle');
-vi.mock('../../src/cli/actions/versionAction');
-
-// Partial mock: `access` is spyable for shorthand-detection tests, everything else stays real.
-vi.mock('node:fs/promises', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('node:fs/promises')>();
-  return {
-    ...actual,
-    access: vi.fn(actual.access),
-  };
+const createDeps = () => ({
+  getVersion,
+  access: vi.fn((filePath: string) => fs.access(filePath)),
+  checkRemoteRepoExists: vi.fn(),
+  runMcpAction: vi.fn(),
+  runVersionAction: vi.fn(),
+  runInitAction: vi.fn(),
+  runRemoteAction: vi.fn(),
+  runWatchAction: vi.fn(),
+  runDefaultAction: vi.fn(),
 });
 
-const actualFs = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
-
 describe('cliRun', () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-    // resetAllMocks clears the default implementation — restore real fs.access behavior.
-    vi.mocked(fs.access).mockImplementation(actualFs.access);
+  let deps: ReturnType<typeof createDeps>;
 
-    vi.mocked(defaultAction.runDefaultAction).mockResolvedValue({
+  beforeEach(() => {
+    const loggerSpies = silenceLogger();
+    // Keep the real level and stream setters (still spied) so the log level assertions below
+    // observe what runCli actually set; afterEach puts the shared logger back to its defaults.
+    loggerSpies.setLogLevel.mockReset();
+    loggerSpies.setOutputStream.mockReset();
+
+    deps = createDeps();
+    deps.runDefaultAction.mockResolvedValue({
       config: createMockConfig({
         cwd: process.cwd(),
         input: {
@@ -121,8 +89,7 @@ describe('cliRun', () => {
         skippedFiles: [],
       } satisfies PackResult,
     });
-    vi.mocked(initAction.runInitAction).mockResolvedValue();
-    vi.mocked(remoteAction.runRemoteAction).mockResolvedValue({
+    deps.runRemoteAction.mockResolvedValue({
       config: createMockConfig({
         cwd: process.cwd(),
         input: {
@@ -177,7 +144,11 @@ describe('cliRun', () => {
         skippedFiles: [],
       } satisfies PackResult,
     });
-    vi.mocked(versionAction.runVersionAction).mockResolvedValue();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    logger.init();
   });
 
   test('should call process.exit(1) on error', async () => {
@@ -196,183 +167,162 @@ describe('cliRun', () => {
 
   describe('executeAction', () => {
     test('should execute default action when no special options provided', async () => {
-      await runCli(['.'], process.cwd(), {});
+      await runCli(['.'], process.cwd(), {}, undefined, deps);
 
-      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(['.'], process.cwd(), expect.any(Object), undefined);
+      expect(deps.runDefaultAction).toHaveBeenCalledWith(['.'], process.cwd(), expect.any(Object), undefined);
     });
 
     test('should enable verbose logging when verbose option is true', async () => {
-      await runCli(['.'], process.cwd(), { verbose: true });
+      await runCli(['.'], process.cwd(), { verbose: true }, undefined, deps);
 
       expect(logger.setLogLevel).toHaveBeenCalledWith(repomixLogLevels.DEBUG);
     });
 
     test('should execute version action when version option is true', async () => {
-      await runCli(['.'], process.cwd(), { version: true });
+      await runCli(['.'], process.cwd(), { version: true }, undefined, deps);
 
-      expect(versionAction.runVersionAction).toHaveBeenCalled();
-      expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
+      expect(deps.runVersionAction).toHaveBeenCalled();
+      expect(deps.runDefaultAction).not.toHaveBeenCalled();
     });
 
     test('should execute init action when init option is true', async () => {
-      await runCli(['.'], process.cwd(), { init: true });
+      await runCli(['.'], process.cwd(), { init: true }, undefined, deps);
 
-      expect(initAction.runInitAction).toHaveBeenCalledWith(process.cwd(), false);
-      expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
+      expect(deps.runInitAction).toHaveBeenCalledWith(process.cwd(), false);
+      expect(deps.runDefaultAction).not.toHaveBeenCalled();
     });
 
     test('should execute remote action when remote option is provided', async () => {
-      await runCli(['.'], process.cwd(), {
-        remote: 'yamadashy/repomix',
-      });
+      await runCli(
+        ['.'],
+        process.cwd(),
+        {
+          remote: 'yamadashy/repomix',
+        },
+        undefined,
+        deps,
+      );
 
-      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith('yamadashy/repomix', expect.any(Object), undefined);
-      expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
+      expect(deps.runRemoteAction).toHaveBeenCalledWith('yamadashy/repomix', expect.any(Object), undefined);
+      expect(deps.runDefaultAction).not.toHaveBeenCalled();
     });
 
     test('should auto-detect HTTPS URL and execute remote action', async () => {
-      await runCli(['https://github.com/user/repo'], process.cwd(), {});
+      await runCli(['https://github.com/user/repo'], process.cwd(), {}, undefined, deps);
 
-      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith(
-        'https://github.com/user/repo',
-        expect.any(Object),
-        undefined,
-      );
-      expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
+      expect(deps.runRemoteAction).toHaveBeenCalledWith('https://github.com/user/repo', expect.any(Object), undefined);
+      expect(deps.runDefaultAction).not.toHaveBeenCalled();
     });
 
     test('should auto-detect git@ SSH URL and execute remote action', async () => {
-      await runCli(['git@github.com:user/repo.git'], process.cwd(), {});
+      await runCli(['git@github.com:user/repo.git'], process.cwd(), {}, undefined, deps);
 
-      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith(
-        'git@github.com:user/repo.git',
-        expect.any(Object),
-        undefined,
-      );
-      expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
+      expect(deps.runRemoteAction).toHaveBeenCalledWith('git@github.com:user/repo.git', expect.any(Object), undefined);
+      expect(deps.runDefaultAction).not.toHaveBeenCalled();
     });
 
     test('should auto-detect ssh:// URL and execute remote action', async () => {
-      await runCli(['ssh://git@github.com/user/repo.git'], process.cwd(), {});
+      await runCli(['ssh://git@github.com/user/repo.git'], process.cwd(), {}, undefined, deps);
 
-      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith(
+      expect(deps.runRemoteAction).toHaveBeenCalledWith(
         'ssh://git@github.com/user/repo.git',
         expect.any(Object),
         undefined,
       );
-      expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
+      expect(deps.runDefaultAction).not.toHaveBeenCalled();
     });
 
     test('should auto-detect git:// URL and execute remote action', async () => {
-      await runCli(['git://github.com/user/repo.git'], process.cwd(), {});
+      await runCli(['git://github.com/user/repo.git'], process.cwd(), {}, undefined, deps);
 
-      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith(
+      expect(deps.runRemoteAction).toHaveBeenCalledWith(
         'git://github.com/user/repo.git',
         expect.any(Object),
         undefined,
       );
-      expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
+      expect(deps.runDefaultAction).not.toHaveBeenCalled();
     });
 
     test('should auto-detect shorthand when no local path exists and the repository is reachable', async () => {
-      vi.mocked(gitRemoteHandle.checkRemoteRepoExists).mockResolvedValue(true);
+      deps.checkRemoteRepoExists.mockResolvedValue(true);
 
-      await runCli(['user/repo'], process.cwd(), {});
+      await runCli(['user/repo'], process.cwd(), {}, undefined, deps);
 
-      expect(gitRemoteHandle.checkRemoteRepoExists).toHaveBeenCalledWith('https://github.com/user/repo.git');
-      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith('user/repo', expect.any(Object), undefined);
-      expect(defaultAction.runDefaultAction).not.toHaveBeenCalled();
+      expect(deps.checkRemoteRepoExists).toHaveBeenCalledWith('https://github.com/user/repo.git');
+      expect(deps.runRemoteAction).toHaveBeenCalledWith('user/repo', expect.any(Object), undefined);
+      expect(deps.runDefaultAction).not.toHaveBeenCalled();
     });
 
     test('should fall back to local handling when shorthand is not a reachable repository', async () => {
-      vi.mocked(gitRemoteHandle.checkRemoteRepoExists).mockResolvedValue(false);
+      deps.checkRemoteRepoExists.mockResolvedValue(false);
 
-      await runCli(['user/repo'], process.cwd(), {});
+      await runCli(['user/repo'], process.cwd(), {}, undefined, deps);
 
-      expect(gitRemoteHandle.checkRemoteRepoExists).toHaveBeenCalledWith('https://github.com/user/repo.git');
-      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
-        ['user/repo'],
-        process.cwd(),
-        expect.any(Object),
-        undefined,
-      );
-      expect(remoteAction.runRemoteAction).not.toHaveBeenCalled();
+      expect(deps.checkRemoteRepoExists).toHaveBeenCalledWith('https://github.com/user/repo.git');
+      expect(deps.runDefaultAction).toHaveBeenCalledWith(['user/repo'], process.cwd(), expect.any(Object), undefined);
+      expect(deps.runRemoteAction).not.toHaveBeenCalled();
     });
 
     test('should prefer existing local path over shorthand auto-detection', async () => {
       // Simulate an existing local path that also matches the owner/repo pattern.
-      // Mocking fs.access keeps the test independent of the repository's own directory layout.
-      vi.mocked(fs.access).mockResolvedValue(undefined);
+      // Stubbing access keeps the test independent of the repository's own directory layout.
+      deps.access.mockResolvedValue(undefined);
 
-      await runCli(['user/repo'], process.cwd(), {});
+      await runCli(['user/repo'], process.cwd(), {}, undefined, deps);
 
-      expect(gitRemoteHandle.checkRemoteRepoExists).not.toHaveBeenCalled();
-      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
-        ['user/repo'],
-        process.cwd(),
-        expect.any(Object),
-        undefined,
-      );
-      expect(remoteAction.runRemoteAction).not.toHaveBeenCalled();
+      expect(deps.checkRemoteRepoExists).not.toHaveBeenCalled();
+      expect(deps.runDefaultAction).toHaveBeenCalledWith(['user/repo'], process.cwd(), expect.any(Object), undefined);
+      expect(deps.runRemoteAction).not.toHaveBeenCalled();
     });
 
     test('should treat permission-denied local path as existing and skip the remote probe', async () => {
       const accessError = Object.assign(new Error('permission denied'), { code: 'EACCES' });
-      vi.mocked(fs.access).mockRejectedValue(accessError);
+      deps.access.mockRejectedValue(accessError);
 
-      await runCli(['user/repo'], process.cwd(), {});
+      await runCli(['user/repo'], process.cwd(), {}, undefined, deps);
 
-      expect(gitRemoteHandle.checkRemoteRepoExists).not.toHaveBeenCalled();
-      expect(remoteAction.runRemoteAction).not.toHaveBeenCalled();
-      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
-        ['user/repo'],
-        process.cwd(),
-        expect.any(Object),
-        undefined,
-      );
+      expect(deps.checkRemoteRepoExists).not.toHaveBeenCalled();
+      expect(deps.runRemoteAction).not.toHaveBeenCalled();
+      expect(deps.runDefaultAction).toHaveBeenCalledWith(['user/repo'], process.cwd(), expect.any(Object), undefined);
     });
 
     test('should not treat Windows-style absolute path as shorthand', async () => {
       // `C:` contains a colon, which the owner/repo pattern rejects — no probe even when missing locally.
-      await runCli(['C:/project'], process.cwd(), {});
+      await runCli(['C:/project'], process.cwd(), {}, undefined, deps);
 
-      expect(gitRemoteHandle.checkRemoteRepoExists).not.toHaveBeenCalled();
-      expect(remoteAction.runRemoteAction).not.toHaveBeenCalled();
-      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
-        ['C:/project'],
-        process.cwd(),
-        expect.any(Object),
-        undefined,
-      );
+      expect(deps.checkRemoteRepoExists).not.toHaveBeenCalled();
+      expect(deps.runRemoteAction).not.toHaveBeenCalled();
+      expect(deps.runDefaultAction).toHaveBeenCalledWith(['C:/project'], process.cwd(), expect.any(Object), undefined);
     });
 
     test('should not probe shorthand in stdin mode', async () => {
-      await runCli(['user/repo'], process.cwd(), { stdin: true });
+      await runCli(['user/repo'], process.cwd(), { stdin: true }, undefined, deps);
 
-      expect(gitRemoteHandle.checkRemoteRepoExists).not.toHaveBeenCalled();
-      expect(remoteAction.runRemoteAction).not.toHaveBeenCalled();
-      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
-        ['user/repo'],
-        process.cwd(),
-        expect.any(Object),
-        undefined,
-      );
+      expect(deps.checkRemoteRepoExists).not.toHaveBeenCalled();
+      expect(deps.runRemoteAction).not.toHaveBeenCalled();
+      expect(deps.runDefaultAction).toHaveBeenCalledWith(['user/repo'], process.cwd(), expect.any(Object), undefined);
     });
 
     test('should prioritize explicit --remote flag over auto-detected URL', async () => {
-      await runCli(['https://github.com/other/repo'], process.cwd(), {
-        remote: 'yamadashy/repomix',
-      });
+      await runCli(
+        ['https://github.com/other/repo'],
+        process.cwd(),
+        {
+          remote: 'yamadashy/repomix',
+        },
+        undefined,
+        deps,
+      );
 
-      expect(remoteAction.runRemoteAction).toHaveBeenCalledWith('yamadashy/repomix', expect.any(Object), undefined);
+      expect(deps.runRemoteAction).toHaveBeenCalledWith('yamadashy/repomix', expect.any(Object), undefined);
     });
   });
 
   describe('parsable style flag', () => {
     test('should disable parsable style by default', async () => {
-      await runCli(['.'], process.cwd(), {});
+      await runCli(['.'], process.cwd(), {}, undefined, deps);
 
-      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+      expect(deps.runDefaultAction).toHaveBeenCalledWith(
         ['.'],
         process.cwd(),
         expect.not.objectContaining({
@@ -383,9 +333,9 @@ describe('cliRun', () => {
     });
 
     test('should handle --parsable-style flag', async () => {
-      await runCli(['.'], process.cwd(), { parsableStyle: true });
+      await runCli(['.'], process.cwd(), { parsableStyle: true }, undefined, deps);
 
-      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+      expect(deps.runDefaultAction).toHaveBeenCalledWith(
         ['.'],
         process.cwd(),
         expect.objectContaining({
@@ -398,12 +348,18 @@ describe('cliRun', () => {
 
   describe('skill generation options', () => {
     test('should pass --skill-project-name to default action', async () => {
-      await runCli(['.'], process.cwd(), {
-        skillGenerate: true,
-        skillProjectName: 'Repomix',
-      });
+      await runCli(
+        ['.'],
+        process.cwd(),
+        {
+          skillGenerate: true,
+          skillProjectName: 'Repomix',
+        },
+        undefined,
+        deps,
+      );
 
-      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+      expect(deps.runDefaultAction).toHaveBeenCalledWith(
         ['.'],
         process.cwd(),
         expect.objectContaining({
@@ -417,9 +373,9 @@ describe('cliRun', () => {
 
   describe('security check flag', () => {
     test('should enable security check by default', async () => {
-      await runCli(['.'], process.cwd(), {});
+      await runCli(['.'], process.cwd(), {}, undefined, deps);
 
-      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+      expect(deps.runDefaultAction).toHaveBeenCalledWith(
         ['.'],
         process.cwd(),
         expect.not.objectContaining({
@@ -430,9 +386,9 @@ describe('cliRun', () => {
     });
 
     test('should handle --no-security-check flag', async () => {
-      await runCli(['.'], process.cwd(), { securityCheck: false });
+      await runCli(['.'], process.cwd(), { securityCheck: false }, undefined, deps);
 
-      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+      expect(deps.runDefaultAction).toHaveBeenCalledWith(
         ['.'],
         process.cwd(),
         expect.objectContaining({
@@ -443,9 +399,9 @@ describe('cliRun', () => {
     });
 
     test('should handle explicit --security-check flag', async () => {
-      await runCli(['.'], process.cwd(), { securityCheck: true });
+      await runCli(['.'], process.cwd(), { securityCheck: true }, undefined, deps);
 
-      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+      expect(deps.runDefaultAction).toHaveBeenCalledWith(
         ['.'],
         process.cwd(),
         expect.objectContaining({
@@ -459,9 +415,11 @@ describe('cliRun', () => {
       const command = new Command().option('--no-security-check');
       command.parse([], { from: 'user' });
 
-      await commanderActionEndpoint(['.'], command.opts(), command);
+      await commanderActionEndpoint(['.'], command.opts(), command, {
+        runCli: (directories, cwd, options) => runCli(directories, cwd, options, undefined, deps),
+      });
 
-      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+      expect(deps.runDefaultAction).toHaveBeenCalledWith(
         ['.'],
         process.cwd(),
         expect.not.objectContaining({
@@ -475,9 +433,11 @@ describe('cliRun', () => {
       const command = new Command().option('--no-security-check');
       command.parse(['--no-security-check'], { from: 'user' });
 
-      await commanderActionEndpoint(['.'], command.opts(), command);
+      await commanderActionEndpoint(['.'], command.opts(), command, {
+        runCli: (directories, cwd, options) => runCli(directories, cwd, options, undefined, deps),
+      });
 
-      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+      expect(deps.runDefaultAction).toHaveBeenCalledWith(
         ['.'],
         process.cwd(),
         expect.objectContaining({
@@ -488,9 +448,9 @@ describe('cliRun', () => {
     });
 
     test('should handle explicit --no-gitignore flag', async () => {
-      await runCli(['.'], process.cwd(), { gitignore: false });
+      await runCli(['.'], process.cwd(), { gitignore: false }, undefined, deps);
 
-      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+      expect(deps.runDefaultAction).toHaveBeenCalledWith(
         ['.'],
         process.cwd(),
         expect.objectContaining({
@@ -501,9 +461,9 @@ describe('cliRun', () => {
     });
 
     test('should handle explicit --no-default-patterns flag', async () => {
-      await runCli(['.'], process.cwd(), { defaultPatterns: false });
+      await runCli(['.'], process.cwd(), { defaultPatterns: false }, undefined, deps);
 
-      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+      expect(deps.runDefaultAction).toHaveBeenCalledWith(
         ['.'],
         process.cwd(),
         expect.objectContaining({
@@ -514,11 +474,17 @@ describe('cliRun', () => {
     });
 
     test('should handle explicit --header-text flag', async () => {
-      await runCli(['.'], process.cwd(), {
-        headerText: 'I am a good header text',
-      });
+      await runCli(
+        ['.'],
+        process.cwd(),
+        {
+          headerText: 'I am a good header text',
+        },
+        undefined,
+        deps,
+      );
 
-      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+      expect(deps.runDefaultAction).toHaveBeenCalledWith(
         ['.'],
         process.cwd(),
         expect.objectContaining({
@@ -529,11 +495,17 @@ describe('cliRun', () => {
     });
 
     test('should handle --instruction-file-path flag', async () => {
-      await runCli(['.'], process.cwd(), {
-        instructionFilePath: 'path/to/instruction.txt',
-      });
+      await runCli(
+        ['.'],
+        process.cwd(),
+        {
+          instructionFilePath: 'path/to/instruction.txt',
+        },
+        undefined,
+        deps,
+      );
 
-      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+      expect(deps.runDefaultAction).toHaveBeenCalledWith(
         ['.'],
         process.cwd(),
         expect.objectContaining({
@@ -544,11 +516,17 @@ describe('cliRun', () => {
     });
 
     test('should handle --output-file-path-style flag', async () => {
-      await runCli(['.'], process.cwd(), {
-        outputFilePathStyle: 'cwd-relative',
-      });
+      await runCli(
+        ['.'],
+        process.cwd(),
+        {
+          outputFilePathStyle: 'cwd-relative',
+        },
+        undefined,
+        deps,
+      );
 
-      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+      expect(deps.runDefaultAction).toHaveBeenCalledWith(
         ['.'],
         process.cwd(),
         expect.objectContaining({
@@ -559,11 +537,17 @@ describe('cliRun', () => {
     });
 
     test('should handle --include-empty-directories flag', async () => {
-      await runCli(['.'], process.cwd(), {
-        includeEmptyDirectories: true,
-      });
+      await runCli(
+        ['.'],
+        process.cwd(),
+        {
+          includeEmptyDirectories: true,
+        },
+        undefined,
+        deps,
+      );
 
-      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+      expect(deps.runDefaultAction).toHaveBeenCalledWith(
         ['.'],
         process.cwd(),
         expect.objectContaining({
@@ -580,7 +564,7 @@ describe('cliRun', () => {
         quiet: true,
       };
 
-      await runCli(['.'], process.cwd(), options);
+      await runCli(['.'], process.cwd(), options, undefined, deps);
 
       expect(logger.getLogLevel()).toBe(repomixLogLevels.SILENT);
     });
@@ -590,7 +574,7 @@ describe('cliRun', () => {
         verbose: true,
       };
 
-      await runCli(['.'], process.cwd(), options);
+      await runCli(['.'], process.cwd(), options, undefined, deps);
 
       expect(logger.getLogLevel()).toBe(repomixLogLevels.DEBUG);
     });
@@ -598,7 +582,7 @@ describe('cliRun', () => {
     test('should set log level to INFO by default', async () => {
       const options: CliOptions = {};
 
-      await runCli(['.'], process.cwd(), options);
+      await runCli(['.'], process.cwd(), options, undefined, deps);
 
       expect(logger.getLogLevel()).toBe(repomixLogLevels.INFO);
     });
@@ -616,9 +600,9 @@ describe('cliRun', () => {
         stdout: true,
       };
 
-      await runCli(['.'], process.cwd(), options);
+      await runCli(['.'], process.cwd(), options, undefined, deps);
 
-      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+      expect(deps.runDefaultAction).toHaveBeenCalledWith(
         ['.'],
         process.cwd(),
         expect.objectContaining({
@@ -635,10 +619,10 @@ describe('cliRun', () => {
         output: 'custom-output.txt',
       };
 
-      await runCli(['.'], process.cwd(), options);
+      await runCli(['.'], process.cwd(), options, undefined, deps);
 
       // stdout should not be set
-      expect(defaultAction.runDefaultAction).toHaveBeenCalledWith(
+      expect(deps.runDefaultAction).toHaveBeenCalledWith(
         ['.'],
         process.cwd(),
         expect.objectContaining({
@@ -646,7 +630,7 @@ describe('cliRun', () => {
         }),
         undefined,
       );
-      expect(defaultAction.runDefaultAction).not.toHaveBeenCalledWith(
+      expect(deps.runDefaultAction).not.toHaveBeenCalledWith(
         ['.'],
         process.cwd(),
         expect.objectContaining({
@@ -666,7 +650,7 @@ describe('cliRun', () => {
       const setOutputStream = vi.mocked(logger.setOutputStream);
       const trace = vi.mocked(logger.trace);
 
-      await runCli(['.'], process.cwd(), options);
+      await runCli(['.'], process.cwd(), options, undefined, deps);
 
       expect(setOutputStream).toHaveBeenCalledWith('stderr');
 
@@ -681,7 +665,7 @@ describe('cliRun', () => {
         verbose: true,
       };
 
-      await runCli(['.'], process.cwd(), options);
+      await runCli(['.'], process.cwd(), options, undefined, deps);
 
       expect(vi.mocked(logger.setOutputStream)).not.toHaveBeenCalled();
     });

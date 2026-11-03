@@ -4,12 +4,19 @@ import process from 'node:process';
 import { type Command, Option, program } from 'commander';
 import pc from 'picocolors';
 import { getVersion } from '../core/file/packageJsonParse.js';
+import type { checkRemoteRepoExists } from '../core/git/gitRemoteHandle.js';
 import { isExplicitRemoteUrl, isValidShorthand } from '../core/git/gitRemoteUrl.js';
 import { handleError, RepomixError } from '../shared/errorHandle.js';
 import { logger, repomixLogLevels } from '../shared/logger.js';
 import { parseHumanSizeToBytes } from '../shared/sizeParse.js';
 import type { RepomixProgressCallback } from '../shared/types.js';
 import { redactOptionsForLog, redactUrl } from '../shared/urlRedact.js';
+import type { runDefaultAction } from './actions/defaultAction.js';
+import type { runInitAction } from './actions/initAction.js';
+import type { runMcpAction } from './actions/mcpAction.js';
+import type { runRemoteAction } from './actions/remoteAction.js';
+import type { runVersionAction } from './actions/versionAction.js';
+import type { runWatchAction } from './actions/watchAction.js';
 import type { CliOptions } from './types.js';
 
 // Semantic mapping for CLI suggestions
@@ -252,7 +259,12 @@ export const run = async () => {
   }
 };
 
-export const commanderActionEndpoint = async (directories: string[], options: CliOptions = {}, command?: Command) => {
+export const commanderActionEndpoint = async (
+  directories: string[],
+  options: CliOptions = {},
+  command?: Command,
+  deps = { runCli },
+) => {
   // `--no-security-check` makes Commander fill `securityCheck: true` even when the
   // flag is absent. buildCliConfig treats any defined value as an explicit override,
   // so drop the default here to let the config file's `security.enableSecurityCheck` apply.
@@ -264,7 +276,7 @@ export const commanderActionEndpoint = async (directories: string[], options: Cl
   // Auto-enable file processors for real CLI invocations only. Library callers
   // (`runCli`/`pack`) and MCP tools bypass this endpoint, so they default to OFF.
   // Remote runs downgrade this based on --remote-trust-config in runRemoteAction.
-  await runCli(directories, process.cwd(), { enableFileProcessors: true, ...cliOptions });
+  await deps.runCli(directories, process.cwd(), { enableFileProcessors: true, ...cliOptions });
 };
 
 /**
@@ -342,6 +354,26 @@ export const canonicalizeSandboxRoot = async (
   }
 };
 
+// Each action is imported lazily so a run only loads the code path it takes.
+const runCliDeps = {
+  getVersion,
+  access: (filePath: string) => fs.access(filePath),
+  checkRemoteRepoExists: async (...args: Parameters<typeof checkRemoteRepoExists>) =>
+    (await import('../core/git/gitRemoteHandle.js')).checkRemoteRepoExists(...args),
+  runMcpAction: async (...args: Parameters<typeof runMcpAction>) =>
+    (await import('./actions/mcpAction.js')).runMcpAction(...args),
+  runVersionAction: async (...args: Parameters<typeof runVersionAction>) =>
+    (await import('./actions/versionAction.js')).runVersionAction(...args),
+  runInitAction: async (...args: Parameters<typeof runInitAction>) =>
+    (await import('./actions/initAction.js')).runInitAction(...args),
+  runRemoteAction: async (...args: Parameters<typeof runRemoteAction>) =>
+    (await import('./actions/remoteAction.js')).runRemoteAction(...args),
+  runWatchAction: async (...args: Parameters<typeof runWatchAction>) =>
+    (await import('./actions/watchAction.js')).runWatchAction(...args),
+  runDefaultAction: async (...args: Parameters<typeof runDefaultAction>) =>
+    (await import('./actions/defaultAction.js')).runDefaultAction(...args),
+};
+
 /**
  * @param progressCallback Optional listener for pipeline progress messages (used by the
  *   MCP tools to emit progress notifications). The CLI itself passes none.
@@ -351,6 +383,7 @@ export const runCli = async (
   cwd: string,
   options: CliOptions,
   progressCallback?: RepomixProgressCallback,
+  deps = runCliDeps,
 ) => {
   // Detect stdout mode
   // NOTE: For compatibility, currently not detecting pipe mode
@@ -402,43 +435,37 @@ export const runCli = async (
     // realpaths resolveWithinRoot returns. Runs before any agent connects, so surfacing
     // the operator's own path in a resolution error is fine.
     const sandboxRoot = sandboxed ? await canonicalizeSandboxRoot(requestedRoot) : requestedRoot;
-    const { runMcpAction } = await import('./actions/mcpAction.js');
-    return await runMcpAction({ sandboxed, cwd: sandboxRoot });
+    return await deps.runMcpAction({ sandboxed, cwd: sandboxRoot });
   }
 
   if (options.version) {
-    const { runVersionAction } = await import('./actions/versionAction.js');
-    await runVersionAction();
+    await deps.runVersionAction();
     return;
   }
 
   // Skip version header in stdin mode to avoid interfering with piped output from interactive tools like fzf
   if (!options.stdin) {
-    const version = await getVersion();
+    const version = await deps.getVersion();
     logger.log(pc.dim(`\n📦 Repomix v${version}\n`));
   }
 
   if (options.init) {
-    const { runInitAction } = await import('./actions/initAction.js');
-    await runInitAction(cwd, options.global || false);
+    await deps.runInitAction(cwd, options.global || false);
     return;
   }
 
   if (options.remote) {
-    const { runRemoteAction } = await import('./actions/remoteAction.js');
-    return await runRemoteAction(options.remote, options, progressCallback);
+    return await deps.runRemoteAction(options.remote, options, progressCallback);
   }
 
   // Auto-detect explicit remote URLs (https://, git@, ssh://, git://) in positional arguments
   if (directories.length === 1 && isExplicitRemoteUrl(directories[0])) {
     logger.trace(`Auto-detected remote URL from positional argument: ${redactUrl(directories[0])}`);
-    const { runRemoteAction } = await import('./actions/remoteAction.js');
-    return await runRemoteAction(directories[0], options, progressCallback);
+    return await deps.runRemoteAction(directories[0], options, progressCallback);
   }
 
   if (options.watch) {
-    const { runWatchAction } = await import('./actions/watchAction.js');
-    return await runWatchAction(directories, cwd, options);
+    return await deps.runWatchAction(directories, cwd, options);
   }
 
   // Auto-detect GitHub shorthand (owner/repo) in positional arguments.
@@ -449,27 +476,24 @@ export const runCli = async (
   // regular local-path handling instead of triggering an unintended clone attempt.
   // Skipped in stdin mode, where positional directory arguments are rejected.
   if (directories.length === 1 && !options.stdin && isValidShorthand(directories[0])) {
-    const localPathExists = await fs.access(path.resolve(cwd, directories[0])).then(
+    const localPathExists = await deps.access(path.resolve(cwd, directories[0])).then(
       () => true,
       // EACCES/EPERM mean the path exists but is inaccessible — keep local-path precedence
       // and only fall through to the remote probe when the path is truly missing.
       (error: NodeJS.ErrnoException) => !['ENOENT', 'ENOTDIR'].includes(error.code ?? ''),
     );
     if (!localPathExists) {
-      const { checkRemoteRepoExists } = await import('../core/git/gitRemoteHandle.js');
-      if (await checkRemoteRepoExists(`https://github.com/${directories[0]}.git`)) {
+      if (await deps.checkRemoteRepoExists(`https://github.com/${directories[0]}.git`)) {
         logger.log(
           pc.dim(
             `Detected GitHub repository shorthand: ${directories[0]} (prefix with ./ to treat it as a local path)\n`,
           ),
         );
-        const { runRemoteAction } = await import('./actions/remoteAction.js');
-        return await runRemoteAction(directories[0], options, progressCallback);
+        return await deps.runRemoteAction(directories[0], options, progressCallback);
       }
       logger.trace(`Argument matches owner/repo shorthand but is not a reachable GitHub repository: ${directories[0]}`);
     }
   }
 
-  const { runDefaultAction } = await import('./actions/defaultAction.js');
-  return await runDefaultAction(directories, cwd, options, progressCallback);
+  return await deps.runDefaultAction(directories, cwd, options, progressCallback);
 };

@@ -25,6 +25,15 @@ export interface WatchDeps {
   watch: (paths: string | string[], options?: ChokidarOptions) => FSWatcher;
   signal?: AbortSignal;
   buildIgnoreFilter?: (targetPaths: string[], config: RepomixConfigMerged) => Promise<(watchedPath: string) => boolean>;
+  buildMergedConfig?: typeof buildMergedConfig;
+  pack?: typeof pack;
+  reportResults?: typeof reportResults;
+  Spinner?: typeof Spinner;
+}
+
+interface PackDeps {
+  pack: typeof pack;
+  Spinner: typeof Spinner;
 }
 
 const resolveDefaultDeps = async (): Promise<WatchDeps> => {
@@ -37,8 +46,9 @@ const runPack = async (
   targetPaths: string[],
   config: RepomixConfigMerged,
   cliOptions: CliOptions,
+  deps: PackDeps,
 ): Promise<PackResult> => {
-  const spinner = new Spinner('Packing...', cliOptions);
+  const spinner = new deps.Spinner('Packing...', cliOptions);
   spinner.start();
 
   try {
@@ -46,7 +56,7 @@ const runPack = async (
       spinner.update(message);
     };
 
-    const packResult = await pack(targetPaths, config, handleProgress);
+    const packResult = await deps.pack(targetPaths, config, handleProgress);
     spinner.succeed('Packing completed successfully!');
     return packResult;
   } catch (error) {
@@ -70,9 +80,12 @@ export const runWatchAction = async (
   // Only load chokidar if no watch function is provided (enables faster tests)
   const resolvedDeps: WatchDeps = deps?.watch ? (deps as WatchDeps) : { ...(await resolveDefaultDeps()), ...deps };
 
+  const packDeps: PackDeps = { pack: resolvedDeps.pack ?? pack, Spinner: resolvedDeps.Spinner ?? Spinner };
+  const report = resolvedDeps.reportResults ?? reportResults;
+
   logger.trace('Watch mode: loaded CLI options:', redactOptionsForLog(cliOptions));
 
-  const config = await buildMergedConfig(cwd, cliOptions);
+  const config = await (resolvedDeps.buildMergedConfig ?? buildMergedConfig)(cwd, cliOptions);
 
   // Watch-specific incompatibilities. Each of these is independently incompatible with
   // --watch and can also be set via the config file (which validateWatchOptions in cliRun,
@@ -103,8 +116,8 @@ export const runWatchAction = async (
   const targetPaths = directories.map((directory) => path.resolve(cwd, directory));
 
   // Run initial pack
-  const packResult = await runPack(targetPaths, config, cliOptions);
-  reportResults(cwd, packResult, config, cliOptions);
+  const packResult = await runPack(targetPaths, config, cliOptions, packDeps);
+  report(cwd, packResult, config, cliOptions);
   logger.log(pc.dim(`\nWatching ${packResult.safeFilePaths.length} files for changes... (Ctrl+C to stop)\n`));
 
   // Watch target directories instead of individual files so new files are detected.
@@ -158,8 +171,8 @@ export const runWatchAction = async (
       isRebuilding = true;
       const rebuildWork = async () => {
         try {
-          const result = await runPack(targetPaths, config, cliOptions);
-          reportResults(cwd, result, config, cliOptions);
+          const result = await runPack(targetPaths, config, cliOptions, packDeps);
+          report(cwd, result, config, cliOptions);
           // toTimeString() returns "HH:MM:SS GMT..." independent of locale, so the leading
           // time portion is a portable, consistent 24-hour timestamp on every platform
           // (toLocaleTimeString(undefined) would follow the system locale, e.g. non-ASCII

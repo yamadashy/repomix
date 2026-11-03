@@ -11,8 +11,8 @@ import {
 import { getGlobalDirectory } from '../../config/globalDirectory.js';
 import { logger } from '../../shared/logger.js';
 
-const onCancelOperation = () => {
-  prompts.cancel('Initialization cancelled.');
+const onCancelOperation = (clack: typeof prompts) => {
+  clack.cancel('Initialization cancelled.');
   process.exit(0);
 };
 
@@ -38,8 +38,16 @@ export const runInitAction = async (rootDir: string, isGlobal: boolean): Promise
   }
 };
 
-export const createConfigFile = async (rootDir: string, isGlobal: boolean): Promise<boolean> => {
-  const configPath = path.resolve(isGlobal ? getGlobalDirectory() : rootDir, 'repomix.config.json');
+export const createConfigFile = async (
+  rootDir: string,
+  isGlobal: boolean,
+  deps = {
+    prompts,
+    getGlobalDirectory,
+  },
+): Promise<boolean> => {
+  const { prompts } = deps;
+  const configPath = path.resolve(isGlobal ? deps.getGlobalDirectory() : rootDir, 'repomix.config.json');
 
   const isCreateConfig = await prompts.confirm({
     message: `Do you want to create a ${isGlobal ? 'global ' : ''}${pc.green('repomix.config.json')} file?`,
@@ -49,7 +57,7 @@ export const createConfigFile = async (rootDir: string, isGlobal: boolean): Prom
     return false;
   }
   if (prompts.isCancel(isCreateConfig)) {
-    onCancelOperation();
+    onCancelOperation(prompts);
     return false;
   }
 
@@ -70,7 +78,7 @@ export const createConfigFile = async (rootDir: string, isGlobal: boolean): Prom
       return false;
     }
     if (prompts.isCancel(isOverwrite)) {
-      onCancelOperation();
+      onCancelOperation(prompts);
       return false;
     }
   }
@@ -99,7 +107,7 @@ export const createConfigFile = async (rootDir: string, isGlobal: boolean): Prom
       },
     },
     {
-      onCancel: onCancelOperation,
+      onCancel: () => onCancelOperation(prompts),
     },
   );
 
@@ -125,7 +133,14 @@ export const createConfigFile = async (rootDir: string, isGlobal: boolean): Prom
   return true;
 };
 
-export const createIgnoreFile = async (rootDir: string, isGlobal: boolean): Promise<boolean> => {
+export const createIgnoreFile = async (
+  rootDir: string,
+  isGlobal: boolean,
+  deps = {
+    prompts,
+  },
+): Promise<boolean> => {
+  const { prompts } = deps;
   if (isGlobal) {
     prompts.log.info(`Skipping ${pc.green('.repomixignore')} file creation for global configuration.`);
     return false;
@@ -140,7 +155,7 @@ export const createIgnoreFile = async (rootDir: string, isGlobal: boolean): Prom
     return false;
   }
   if (prompts.isCancel(createIgnore)) {
-    onCancelOperation();
+    onCancelOperation(prompts);
     return false;
   }
 

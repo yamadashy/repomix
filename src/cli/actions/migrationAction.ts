@@ -26,6 +26,18 @@ interface MigrationResult {
   error?: Error;
 }
 
+// Lazy-load @clack/prompts (~16ms): only needed when old Repopack files
+// are detected, which is rare after initial migration.
+const loadClack = async () => {
+  const p = await import('@clack/prompts');
+  return { confirm: p.confirm, isCancel: p.isCancel };
+};
+
+interface MigrationDeps {
+  getGlobalDirectory: typeof getGlobalDirectory;
+  loadClack: typeof loadClack;
+}
+
 /**
  * Check if a file exists at the given path
  */
@@ -99,7 +111,8 @@ const migrateFile = async (
   oldPath: string,
   newPath: string,
   description: string,
-  isConfig = false,
+  isConfig: boolean,
+  deps: MigrationDeps,
 ): Promise<boolean> => {
   if (!(await fileExists(oldPath))) {
     return false;
@@ -107,7 +120,7 @@ const migrateFile = async (
 
   const exists = await fileExists(newPath);
   if (exists) {
-    const p = await import('@clack/prompts');
+    const p = await deps.loadClack();
     const shouldOverwrite = await p.confirm({
       message: `${description} already exists at ${newPath}. Do you want to overwrite it?`,
     });
@@ -173,10 +186,10 @@ const updateIgnoreFiles = async (rootDir: string): Promise<void> => {
 /**
  * Get all migration related file paths
  */
-const getMigrationPaths = (rootDir: string): MigrationPaths => {
+const getMigrationPaths = (rootDir: string, deps: MigrationDeps): MigrationPaths => {
   const { oldPaths: oldOutputPaths, newPaths: newOutputPaths } = getOutputFilePaths(rootDir);
   const oldGlobalDirectory = path.join(process.env.HOME || '', '.config', 'repopack');
-  const newGlobalDirectory = getGlobalDirectory();
+  const newGlobalDirectory = deps.getGlobalDirectory();
 
   return {
     oldConfigPath: path.join(rootDir, 'repopack.config.json'),
@@ -195,7 +208,7 @@ const getMigrationPaths = (rootDir: string): MigrationPaths => {
 /**
  * Migrate output files
  */
-const migrateOutputFiles = async (oldPaths: string[], newPaths: string[]): Promise<string[]> => {
+const migrateOutputFiles = async (oldPaths: string[], newPaths: string[], deps: MigrationDeps): Promise<string[]> => {
   const migratedFiles: string[] = [];
 
   for (let i = 0; i < oldPaths.length; i++) {
@@ -203,7 +216,7 @@ const migrateOutputFiles = async (oldPaths: string[], newPaths: string[]): Promi
     const newPath = newPaths[i];
     const ext = path.extname(oldPath);
 
-    if (await migrateFile(oldPath, newPath, `Output file (${ext})`)) {
+    if (await migrateFile(oldPath, newPath, `Output file (${ext})`, false, deps)) {
       migratedFiles.push(newPath);
     }
   }
@@ -211,7 +224,13 @@ const migrateOutputFiles = async (oldPaths: string[], newPaths: string[]): Promi
   return migratedFiles;
 };
 
-export const runMigrationAction = async (rootDir: string): Promise<MigrationResult> => {
+export const runMigrationAction = async (
+  rootDir: string,
+  deps: MigrationDeps = {
+    getGlobalDirectory,
+    loadClack,
+  },
+): Promise<MigrationResult> => {
   const result: MigrationResult = {
     configMigrated: false,
     ignoreMigrated: false,
@@ -221,7 +240,7 @@ export const runMigrationAction = async (rootDir: string): Promise<MigrationResu
   };
 
   try {
-    const paths = getMigrationPaths(rootDir);
+    const paths = getMigrationPaths(rootDir, deps);
 
     // Check if migration is needed
     const hasOldConfig = await fileExists(paths.oldConfigPath);
@@ -244,9 +263,7 @@ export const runMigrationAction = async (rootDir: string): Promise<MigrationResu
     if (hasOldGlobalConfig) items.push('global configuration');
     migrationMessage += `${items.join(' and ')}. Would you like to migrate to ${pc.green('Repomix')}?`;
 
-    // Lazy-load @clack/prompts (~16ms) — only needed when old Repopack files
-    // are detected, which is rare after initial migration.
-    const p = await import('@clack/prompts');
+    const p = await deps.loadClack();
 
     // Confirm migration with user
     const shouldMigrate = await p.confirm({
@@ -264,7 +281,13 @@ export const runMigrationAction = async (rootDir: string): Promise<MigrationResu
 
     // Migrate config file
     if (hasOldConfig) {
-      result.configMigrated = await migrateFile(paths.oldConfigPath, paths.newConfigPath, 'Configuration file', true);
+      result.configMigrated = await migrateFile(
+        paths.oldConfigPath,
+        paths.newConfigPath,
+        'Configuration file',
+        true,
+        deps,
+      );
     }
 
     // Migrate global config file
@@ -274,12 +297,13 @@ export const runMigrationAction = async (rootDir: string): Promise<MigrationResu
         paths.newGlobalConfigPath,
         'Global configuration file',
         true,
+        deps,
       );
     }
 
     // Migrate ignore file
     if (hasOldIgnore) {
-      result.ignoreMigrated = await migrateFile(paths.oldIgnorePath, paths.newIgnorePath, 'Ignore file');
+      result.ignoreMigrated = await migrateFile(paths.oldIgnorePath, paths.newIgnorePath, 'Ignore file', false, deps);
     }
 
     // Migrate instruction file
@@ -288,12 +312,14 @@ export const runMigrationAction = async (rootDir: string): Promise<MigrationResu
         paths.oldInstructionPath,
         paths.newInstructionPath,
         'Instruction file',
+        false,
+        deps,
       );
     }
 
     // Migrate output files
     if (hasOldOutput) {
-      result.outputFilesMigrated = await migrateOutputFiles(paths.oldOutputPaths, paths.newOutputPaths);
+      result.outputFilesMigrated = await migrateOutputFiles(paths.oldOutputPaths, paths.newOutputPaths, deps);
     }
 
     // Update content in gitignore and repomixignore

@@ -30,6 +30,9 @@ export const reportResults = (
   packResult: PackResult,
   config: RepomixConfigMerged,
   options: ReportOptions = {},
+  deps = {
+    reportTokenCountTree,
+  },
 ): void => {
   logger.log('');
 
@@ -46,7 +49,7 @@ export const reportResults = (
   // 0 is a valid threshold ("show files with >= 0 tokens"); only `false` or
   // an unset value disables the tree.
   if (config.output.tokenCountTree !== false && config.output.tokenCountTree !== undefined) {
-    reportTokenCountTree(packResult.processedFiles, packResult.fileTokenCounts, config);
+    deps.reportTokenCountTree(packResult.processedFiles, packResult.fileTokenCounts, config);
     logger.log('');
   }
 

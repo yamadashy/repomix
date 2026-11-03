@@ -39,6 +39,8 @@ export const runRemoteAction = async (
     parseGitHubRepoInfo,
     isArchiveDownloadSupported,
     confirmRemoteConfigTrust,
+    copyOutputToCurrentDirectory,
+    Spinner,
   },
 ): Promise<DefaultActionRunnerResult> => {
   const reportProgress = createSafeProgressCallback(progressCallback);
@@ -65,7 +67,7 @@ export const runRemoteAction = async (
 
     if (shouldTryArchive) {
       // Try GitHub archive download first
-      const spinner = new Spinner('Downloading repository archive...', cliOptions);
+      const spinner = new deps.Spinner('Downloading repository archive...', cliOptions);
 
       try {
         spinner.start();
@@ -218,7 +220,7 @@ export const runRemoteAction = async (
     if (!cliOptions.stdout && result.config.skillGenerate === undefined) {
       const outputFiles = result.packResult.outputFiles ?? [result.config.output.filePath];
       for (const outputFile of outputFiles) {
-        await copyOutputToCurrentDirectory(tempDirPath, process.cwd(), outputFile);
+        await deps.copyOutputToCurrentDirectory(tempDirPath, process.cwd(), outputFile);
       }
     }
 
@@ -283,6 +285,7 @@ const performGitClone = async (
     isGitInstalled: typeof isGitInstalled;
     getRemoteRefs: typeof getRemoteRefs;
     execGitShallowClone: typeof execGitShallowClone;
+    Spinner: typeof Spinner;
   },
   reportProgress: (message: string) => void = () => {},
 ): Promise<void> => {
@@ -303,7 +306,7 @@ const performGitClone = async (
   const parsedFields = parseRemoteValue(repoUrl, refs);
   warnIgnoredRemoteSubpath(parsedFields, refs);
 
-  const spinner = new Spinner('Cloning repository...', cliOptions);
+  const spinner = new deps.Spinner('Cloning repository...', cliOptions);
 
   try {
     spinner.start();
@@ -363,6 +366,10 @@ export const copyOutputToCurrentDirectory = async (
   sourceDir: string,
   targetDir: string,
   outputFileName: string,
+  deps = {
+    mkdir: fs.mkdir,
+    copyFile: fs.copyFile,
+  },
 ): Promise<void> => {
   const sourcePath = path.resolve(sourceDir, outputFileName);
   const targetPath = path.resolve(targetDir, outputFileName);
@@ -378,9 +385,9 @@ export const copyOutputToCurrentDirectory = async (
     logger.trace(`Copying output file from: ${sourcePath} to: ${targetPath}`);
 
     // Create target directory if it doesn't exist
-    await fs.mkdir(path.dirname(targetPath), { recursive: true });
+    await deps.mkdir(path.dirname(targetPath), { recursive: true });
 
-    await fs.copyFile(sourcePath, targetPath);
+    await deps.copyFile(sourcePath, targetPath);
   } catch (error) {
     const nodeError = error as NodeJS.ErrnoException;
 

@@ -1,46 +1,23 @@
-import { beforeEach, describe, expect, type Mock, type MockedFunction, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { runDefaultAction } from '../../../src/cli/actions/defaultAction.js';
-import * as cliReport from '../../../src/cli/cliReport.js';
 import type { CliOptions } from '../../../src/cli/types.js';
-import * as configLoad from '../../../src/config/configLoad.js';
-import * as packager from '../../../src/core/packager.js';
-
-vi.mock('../../../src/config/configLoad.js');
-vi.mock('../../../src/core/packager.js');
-vi.mock('../../../src/cli/cliReport.js');
-vi.mock('../../../src/cli/actions/migrationAction.js', () => ({
-  runMigrationAction: vi.fn(),
-}));
-
-const mockSpinner = {
-  start: vi.fn() as MockedFunction<() => void>,
-  update: vi.fn() as MockedFunction<(message: string) => void>,
-  succeed: vi.fn() as MockedFunction<(message: string) => void>,
-  fail: vi.fn() as MockedFunction<(message: string) => void>,
-};
-
-vi.mock('../../../src/cli/cliSpinner', () => {
-  const MockSpinner = class {
-    start = mockSpinner.start;
-    update = mockSpinner.update;
-    succeed = mockSpinner.succeed;
-    fail = mockSpinner.fail;
-  };
-  return { Spinner: MockSpinner };
-});
+import { createMockSpinner } from '../../testing/cliDoubles.js';
 
 describe('defaultAction with tokenCountTree', () => {
-  const mockLoadFileConfig = configLoad.loadFileConfig as Mock;
-  const mockMergeConfigs = configLoad.mergeConfigs as Mock;
-  const mockPack = packager.pack as Mock;
-  const mockReportResults = cliReport.reportResults as Mock;
+  const mockBuildMergedConfig = vi.fn();
+  const mockPack = vi.fn();
+  const mockReportResults = vi.fn();
+  const deps = {
+    buildMergedConfig: mockBuildMergedConfig,
+    readFilePathsFromStdin: vi.fn(),
+    pack: mockPack,
+    reportResults: mockReportResults,
+    Spinner: createMockSpinner().Spinner,
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
-
-    // Setup default mocks
-    mockLoadFileConfig.mockResolvedValue({});
-    mockMergeConfigs.mockReturnValue({
+    mockBuildMergedConfig.mockResolvedValue({
       output: {
         filePath: 'output.xml',
         topFilesLength: 5,
@@ -73,7 +50,7 @@ describe('defaultAction with tokenCountTree', () => {
     };
 
     // Mock config to have tokenCountTree enabled
-    mockMergeConfigs.mockReturnValue({
+    mockBuildMergedConfig.mockResolvedValue({
       output: {
         filePath: 'output.xml',
         topFilesLength: 5,
@@ -84,7 +61,7 @@ describe('defaultAction with tokenCountTree', () => {
       },
     });
 
-    await runDefaultAction(['.'], '/test', cliOptions);
+    await runDefaultAction(['.'], '/test', cliOptions, undefined, deps);
 
     expect(mockReportResults).toHaveBeenCalledWith(
       '/test',
@@ -107,7 +84,7 @@ describe('defaultAction with tokenCountTree', () => {
   test('should not display token count tree when option is not provided', async () => {
     const cliOptions: CliOptions = {};
 
-    await runDefaultAction(['.'], '/test', cliOptions);
+    await runDefaultAction(['.'], '/test', cliOptions, undefined, deps);
 
     expect(mockReportResults).toHaveBeenCalledWith(
       '/test',
@@ -127,7 +104,7 @@ describe('defaultAction with tokenCountTree', () => {
     };
 
     // Mock config to have tokenCountTree enabled
-    mockMergeConfigs.mockReturnValue({
+    mockBuildMergedConfig.mockResolvedValue({
       output: {
         filePath: 'output.xml',
         topFilesLength: 5,
@@ -138,7 +115,7 @@ describe('defaultAction with tokenCountTree', () => {
       },
     });
 
-    await runDefaultAction(['src', 'tests'], '/project', cliOptions);
+    await runDefaultAction(['src', 'tests'], '/project', cliOptions, undefined, deps);
 
     expect(mockReportResults).toHaveBeenCalledWith(
       '/project',
@@ -158,7 +135,7 @@ describe('defaultAction with tokenCountTree', () => {
     };
 
     // Mock config to have tokenCountTree enabled with threshold
-    mockMergeConfigs.mockReturnValue({
+    mockBuildMergedConfig.mockResolvedValue({
       output: {
         filePath: 'output.xml',
         topFilesLength: 5,
@@ -169,7 +146,7 @@ describe('defaultAction with tokenCountTree', () => {
       },
     });
 
-    await runDefaultAction(['.'], '/test', cliOptions);
+    await runDefaultAction(['.'], '/test', cliOptions, undefined, deps);
 
     expect(mockReportResults).toHaveBeenCalledWith(
       '/test',

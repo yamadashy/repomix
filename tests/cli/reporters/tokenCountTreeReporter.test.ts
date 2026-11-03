@@ -1,27 +1,19 @@
-import { beforeEach, describe, expect, type Mock, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { reportTokenCountTree } from '../../../src/cli/reporters/tokenCountTreeReporter.js';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
-import { logger } from '../../../src/shared/logger.js';
-
-vi.mock('../../../src/shared/logger');
-vi.mock('picocolors', () => ({
-  default: {
-    white: (str: string) => `WHITE:${str}`,
-    dim: (str: string) => `DIM:${str}`,
-    green: (str: string) => `GREEN:${str}`,
-    yellow: (str: string) => `YELLOW:${str}`,
-    red: (str: string) => `RED:${str}`,
-    cyan: (str: string) => `CYAN:${str}`,
-    underline: (str: string) => `UNDERLINE:${str}`,
-  },
-}));
+import { silenceLogger, tagColors } from '../../testing/cliDoubles.js';
 
 describe('reportTokenCountTree', () => {
-  const mockLogger = logger.log as Mock;
+  let mockLogger: ReturnType<typeof silenceLogger>['log'];
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    mockLogger = silenceLogger().log;
+    tagColors();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   test('should use existing token counts and display tree', () => {

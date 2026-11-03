@@ -36,7 +36,15 @@ export interface DefaultActionRunnerResult {
  * loads the file config, parses the CLI options, and merges them. Shared by the
  * default and watch actions so the config pipeline lives in one place.
  */
-export const buildMergedConfig = async (cwd: string, cliOptions: CliOptions): Promise<RepomixConfigMerged> => {
+export const buildMergedConfig = async (
+  cwd: string,
+  cliOptions: CliOptions,
+  deps = {
+    runMigrationAction,
+    loadFileConfig,
+    mergeConfigs,
+  },
+): Promise<RepomixConfigMerged> => {
   // Migration rewrites legacy Repopack files in place, so it only makes sense for
   // the user's own project. A remote clone is a throwaway temp dir whose legacy
   // files are attacker-controlled: migrating them would write a repomix.config.*
@@ -46,7 +54,7 @@ export const buildMergedConfig = async (cwd: string, cliOptions: CliOptions): Pr
   // skipLocalConfig is kept in the condition as a backstop: any caller that opts out
   // of reading a directory's config has no business rewriting files in it either.
   if (!cliOptions.skipMigration && !cliOptions.skipLocalConfig) {
-    await runMigrationAction(cwd);
+    await deps.runMigrationAction(cwd);
   }
 
   // Load the merged repomix.config.* — but callers that don't trust the config
@@ -56,7 +64,7 @@ export const buildMergedConfig = async (cwd: string, cliOptions: CliOptions): Pr
   // output.instructionFilePath to read an out-of-workspace file into the
   // agent-visible output, or input.processors to run commands. Both default off, so
   // ordinary CLI/library runs load config as usual.
-  const fileConfig: RepomixConfigFile = await loadFileConfig(cwd, cliOptions.config ?? null, {
+  const fileConfig: RepomixConfigFile = await deps.loadFileConfig(cwd, cliOptions.config ?? null, {
     skipLocalConfig: cliOptions.skipLocalConfig,
     skipGlobalConfig: cliOptions.skipGlobalConfig,
   });
@@ -67,7 +75,7 @@ export const buildMergedConfig = async (cwd: string, cliOptions: CliOptions): Pr
   logger.trace('CLI config:', cliConfig);
 
   // Merge default, file, and CLI configs
-  const config: RepomixConfigMerged = mergeConfigs(cwd, fileConfig, cliConfig);
+  const config: RepomixConfigMerged = deps.mergeConfigs(cwd, fileConfig, cliConfig);
   logger.trace('Merged config:', config);
 
   // Surface configured file processors (active or disabled) for visibility, since
@@ -82,11 +90,18 @@ export const runDefaultAction = async (
   cwd: string,
   cliOptions: CliOptions,
   progressCallback?: RepomixProgressCallback,
+  deps = {
+    buildMergedConfig,
+    readFilePathsFromStdin,
+    pack,
+    reportResults,
+    Spinner,
+  },
 ): Promise<DefaultActionRunnerResult> => {
   logger.trace('Loaded CLI options:', redactOptionsForLog(cliOptions));
 
   // Build the merged config (migration + file config + CLI options)
-  const config = await buildMergedConfig(cwd, cliOptions);
+  const config = await deps.buildMergedConfig(cwd, cliOptions);
 
   // Validate conflicting options
   validateConflictingOptions(config);
@@ -140,7 +155,7 @@ export const runDefaultAction = async (
       );
     }
 
-    const stdinResult = await readFilePathsFromStdin(cwd);
+    const stdinResult = await deps.readFilePathsFromStdin(cwd);
     stdinFilePaths = stdinResult.filePaths;
     logger.trace(`Read ${stdinFilePaths.length} file paths from stdin`);
   }
@@ -148,7 +163,7 @@ export const runDefaultAction = async (
   // Run pack() directly in the main process instead of spawning a child process.
   // The child process startup cost (~250ms for Node.js init + module re-loading) was
   // pure overhead since the spinner and pack ran in the same child process anyway.
-  const spinner = new Spinner('Initializing...', cliOptions);
+  const spinner = new deps.Spinner('Initializing...', cliOptions);
   spinner.start();
 
   let packResult: PackResult;
@@ -172,7 +187,7 @@ export const runDefaultAction = async (
       reportProgress(message);
     };
 
-    packResult = await pack(targetPaths, config, handleProgress, {}, stdinFilePaths, packOptions);
+    packResult = await deps.pack(targetPaths, config, handleProgress, {}, stdinFilePaths, packOptions);
 
     spinner.succeed('Packing completed successfully!');
   } catch (error) {
@@ -181,7 +196,7 @@ export const runDefaultAction = async (
   }
 
   // Report results
-  reportResults(cwd, packResult, config, cliOptions);
+  deps.reportResults(cwd, packResult, config, cliOptions);
 
   // Enforce the token budget as the last step. The output has already been
   // produced (and written) by this point, so this is a guard that fails the
