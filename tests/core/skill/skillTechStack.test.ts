@@ -400,7 +400,7 @@ tokio = { version = "1.0", features = ["full"] }`,
       expect(result.packageManager).toBe(expected);
     });
 
-    test('should still report the language for an unparseable package.json', () => {
+    test('should still report the language for an unparsable package.json', () => {
       const result = detectSingle('package.json', '{ not json');
 
       expect(result.languages).toEqual(['Node.js']);
@@ -415,7 +415,7 @@ tokio = { version = "1.0", features = ["full"] }`,
       expect(result.dependencies).toContainEqual({ name: 'torch', version: '2.1.0' });
     });
 
-    test('should parse quoted entries in the [project.dependencies] section of pyproject.toml', () => {
+    test('should parse quoted entries in the supported [project.dependencies] table of pyproject.toml', () => {
       const result = detectSingle(
         'pyproject.toml',
         `[project]
