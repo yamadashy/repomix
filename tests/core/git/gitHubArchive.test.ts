@@ -1,5 +1,5 @@
 import { Transform, Writable } from 'node:stream';
-import type { pipeline as pipelineType } from 'node:stream/promises';
+import { type pipeline as pipelineType, pipeline as realPipeline } from 'node:stream/promises';
 import type * as zlib from 'node:zlib';
 import type { extract as tarExtractType } from 'tar';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
@@ -121,6 +121,89 @@ describe('gitHubArchive', () => {
 
       expect(mockFetch).toHaveBeenCalled();
       expect(mockPipeline).toHaveBeenCalled();
+    });
+
+    describe('download progress reporting', () => {
+      // A body that arrives in several chunks, optionally with a content-length header.
+      const createChunkedResponse = (chunkSizes: number[], withContentLength: boolean): Response => {
+        const total = chunkSizes.reduce((sum, size) => sum + size, 0);
+        return new Response(
+          new ReadableStream({
+            start(controller) {
+              for (const size of chunkSizes) {
+                controller.enqueue(new Uint8Array(size));
+              }
+              controller.close();
+            },
+          }),
+          { headers: withContentLength ? { 'content-length': String(total) } : {} },
+        );
+      };
+
+      // Drive the body through the real progress stream (gunzip/tar are skipped) so its
+      // transform and flush callbacks actually run.
+      const runThroughProgressStream = () => {
+        mockPipeline.mockImplementation((async (source: NodeJS.ReadableStream, progress: NodeJS.ReadWriteStream) => {
+          const sink = new Writable({
+            write(_chunk, _enc, cb) {
+              cb();
+            },
+          });
+          await realPipeline(source, progress, sink);
+        }) as unknown as typeof pipelineType);
+      };
+
+      // Each chunk reads the clock once; return the given timestamps in order.
+      const createClock = (timestamps: number[]) => {
+        let index = 0;
+        return () => timestamps[Math.min(index++, timestamps.length - 1)];
+      };
+
+      test('throttles updates to one per 100ms and reports 100% when the stream ends', async () => {
+        runThroughProgressStream();
+        mockFetch.mockResolvedValue(createChunkedResponse([10, 10, 10, 10], true));
+        const onProgress = vi.fn<ProgressCallback>();
+
+        await downloadGitHubArchive(
+          mockRepoInfo,
+          mockTargetDirectory,
+          mockOptions,
+          onProgress,
+          // 50ms: too soon, 120ms: reported, 180ms: within 100ms of the last report, 300ms: reported
+          { ...mockDeps, now: createClock([50, 120, 180, 300]) },
+        );
+
+        expect(onProgress.mock.calls.map(([progress]) => progress)).toEqual([
+          { downloaded: 20, total: 40, percentage: 50 },
+          { downloaded: 40, total: 40, percentage: 100 },
+          { downloaded: 40, total: 40, percentage: 100 },
+        ]);
+      });
+
+      test('reports downloaded bytes without a percentage when content-length is missing', async () => {
+        runThroughProgressStream();
+        mockFetch.mockResolvedValue(createChunkedResponse([5, 7], false));
+        const onProgress = vi.fn<ProgressCallback>();
+
+        await downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, mockOptions, onProgress, {
+          ...mockDeps,
+          now: createClock([200, 250]),
+        });
+
+        expect(onProgress.mock.calls.map(([progress]) => progress)).toEqual([
+          { downloaded: 5, total: null, percentage: null },
+          { downloaded: 12, total: null, percentage: null },
+        ]);
+      });
+
+      test('streams the archive without a progress callback', async () => {
+        runThroughProgressStream();
+        mockFetch.mockResolvedValue(createChunkedResponse([10, 10], true));
+
+        await expect(
+          downloadGitHubArchive(mockRepoInfo, mockTargetDirectory, mockOptions, undefined, mockDeps),
+        ).resolves.toBeUndefined();
+      });
     });
 
     test('gives the caller signal to the extraction pipeline', async () => {

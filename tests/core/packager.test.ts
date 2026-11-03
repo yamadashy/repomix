@@ -377,4 +377,144 @@ describe('packager', () => {
       });
     });
   });
+
+  describe('multi-root assembly and skill generation', () => {
+    // Paths are POSIX-style on purpose: pack() emits forward-slash display paths on every platform.
+    const cwd = '/project';
+    const rootA = '/project/packages/a';
+    const rootB = '/project/packages/b';
+
+    const createDeps = (searchResults: Record<string, { filePaths: string[]; emptyDirPaths: string[] }>) => {
+      const metricsTaskRunner = createMetricsTaskRunnerDouble();
+      return {
+        cleanup: metricsTaskRunner.taskRunner.cleanup,
+        deps: {
+          searchFiles: vi.fn().mockImplementation(async (rootDir: string) => searchResults[rootDir]),
+          sortPaths: vi.fn().mockImplementation((p) => p),
+          collectFiles: vi.fn().mockImplementation(async (filePaths: string[]) => ({
+            rawFiles: filePaths.map((filePath) => ({ path: filePath, content: `content of ${filePath}` })),
+            skippedFiles: [{ path: 'logo.png', reason: 'binary-extension' as const }],
+          })),
+          applyFileProcessors: vi.fn().mockImplementation(async (rawFiles) => rawFiles),
+          processFiles: vi.fn().mockImplementation(async (rawFiles) => rawFiles),
+          validateFileSafety: vi.fn().mockImplementation(async (rawFiles: { path: string }[]) => ({
+            safeFilePaths: rawFiles.map((file) => file.path),
+            safeRawFiles: rawFiles,
+            suspiciousFilesResults: [],
+            suspiciousGitDiffResults: [],
+            suspiciousGitLogResults: [],
+          })),
+          produceOutput: vi.fn().mockResolvedValue({ outputForMetrics: 'output' }),
+          calculateMetrics: vi.fn().mockResolvedValue({
+            totalFiles: 0,
+            totalCharacters: 0,
+            totalTokens: 0,
+            fileCharCounts: {},
+            fileTokenCounts: {},
+            gitDiffTokenCount: 0,
+            gitLogTokenCount: 0,
+          }),
+          createMetricsTaskRunner: metricsTaskRunner.createMetricsTaskRunner,
+          getGitDiffs: vi.fn().mockResolvedValue(undefined),
+          getGitLogs: vi.fn().mockResolvedValue(undefined),
+          prefetchSortData: vi.fn().mockResolvedValue(undefined),
+          sortOutputFiles: vi.fn().mockImplementation((files) => files),
+          packSkill: vi.fn(),
+        },
+      };
+    };
+
+    // produceOutput(rootDirs, config, processedFiles, allFilePaths, gitDiff, gitLog, progress, filePathsByRoot, emptyDirPaths)
+    const getEmptyDirPathsArg = (produceOutput: ReturnType<typeof vi.fn>) => produceOutput.mock.calls[0][8];
+
+    test('labels empty directories per root and sorts them when includeEmptyDirectories is on', async () => {
+      const { deps } = createDeps({
+        [rootA]: { filePaths: ['index.ts'], emptyDirPaths: ['z-empty', 'empty'] },
+        [rootB]: { filePaths: ['index.ts'], emptyDirPaths: ['empty'] },
+      });
+      const config = createMockConfig({ cwd, output: { includeEmptyDirectories: true } });
+
+      await pack([rootA, rootB], config, vi.fn(), deps);
+
+      expect(getEmptyDirPathsArg(deps.produceOutput)).toEqual([
+        'packages/a/empty',
+        'packages/a/z-empty',
+        'packages/b/empty',
+      ]);
+    });
+
+    test('deduplicates empty directories that resolve to the same cwd-relative path', async () => {
+      // With cwd-relative paths, `sub/empty` under /project and `empty` under /project/sub are the same directory.
+      const { deps } = createDeps({
+        [cwd]: { filePaths: [], emptyDirPaths: ['sub/empty'] },
+        '/project/sub': { filePaths: [], emptyDirPaths: ['empty'] },
+      });
+      const config = createMockConfig({
+        cwd,
+        output: { includeEmptyDirectories: true, filePathStyle: 'cwd-relative' },
+      });
+
+      await pack([cwd, '/project/sub'], config, vi.fn(), deps);
+
+      expect(getEmptyDirPathsArg(deps.produceOutput)).toEqual(['sub/empty']);
+    });
+
+    test('does not pass empty directories when includeEmptyDirectories is off', async () => {
+      const { deps } = createDeps({
+        [rootA]: { filePaths: ['index.ts'], emptyDirPaths: ['empty'] },
+      });
+
+      await pack([rootA], createMockConfig({ cwd }), vi.fn(), deps);
+
+      expect(getEmptyDirPathsArg(deps.produceOutput)).toBeUndefined();
+    });
+
+    test('hands the assembled files to packSkill and skips output and metrics when a skill dir is set', async () => {
+      const { cleanup, deps } = createDeps({
+        [rootA]: { filePaths: ['index.ts'], emptyDirPaths: [] },
+        [rootB]: { filePaths: ['index.ts'], emptyDirPaths: [] },
+      });
+      const skillResult = { totalFiles: 2 } as Awaited<ReturnType<typeof pack>>;
+      deps.packSkill.mockResolvedValue(skillResult);
+      const config = createMockConfig({ cwd, skillGenerate: 'my-skill' });
+      const options = { skillName: 'my-skill', skillDir: '/out/my-skill' };
+      const progressCallback = vi.fn();
+
+      const result = await pack([rootA, rootB], config, progressCallback, deps, undefined, options);
+
+      expect(result).toBe(skillResult);
+      expect(deps.packSkill).toHaveBeenCalledWith(
+        expect.objectContaining({
+          rootDirs: [rootA, rootB],
+          config,
+          options,
+          allFilePaths: ['packages/a/index.ts', 'packages/b/index.ts'],
+          processedFiles: [
+            expect.objectContaining({ path: 'packages/a/index.ts', content: 'content of index.ts' }),
+            expect.objectContaining({ path: 'packages/b/index.ts', content: 'content of index.ts' }),
+          ],
+          safeFilePaths: ['packages/a/index.ts', 'packages/b/index.ts'],
+          skippedFiles: [
+            { path: 'packages/a/logo.png', reason: 'binary-extension' },
+            { path: 'packages/b/logo.png', reason: 'binary-extension' },
+          ],
+          progressCallback,
+        }),
+      );
+      expect(deps.produceOutput).not.toHaveBeenCalled();
+      expect(deps.calculateMetrics).not.toHaveBeenCalled();
+      expect(cleanup).toHaveBeenCalled();
+    });
+
+    test('falls through to regular output when skillGenerate is set without a skill dir', async () => {
+      const { deps } = createDeps({
+        [rootA]: { filePaths: ['index.ts'], emptyDirPaths: [] },
+      });
+
+      await pack([rootA], createMockConfig({ cwd, skillGenerate: true }), vi.fn(), deps);
+
+      expect(deps.packSkill).not.toHaveBeenCalled();
+      expect(deps.produceOutput).toHaveBeenCalled();
+    });
+  });
 });
