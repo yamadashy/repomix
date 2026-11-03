@@ -190,7 +190,7 @@ function parsePyprojectToml(content: string): Partial<TechStackInfo> {
   const projectDepsLines = getTomlTableLines(content, 'project.dependencies');
   if (projectDepsLines) {
     for (const line of projectDepsLines) {
-      const requirement = line.match(/^\s*"([^"]+)"/)?.[1];
+      const requirement = line.match(/^\s*(['"])(.+?)\1/)?.[2];
       const name = requirement && getPep508Name(requirement);
       if (name) names.push(name);
     }

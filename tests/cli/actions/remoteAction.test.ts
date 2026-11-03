@@ -861,6 +861,9 @@ describe('remoteAction functions', () => {
         '--skill-output path cannot be empty',
       );
 
+      // Rejected before any clone or download starts
+      expect(deps.execGitShallowClone).not.toHaveBeenCalled();
+      expect(deps.downloadGitHubArchive).not.toHaveBeenCalled();
       expect(deps.resolveAndPrepareSkillDir).not.toHaveBeenCalled();
       expect(deps.promptSkillLocation).not.toHaveBeenCalled();
       expect(deps.runDefaultAction).not.toHaveBeenCalled();

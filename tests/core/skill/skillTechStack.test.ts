@@ -466,7 +466,7 @@ dev = ["pytest"]`,
         'pyproject.toml',
         `[project.dependencies]
 "fastapi[all]>=0.100"
-"django"`,
+'django'`,
       );
 
       expect(result.dependencies.map((dep) => dep.name)).toEqual(['fastapi', 'django']);

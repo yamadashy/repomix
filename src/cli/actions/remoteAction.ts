@@ -45,6 +45,16 @@ export const runRemoteAction = async (
     );
   }
 
+  // Validate --skill-output up front too, so an empty or whitespace-only path fails before
+  // creating a temp dir, downloading/cloning, or prompting for remote config trust
+  if (
+    cliOptions.skillGenerate !== undefined &&
+    cliOptions.skillOutput !== undefined &&
+    !cliOptions.skillOutput.trim()
+  ) {
+    throw new RepomixError('--skill-output path cannot be empty');
+  }
+
   let tempDirPath = await createTempDirectory();
   let result: DefaultActionRunnerResult;
   let downloadMethod: 'archive' | 'git' = 'git';
@@ -155,10 +165,6 @@ export const runRemoteAction = async (
       skillProjectName = generateProjectNameFromUrl(repoUrl);
 
       if (cliOptions.skillOutput !== undefined) {
-        // Validate --skill-output is not empty or whitespace only
-        if (!cliOptions.skillOutput.trim()) {
-          throw new RepomixError('--skill-output path cannot be empty');
-        }
         // Non-interactive mode: use provided path directly
         skillDir = await deps.resolveAndPrepareSkillDir(
           cliOptions.skillOutput,
