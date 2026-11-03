@@ -8,6 +8,7 @@ import type { PackResult } from '../../../src/core/packager.js';
 import { logger } from '../../../src/shared/logger.js';
 import { createMockSpinner } from '../../testing/cliDoubles.js';
 import { silenceLogger } from '../../testing/loggerDoubles.js';
+import { createManualClock } from '../../testing/manualClock.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 function createMockPackResult(overrides: Partial<PackResult> = {}): PackResult {
@@ -31,7 +32,14 @@ function createMockPackResult(overrides: Partial<PackResult> = {}): PackResult {
 
 function createMockWatcher() {
   const emitter = new EventEmitter();
+  let markStarted: () => void = () => {};
+  // Resolves once runWatchAction has finished the initial pack and created the watcher.
+  const started = new Promise<void>((resolve) => {
+    markStarted = resolve;
+  });
   const watcher = Object.assign(emitter, {
+    started,
+    markStarted,
     close: vi.fn().mockResolvedValue(undefined),
     add: vi.fn(),
     unwatch: vi.fn(),
@@ -42,23 +50,30 @@ function createMockWatcher() {
 }
 
 function createMockWatch(watcher: ReturnType<typeof createMockWatcher>): WatchDeps['watch'] {
-  return vi.fn().mockReturnValue(watcher) as unknown as WatchDeps['watch'];
+  return vi.fn(() => {
+    watcher.markStarted();
+    return watcher;
+  }) as unknown as WatchDeps['watch'];
 }
 
-// Stub the ignore filter in flow tests: the real builder reads .gitignore via globby,
-// whose I/O stalls under fake timers. The real builder is covered separately below.
+// Stub the ignore filter in flow tests so they never read .gitignore from disk.
+// The real builder is covered by the buildWatchIgnoreFilter unit tests.
 const noopBuildIgnoreFilter: WatchDeps['buildIgnoreFilter'] = async () => () => false;
 
-// Doubles for the config pipeline, packer, reporter and spinner, plus the ignore-filter stub.
+// Doubles for the config pipeline, packer, reporter and spinner, plus the ignore-filter stub
+// and a manual clock that drives the rebuild debounce.
 const createFlowDeps = () => {
   const { spinner, Spinner } = createMockSpinner();
+  const clock = createManualClock();
   return {
+    clock,
     deps: {
       buildMergedConfig: vi.fn<NonNullable<WatchDeps['buildMergedConfig']>>(),
       pack: vi.fn<NonNullable<WatchDeps['pack']>>(),
       reportResults: vi.fn(),
       Spinner,
       buildIgnoreFilter: noopBuildIgnoreFilter,
+      timers: clock.timers,
     },
     mockSpinner: spinner,
   };
@@ -114,13 +129,13 @@ describe('watchAction', () => {
   let mockWatcher: ReturnType<typeof createMockWatcher>;
   let flowDeps: ReturnType<typeof createFlowDeps>['deps'];
   let mockSpinner: ReturnType<typeof createFlowDeps>['mockSpinner'];
+  let clock: ReturnType<typeof createFlowDeps>['clock'];
 
   beforeEach(() => {
-    vi.useFakeTimers();
     silenceLogger();
 
     mockWatcher = createMockWatcher();
-    ({ deps: flowDeps, mockSpinner } = createFlowDeps());
+    ({ deps: flowDeps, mockSpinner, clock } = createFlowDeps());
 
     flowDeps.buildMergedConfig.mockResolvedValue(
       createMockConfig({
@@ -164,7 +179,6 @@ describe('watchAction', () => {
   });
 
   afterEach(() => {
-    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -181,7 +195,7 @@ describe('watchAction', () => {
     });
 
     // Let initial pack complete
-    await vi.advanceTimersByTimeAsync(0);
+    await mockWatcher.started;
 
     controller.abort();
     await watchPromise;
@@ -206,7 +220,7 @@ describe('watchAction', () => {
       });
     })();
 
-    await vi.advanceTimersByTimeAsync(0);
+    await mockWatcher.started;
 
     controller.abort();
     await watchPromise;
@@ -240,7 +254,7 @@ describe('watchAction', () => {
     })();
 
     // Let initial pack complete
-    await vi.advanceTimersByTimeAsync(0);
+    await mockWatcher.started;
 
     expect(flowDeps.pack).toHaveBeenCalledTimes(1);
 
@@ -248,7 +262,7 @@ describe('watchAction', () => {
     mockWatcher.emit('change', 'src/index.ts');
 
     // Advance past the 300ms debounce
-    await vi.advanceTimersByTimeAsync(350);
+    await clock.advance(350);
 
     expect(flowDeps.pack).toHaveBeenCalledTimes(2);
 
@@ -271,18 +285,20 @@ describe('watchAction', () => {
     })();
 
     // Let initial pack complete
-    await vi.advanceTimersByTimeAsync(0);
+    await mockWatcher.started;
     expect(flowDeps.pack).toHaveBeenCalledTimes(1);
 
     // Fire multiple rapid changes within the debounce window
     mockWatcher.emit('change', 'src/index.ts');
-    await vi.advanceTimersByTimeAsync(100);
+    await clock.advance(100);
     mockWatcher.emit('change', 'src/utils.ts');
-    await vi.advanceTimersByTimeAsync(100);
+    await clock.advance(100);
     mockWatcher.emit('add', 'src/new.ts');
+    // Each event replaced the previous debounce timer instead of stacking another.
+    expect(clock.pendingCount()).toBe(1);
 
     // Advance past the 300ms debounce from the last event
-    await vi.advanceTimersByTimeAsync(350);
+    await clock.advance(350);
 
     // Should only have rebuilt once (plus the initial pack)
     expect(flowDeps.pack).toHaveBeenCalledTimes(2);
@@ -321,26 +337,26 @@ describe('watchAction', () => {
     })();
 
     // Let initial pack complete
-    await vi.advanceTimersByTimeAsync(0);
+    await mockWatcher.started;
     expect(flowDeps.pack).toHaveBeenCalledTimes(1);
 
     // Trigger first rebuild
     mockWatcher.emit('change', 'src/index.ts');
-    await vi.advanceTimersByTimeAsync(350);
+    await clock.advance(350);
 
     // Second pack is now in progress (held open by resolveSecondPack)
     expect(flowDeps.pack).toHaveBeenCalledTimes(2);
 
     // Trigger another change while rebuild is in progress
     mockWatcher.emit('change', 'src/utils.ts');
-    await vi.advanceTimersByTimeAsync(350);
+    await clock.advance(350);
 
     // Should still be 2 because the rebuild guard prevents a concurrent pack
     expect(flowDeps.pack).toHaveBeenCalledTimes(2);
 
     // Resolve the in-progress pack — the pending rebuild should now fire
     resolveSecondPack?.();
-    await vi.advanceTimersByTimeAsync(350);
+    await clock.advance(350);
 
     // Now the queued rebuild should have run
     expect(flowDeps.pack).toHaveBeenCalledTimes(3);
@@ -364,13 +380,13 @@ describe('watchAction', () => {
     })();
 
     // Let initial pack complete
-    await vi.advanceTimersByTimeAsync(0);
+    await mockWatcher.started;
 
     // Simulate a file change
     mockWatcher.emit('change', 'src/index.ts');
 
     // Advance past debounce
-    await vi.advanceTimersByTimeAsync(350);
+    await clock.advance(350);
 
     expect(logger.success).toHaveBeenCalledWith(expect.stringContaining('Rebuilt at'));
 
@@ -393,7 +409,7 @@ describe('watchAction', () => {
     })();
 
     // Let initial pack complete
-    await vi.advanceTimersByTimeAsync(0);
+    await mockWatcher.started;
 
     expect(logger.log).toHaveBeenCalledWith(expect.stringContaining('Watching'));
 
@@ -416,7 +432,7 @@ describe('watchAction', () => {
     })();
 
     // Let initial pack complete
-    await vi.advanceTimersByTimeAsync(0);
+    await mockWatcher.started;
 
     controller.abort();
     await watchPromise;
@@ -504,7 +520,7 @@ describe('watchAction', () => {
       },
     );
 
-    await vi.advanceTimersByTimeAsync(0);
+    await mockWatcher.started;
 
     // chokidar surfaces fatal fs errors (EMFILE, EACCES, ...) via the 'error' event.
     const watcherError = new Error('EMFILE: too many open files');
@@ -537,18 +553,18 @@ describe('watchAction', () => {
       },
     );
 
-    await vi.advanceTimersByTimeAsync(0);
+    await mockWatcher.started;
     expect(flowDeps.pack).toHaveBeenCalledTimes(1);
 
     mockWatcher.emit('change', 'src/index.ts');
-    await vi.advanceTimersByTimeAsync(350);
+    await clock.advance(350);
 
     expect(flowDeps.pack).toHaveBeenCalledTimes(2);
     expect(logger.error).toHaveBeenCalledWith('Watch rebuild failed:', expect.any(Error));
 
     // The failed rebuild must not wedge the watcher — a later change still rebuilds.
     mockWatcher.emit('change', 'src/utils.ts');
-    await vi.advanceTimersByTimeAsync(350);
+    await clock.advance(350);
     expect(flowDeps.pack).toHaveBeenCalledTimes(3);
 
     controller.abort();
@@ -575,7 +591,7 @@ describe('watchAction', () => {
         },
       );
 
-      await vi.advanceTimersByTimeAsync(0);
+      await mockWatcher.started;
 
       const sigintHandler = onSpy.mock.calls.find(([event]) => event === 'SIGINT')?.[1];
       const sigtermHandler = onSpy.mock.calls.find(([event]) => event === 'SIGTERM')?.[1];
@@ -613,7 +629,7 @@ describe('watchAction', () => {
         },
       );
 
-      await vi.advanceTimersByTimeAsync(0);
+      await mockWatcher.started;
 
       const cleanup = onSpy.mock.calls.find(([event]) => event === 'SIGINT')?.[1] as () => Promise<void>;
       expect(cleanup).toBeTypeOf('function');
@@ -668,17 +684,18 @@ describe('watchAction', () => {
       },
     );
 
-    await vi.advanceTimersByTimeAsync(0);
+    await mockWatcher.started;
     expect(flowDeps.pack).toHaveBeenCalledTimes(1);
 
     // Queue a rebuild (starts the debounce timer), then shut down before it fires.
     mockWatcher.emit('change', 'src/index.ts');
     controller.abort();
     await watchPromise;
+    expect(clock.pendingCount()).toBe(0);
 
     // A change arriving after shutdown is ignored, and the cancelled timer never fires.
     mockWatcher.emit('change', 'src/utils.ts');
-    await vi.advanceTimersByTimeAsync(350);
+    await clock.advance(350);
     expect(flowDeps.pack).toHaveBeenCalledTimes(1);
   });
 
@@ -699,7 +716,7 @@ describe('watchAction', () => {
       },
     );
 
-    await vi.advanceTimersByTimeAsync(0);
+    await mockWatcher.started;
     controller.abort();
     // Shutdown must still complete (resolve) even though watcher.close() rejects.
     await watchPromise;

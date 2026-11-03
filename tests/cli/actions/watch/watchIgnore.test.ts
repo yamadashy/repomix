@@ -42,7 +42,7 @@ describe('buildWatchIgnoreFilter', () => {
 
   // globby's gitignore resolution behaves differently on Windows, so this case is
   // skipped there (mirrors the .gitignore tests in fileSearch.test.ts).
-  it.runIf(!isWindows)('ignores gitignored directories themselves, not just their descendants', async () => {
+  (isWindows ? it.skip : it)('ignores gitignored directories themselves, not just their descendants', async () => {
     const ignored = await buildFilter();
     expect(ignored(path.join(tmpRoot, 'build-cache'))).toBe(true);
     expect(ignored(path.join(tmpRoot, 'build-cache', 'cached.tmp'))).toBe(true);

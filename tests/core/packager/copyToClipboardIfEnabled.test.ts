@@ -9,10 +9,10 @@ import { silenceLogger } from '../../testing/loggerDoubles.js';
 type CopyDeps = NonNullable<Parameters<typeof copyToClipboardIfEnabled>[3]>;
 
 describe('copyToClipboardIfEnabled', () => {
-  const originalEnv = process.env;
   let deps: {
     spawn: Mock<typeof spawn>;
     writeClipboardText: Mock<(text: string) => Promise<void>>;
+    env: NodeJS.ProcessEnv;
   };
 
   beforeEach(() => {
@@ -20,13 +20,12 @@ describe('copyToClipboardIfEnabled', () => {
     deps = {
       spawn: vi.fn<typeof spawn>(),
       writeClipboardText: vi.fn<(text: string) => Promise<void>>().mockResolvedValue(undefined),
+      // No WAYLAND_DISPLAY, so the tinyclip path is taken unless a test opts into Wayland.
+      env: {},
     };
-    process.env = { ...originalEnv };
-    process.env.WAYLAND_DISPLAY = undefined;
   });
 
   afterEach(() => {
-    process.env = originalEnv;
     vi.restoreAllMocks();
   });
 
@@ -57,8 +56,7 @@ describe('copyToClipboardIfEnabled', () => {
   });
 
   it('should use wl-copy in Wayland environment', async () => {
-    process.env.WAYLAND_DISPLAY = '1';
-    process.env.NODE_ENV = 'development';
+    deps.env = { WAYLAND_DISPLAY: '1' };
 
     const output = 'test output';
     const config: RepomixConfigMerged = {
@@ -93,8 +91,7 @@ describe('copyToClipboardIfEnabled', () => {
   });
 
   it('should fallback to tinyclip when wl-copy fails', async () => {
-    process.env.WAYLAND_DISPLAY = '1';
-    process.env.NODE_ENV = 'development';
+    deps.env = { WAYLAND_DISPLAY: '1' };
 
     const output = 'test output';
     const config: RepomixConfigMerged = {

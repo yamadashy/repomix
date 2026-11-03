@@ -36,6 +36,7 @@ const loadClack = async () => {
 interface MigrationDeps {
   getGlobalDirectory: typeof getGlobalDirectory;
   loadClack: typeof loadClack;
+  env: NodeJS.ProcessEnv;
 }
 
 /**
@@ -188,7 +189,7 @@ const updateIgnoreFiles = async (rootDir: string): Promise<void> => {
  */
 const getMigrationPaths = (rootDir: string, deps: MigrationDeps): MigrationPaths => {
   const { oldPaths: oldOutputPaths, newPaths: newOutputPaths } = getOutputFilePaths(rootDir);
-  const oldGlobalDirectory = path.join(process.env.HOME || '', '.config', 'repopack');
+  const oldGlobalDirectory = path.join(deps.env.HOME || '', '.config', 'repopack');
   const newGlobalDirectory = deps.getGlobalDirectory();
 
   return {
@@ -229,6 +230,7 @@ export const runMigrationAction = async (
   deps: MigrationDeps = {
     getGlobalDirectory,
     loadClack,
+    env: process.env,
   },
 ): Promise<MigrationResult> => {
   const result: MigrationResult = {

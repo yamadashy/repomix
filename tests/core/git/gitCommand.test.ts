@@ -599,7 +599,7 @@ c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8\trefs/tags/v1.0.0
 // git's config parser reads as escape sequences. The cross-platform guarantee
 // is covered by the exact-argument assertions above; this block proves the
 // on-disk execution behavior where it can actually run.
-describe.skipIf(process.platform === 'win32')(
+(process.platform === 'win32' ? describe.skip : describe)(
   'gitCommand — an untrusted repository cannot execute code through git',
   () => {
     const realExec = promisify(execFile);
@@ -733,49 +733,52 @@ describe.skipIf(process.platform === 'win32')(
 // raw-UTF-8 form.
 // POSIX-only: the filename is created as UTF-8 on disk; Windows filesystem
 // APIs and the child-process encoding are a separate concern.
-describe.skipIf(process.platform === 'win32')('gitCommand — non-ASCII filenames are emitted verbatim', () => {
-  const realExec = promisify(execFile);
-  const unicodeName = '日本語.txt';
-  let repoDir: string;
+(process.platform === 'win32' ? describe.skip : describe)(
+  'gitCommand — non-ASCII filenames are emitted verbatim',
+  () => {
+    const realExec = promisify(execFile);
+    const unicodeName = '日本語.txt';
+    let repoDir: string;
 
-  beforeAll(async () => {
-    repoDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-git-quotepath-'));
-    const git = (...args: string[]) => execFileSync('git', ['-C', repoDir, ...args], { stdio: 'pipe' });
-    git('init', '-q');
-    git('config', 'user.email', 'a@b.c');
-    git('config', 'user.name', 'a');
-    // Reproduce git's default on a machine whose global config does not already
-    // override it, so the assertion cannot pass just because quotePath is off.
-    git('config', 'core.quotePath', 'true');
-    await fs.writeFile(path.join(repoDir, unicodeName), 'x\n');
-    await fs.writeFile(path.join(repoDir, 'plain.txt'), 'y\n');
-    git('add', '.');
-    git('commit', '-q', '-m', 'init');
-  });
+    beforeAll(async () => {
+      repoDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-git-quotepath-'));
+      const git = (...args: string[]) => execFileSync('git', ['-C', repoDir, ...args], { stdio: 'pipe' });
+      git('init', '-q');
+      git('config', 'user.email', 'a@b.c');
+      git('config', 'user.name', 'a');
+      // Reproduce git's default on a machine whose global config does not already
+      // override it, so the assertion cannot pass just because quotePath is off.
+      git('config', 'core.quotePath', 'true');
+      await fs.writeFile(path.join(repoDir, unicodeName), 'x\n');
+      await fs.writeFile(path.join(repoDir, 'plain.txt'), 'y\n');
+      git('add', '.');
+      git('commit', '-q', '-m', 'init');
+    });
 
-  afterAll(async () => {
-    await fs.rm(repoDir, { recursive: true, force: true });
-  });
+    afterAll(async () => {
+      await fs.rm(repoDir, { recursive: true, force: true });
+    });
 
-  test('execGitLogFilenames returns the raw filename', async () => {
-    const files = await execGitLogFilenames(repoDir, 100, { execFileAsync: realExec });
+    test('execGitLogFilenames returns the raw filename', async () => {
+      const files = await execGitLogFilenames(repoDir, 100, { execFileAsync: realExec });
 
-    expect(files).toContain(unicodeName);
-  });
+      expect(files).toContain(unicodeName);
+    });
 
-  test('execGitLog returns the raw filename', async () => {
-    const log = await execGitLog(repoDir, 100, '%x00', { execFileAsync: realExec });
+    test('execGitLog returns the raw filename', async () => {
+      const log = await execGitLog(repoDir, 100, '%x00', { execFileAsync: realExec });
 
-    expect(log).toContain(unicodeName);
-    expect(log).not.toContain('\\346');
-  });
+      expect(log).toContain(unicodeName);
+      expect(log).not.toContain('\\346');
+    });
 
-  test('execGitDiff returns the raw filename', async () => {
-    await fs.writeFile(path.join(repoDir, unicodeName), 'changed\n');
+    test('execGitDiff returns the raw filename', async () => {
+      await fs.writeFile(path.join(repoDir, unicodeName), 'changed\n');
 
-    const diff = await execGitDiff(repoDir, [], { execFileAsync: realExec });
+      const diff = await execGitDiff(repoDir, [], { execFileAsync: realExec });
 
-    expect(diff).toContain(`diff --git a/${unicodeName} b/${unicodeName}`);
-    expect(diff).not.toContain('\\346');
-  });
-});
+      expect(diff).toContain(`diff --git a/${unicodeName} b/${unicodeName}`);
+      expect(diff).not.toContain('\\346');
+    });
+  },
+);

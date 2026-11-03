@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vite
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
 import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
 import { calculateMetrics, createMetricsTaskRunner } from '../../../src/core/metrics/calculateMetrics.js';
-import { getRepoSeenMarkerPath } from '../../../src/core/metrics/tokenCountCache.js';
+import { __setTokenCountCacheEnvForTests, getRepoSeenMarkerPath } from '../../../src/core/metrics/tokenCountCache.js';
 import { getWorkerThreadCount } from '../../../src/shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../../src/shared/types.js';
 import { createMockConfig } from '../../testing/testUtils.js';
@@ -277,29 +277,18 @@ describe('createMetricsTaskRunner — cache-aware prewarm count', () => {
   // contract a future refactor could silently break.
   let tmpDir: string;
   let cacheFile: string;
-  const originalCachePath = process.env.REPOMIX_TOKEN_CACHE_PATH;
-  const originalDisableEnv = process.env.REPOMIX_TOKEN_CACHE;
   const REPO_DIR = '/tmp/test-repo-prewarm-pin';
   const OTHER_REPO_DIR = '/tmp/test-repo-prewarm-other';
 
   beforeEach(async () => {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-prewarm-test-'));
     cacheFile = path.join(tmpDir, 'token-counts.json');
-    process.env.REPOMIX_TOKEN_CACHE_PATH = cacheFile;
-    delete process.env.REPOMIX_TOKEN_CACHE;
+    // Enable the cache (no REPOMIX_TOKEN_CACHE=0) and point it at the temp file.
+    __setTokenCountCacheEnvForTests({ REPOMIX_TOKEN_CACHE_PATH: cacheFile });
   });
 
   afterEach(async () => {
-    if (originalCachePath === undefined) {
-      delete process.env.REPOMIX_TOKEN_CACHE_PATH;
-    } else {
-      process.env.REPOMIX_TOKEN_CACHE_PATH = originalCachePath;
-    }
-    if (originalDisableEnv === undefined) {
-      delete process.env.REPOMIX_TOKEN_CACHE;
-    } else {
-      process.env.REPOMIX_TOKEN_CACHE = originalDisableEnv;
-    }
+    __setTokenCountCacheEnvForTests();
     await fs.rm(tmpDir, { recursive: true, force: true });
   });
 

@@ -60,13 +60,17 @@ const createState = (): CacheState => ({
 
 let state = createState();
 
+// Where the REPOMIX_TOKEN_CACHE* switches are read from: always process.env in production.
+// Tests swap in their own object via __setTokenCountCacheEnvForTests instead of mutating it.
+let cacheEnv: NodeJS.ProcessEnv = process.env;
+
 /**
  * Returns the absolute path to the on-disk cache file.
  * `REPOMIX_TOKEN_CACHE_PATH` overrides the default location for tests and
  * explicit user configuration.
  */
 export const getCacheFilePath = (): string => {
-  const override = process.env.REPOMIX_TOKEN_CACHE_PATH;
+  const override = cacheEnv.REPOMIX_TOKEN_CACHE_PATH;
   if (override) return override;
   return path.join(getRepomixTmpDir(), CACHE_SUBDIR_NAME, CACHE_FILE_NAME);
 };
@@ -76,7 +80,7 @@ export const getCacheFilePath = (): string => {
  * Any other value (including unset) leaves it enabled.
  */
 export const isCacheDisabled = (): boolean => {
-  return process.env.REPOMIX_TOKEN_CACHE === '0';
+  return cacheEnv.REPOMIX_TOKEN_CACHE === '0';
 };
 
 /**
@@ -356,4 +360,12 @@ export const setCached = (key: string, tokenCount: number): void => {
  */
 export const __resetTokenCountCacheForTests = (): void => {
   state = createState();
+};
+
+/**
+ * Test-only: read the cache switches from `env` instead of process.env.
+ * Call with no argument to go back to process.env.
+ */
+export const __setTokenCountCacheEnvForTests = (env: NodeJS.ProcessEnv = process.env): void => {
+  cacheEnv = env;
 };

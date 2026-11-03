@@ -26,7 +26,7 @@ const fixturesDir = path.join(__dirname, 'fixtures', 'packager');
 const inputsDir = path.join(fixturesDir, 'inputs');
 const outputsDir = path.join(fixturesDir, 'outputs');
 
-describe.runIf(!isWindows)('packager integration', () => {
+(isWindows ? describe.skip : describe)('packager integration', () => {
   const testCases = [
     {
       desc: 'simple plain style',
