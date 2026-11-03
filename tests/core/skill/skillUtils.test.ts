@@ -142,6 +142,21 @@ describe('skillUtils', () => {
     test('should extract the repository name from a GitHub commit URL', () => {
       expect(extractRepoName('https://github.com/yamadashy/repomix/commit/abc123')).toBe('repomix');
     });
+
+    test.each([
+      ['yamadashy/repomix', 'repomix'],
+      ['git@github.com:yamadashy/repomix.git', 'repomix'],
+      ['https://github.com/yamadashy/repomix.git/', 'repomix'],
+      ['https://github.com/yamadashy/repomix?tab=readme#usage', 'repomix'],
+      ['https://gitlab.com/group/subgroup/project.git', 'project'],
+      ['  https://www.github.com/yamadashy/repomix  ', 'repomix'],
+    ])('should extract the repository name from %j', (url, expected) => {
+      expect(extractRepoName(url)).toBe(expected);
+    });
+
+    test.each(['', 'repomix', 'git@example.com:repo.git'])('should fall back to "unknown" for %j', (url) => {
+      expect(extractRepoName(url)).toBe('unknown');
+    });
   });
 
   describe('generateProjectName', () => {

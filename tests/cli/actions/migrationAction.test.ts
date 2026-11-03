@@ -181,6 +181,45 @@ describe('migrationAction', () => {
     expect(logger.debug).toHaveBeenCalledWith('No Repopack files found to migrate.');
   });
 
+  test('should leave old files untouched when the user declines the migration', async () => {
+    const p = paths();
+    await writeFiles({ [p.oldConfigPath]: '{}' });
+    mockConfirm.mockResolvedValue(false);
+
+    const result = await runMigrationAction(rootDir, deps);
+
+    expect(result.configMigrated).toBe(false);
+    expect(logger.info).toHaveBeenCalledWith('Migration cancelled.');
+    expect(await pathExists(p.oldConfigPath)).toBe(true);
+    expect(await pathExists(p.newConfigPath)).toBe(false);
+  });
+
+  test('should still migrate a config that is not valid JSON, renaming references as text', async () => {
+    const p = paths();
+    await writeFiles({ [p.oldConfigPath]: '{ "output": { "filePath": "repopack-output.txt" ' });
+    mockConfirm.mockResolvedValue(true);
+
+    const result = await runMigrationAction(rootDir, deps);
+
+    expect(result.configMigrated).toBe(true);
+    expect(await fs.readFile(p.newConfigPath, 'utf8')).toBe('{ "output": { "filePath": "repomix-output.txt" ');
+  });
+
+  test('should report an error in the result instead of throwing', async () => {
+    const p = paths();
+    await writeFiles({ [p.oldConfigPath]: '{}' });
+    const error = new Error('prompt unavailable');
+    deps.loadClack = async () => {
+      throw error;
+    };
+
+    const result = await runMigrationAction(rootDir, deps);
+
+    expect(result.error).toBe(error);
+    expect(logger.error).toHaveBeenCalledWith('An error occurred during migration:', error);
+    expect(await pathExists(p.oldConfigPath)).toBe(true);
+  });
+
   test('should skip files when they already exist and user declines overwrite', async () => {
     const p = paths();
     // Old and new files all exist

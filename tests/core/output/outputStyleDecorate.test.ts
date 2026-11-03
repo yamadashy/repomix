@@ -117,6 +117,24 @@ describe('generateHeader', () => {
     expect(header).toContain('empty lines have been removed');
     expect(header).toContain('line numbers have been added');
   });
+
+  it('should describe ignore-only selection and parsable or compressed output', () => {
+    const config = createMockConfig({
+      ignore: { customPatterns: ['*.log'] },
+      output: { style: 'markdown', parsableStyle: true, compress: true },
+    });
+    const header = generateHeader(config, mockDate);
+    expect(header).toContain('containing files not matching ignore patterns,');
+    expect(header).toContain('content has been formatted for parsing in markdown style');
+    expect(header).toContain('content has been compressed (code blocks are separated by ⋮---- delimiter)');
+  });
+
+  it('should join include and ignore selection descriptions', () => {
+    const config = createMockConfig({ include: ['src/**'], ignore: { customPatterns: ['*.log'] } });
+    expect(generateHeader(config, mockDate)).toContain(
+      'containing specifically included files and files not matching ignore patterns,',
+    );
+  });
 });
 
 describe('generateSummaryPurpose', () => {
@@ -209,6 +227,26 @@ describe('generateSummaryNotes', () => {
     expect(notes).toContain('Line numbers have been added');
     expect(notes).toContain('Content has been formatted for parsing in xml style');
     expect(notes).toContain('Security check has been disabled');
+  });
+
+  it('should note compression, base64 truncation, git sorting and git diffs', () => {
+    const notes = generateSummaryNotes(
+      createMockConfig({
+        output: { compress: true, truncateBase64: true, git: { sortByChanges: true, includeDiffs: true } },
+      }),
+    );
+    expect(notes).toContain('- Content has been compressed - code blocks are separated by ⋮---- delimiter');
+    expect(notes).toContain('- Long base64 data strings (e.g., data:image/png;base64,...) have been truncated');
+    expect(notes).toContain('- Files are sorted by Git change count');
+    expect(notes).toContain('- Git diffs from the worktree and staged changes are included');
+  });
+
+  it.each([
+    [undefined, '- Git logs (50 commits) are included'],
+    [10, '- Git logs (10 commits) are included'],
+  ])('should note included git logs with count %s', (includeLogsCount, expected) => {
+    const notes = generateSummaryNotes(createMockConfig({ output: { git: { includeLogs: true, includeLogsCount } } }));
+    expect(notes).toContain(expected);
   });
 
   it('should handle case with minimal processing', () => {
