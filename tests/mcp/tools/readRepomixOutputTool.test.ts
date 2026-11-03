@@ -1,20 +1,24 @@
-import type { McpServer } from '@modelcontextprotocol/server';
+import type fs from 'node:fs/promises';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { registerReadRepomixOutputTool } from '../../../src/mcp/tools/readRepomixOutputTool.js';
 import { logger } from '../../../src/shared/logger.js';
+import { type MockedDeps, mockOverloaded } from '../../testing/depsDoubles.js';
+import { createMcpServerDouble, type McpServerDouble } from '../../testing/mcpServerDoubles.js';
 
 describe('readRepomixOutputTool', () => {
-  const mockMcpServer = {
-    registerTool: vi.fn(),
-  } as const;
-
-  type ToolHandlerType = (args: { outputId: string; startLine?: number; endLine?: number }) => Promise<{
+  // Strings model clients that send numbers as strings; the input schema coerces them.
+  type ToolHandlerType = (args: {
+    outputId: string;
+    startLine?: number | string;
+    endLine?: number | string;
+  }) => Promise<{
     isError?: boolean;
     content: Array<{ type: string; text: string }>;
   }>;
 
+  let mockMcpServer: McpServerDouble;
   let toolHandler: ToolHandlerType;
-  let deps: NonNullable<Parameters<typeof registerReadRepomixOutputTool>[2]>;
+  let deps: MockedDeps<NonNullable<Parameters<typeof registerReadRepomixOutputTool>[2]>>;
 
   beforeEach(() => {
     vi.resetAllMocks();
@@ -22,16 +26,17 @@ describe('readRepomixOutputTool', () => {
     vi.spyOn(logger, 'error').mockImplementation(() => {});
     deps = {
       access: vi.fn(),
-      readFile: vi.fn(),
+      readFile: mockOverloaded<typeof fs.readFile>(),
       getOutputFilePath: vi.fn(),
       requiresSecretScan: vi.fn(),
       createSecretLintConfig: vi.fn().mockReturnValue({}),
       runSecretLint: vi.fn().mockResolvedValue(null),
     };
 
-    registerReadRepomixOutputTool(mockMcpServer as unknown as McpServer, undefined, deps);
+    mockMcpServer = createMcpServerDouble();
+    registerReadRepomixOutputTool(mockMcpServer.server, undefined, deps);
 
-    toolHandler = mockMcpServer.registerTool.mock.calls[0][2];
+    toolHandler = mockMcpServer.toolHandler<ToolHandlerType>();
   });
 
   afterEach(() => {
@@ -47,7 +52,7 @@ describe('readRepomixOutputTool', () => {
   });
 
   it('should return an error if output file ID is not found', async () => {
-    vi.mocked(deps.getOutputFilePath).mockReturnValue(undefined);
+    deps.getOutputFilePath.mockReturnValue(undefined);
 
     const result = await toolHandler({ outputId: 'non-existent-id' });
 
@@ -59,8 +64,8 @@ describe('readRepomixOutputTool', () => {
   });
 
   it('should return an error if the file does not exist', async () => {
-    vi.mocked(deps.getOutputFilePath).mockReturnValue('/path/to/file.xml');
-    vi.mocked(deps.access).mockRejectedValue(new Error('File not found'));
+    deps.getOutputFilePath.mockReturnValue('/path/to/file.xml');
+    deps.access.mockRejectedValue(new Error('File not found'));
 
     const result = await toolHandler({ outputId: 'test-id' });
 
@@ -73,9 +78,9 @@ describe('readRepomixOutputTool', () => {
   });
 
   it('should successfully read the file content', async () => {
-    vi.mocked(deps.getOutputFilePath).mockReturnValue('/path/to/file.xml');
-    vi.mocked(deps.access).mockResolvedValue(undefined);
-    vi.mocked(deps.readFile).mockResolvedValue('File content here');
+    deps.getOutputFilePath.mockReturnValue('/path/to/file.xml');
+    deps.access.mockResolvedValue(undefined);
+    deps.readFile.mockResolvedValue('File content here');
 
     const result = await toolHandler({ outputId: 'test-id' });
 
@@ -88,12 +93,12 @@ describe('readRepomixOutputTool', () => {
   });
 
   it('should block attach-sourced content that fails the secret scan', async () => {
-    vi.mocked(deps.getOutputFilePath).mockReturnValue('/path/to/attached.json');
-    vi.mocked(deps.requiresSecretScan).mockReturnValue(true);
-    vi.mocked(deps.access).mockResolvedValue(undefined);
-    vi.mocked(deps.readFile).mockResolvedValue('api_key = "leaked-secret"');
+    deps.getOutputFilePath.mockReturnValue('/path/to/attached.json');
+    deps.requiresSecretScan.mockReturnValue(true);
+    deps.access.mockResolvedValue(undefined);
+    deps.readFile.mockResolvedValue('api_key = "leaked-secret"');
     // Secret scan flags the content.
-    vi.mocked(deps.runSecretLint).mockResolvedValue({ filePath: '/path/to/attached.json', messages: [] } as never);
+    deps.runSecretLint.mockResolvedValue({ filePath: '/path/to/attached.json', messages: [], type: 'file' });
 
     const result = await toolHandler({ outputId: 'attached-id' });
 
@@ -104,10 +109,10 @@ describe('readRepomixOutputTool', () => {
   });
 
   it('should not secret-scan outputs that are not attach-sourced', async () => {
-    vi.mocked(deps.getOutputFilePath).mockReturnValue('/path/to/packed.xml');
-    vi.mocked(deps.requiresSecretScan).mockReturnValue(false);
-    vi.mocked(deps.access).mockResolvedValue(undefined);
-    vi.mocked(deps.readFile).mockResolvedValue('File content here');
+    deps.getOutputFilePath.mockReturnValue('/path/to/packed.xml');
+    deps.requiresSecretScan.mockReturnValue(false);
+    deps.access.mockResolvedValue(undefined);
+    deps.readFile.mockResolvedValue('File content here');
 
     const result = await toolHandler({ outputId: 'packed-id' });
 
@@ -116,7 +121,7 @@ describe('readRepomixOutputTool', () => {
   });
 
   it('should handle unexpected errors during execution', async () => {
-    vi.mocked(deps.getOutputFilePath).mockImplementation(() => {
+    deps.getOutputFilePath.mockImplementation(() => {
       throw new Error('Unexpected error');
     });
 
@@ -129,9 +134,9 @@ describe('readRepomixOutputTool', () => {
   });
 
   it('should read specific line range when startLine and endLine are provided', async () => {
-    vi.mocked(deps.getOutputFilePath).mockReturnValue('/path/to/file.xml');
-    vi.mocked(deps.access).mockResolvedValue(undefined);
-    vi.mocked(deps.readFile).mockResolvedValue('Line 1\nLine 2\nLine 3\nLine 4\nLine 5');
+    deps.getOutputFilePath.mockReturnValue('/path/to/file.xml');
+    deps.access.mockResolvedValue(undefined);
+    deps.readFile.mockResolvedValue('Line 1\nLine 2\nLine 3\nLine 4\nLine 5');
 
     const result = await toolHandler({ outputId: 'test-id', startLine: 2, endLine: 4 });
 
@@ -142,9 +147,9 @@ describe('readRepomixOutputTool', () => {
   });
 
   it('should read from startLine to end when only startLine is provided', async () => {
-    vi.mocked(deps.getOutputFilePath).mockReturnValue('/path/to/file.xml');
-    vi.mocked(deps.access).mockResolvedValue(undefined);
-    vi.mocked(deps.readFile).mockResolvedValue('Line 1\nLine 2\nLine 3\nLine 4\nLine 5');
+    deps.getOutputFilePath.mockReturnValue('/path/to/file.xml');
+    deps.access.mockResolvedValue(undefined);
+    deps.readFile.mockResolvedValue('Line 1\nLine 2\nLine 3\nLine 4\nLine 5');
 
     const result = await toolHandler({ outputId: 'test-id', startLine: 3 });
 
@@ -153,9 +158,9 @@ describe('readRepomixOutputTool', () => {
   });
 
   it('should read from beginning to endLine when only endLine is provided', async () => {
-    vi.mocked(deps.getOutputFilePath).mockReturnValue('/path/to/file.xml');
-    vi.mocked(deps.access).mockResolvedValue(undefined);
-    vi.mocked(deps.readFile).mockResolvedValue('Line 1\nLine 2\nLine 3\nLine 4\nLine 5');
+    deps.getOutputFilePath.mockReturnValue('/path/to/file.xml');
+    deps.access.mockResolvedValue(undefined);
+    deps.readFile.mockResolvedValue('Line 1\nLine 2\nLine 3\nLine 4\nLine 5');
 
     const result = await toolHandler({ outputId: 'test-id', endLine: 2 });
 
@@ -164,9 +169,9 @@ describe('readRepomixOutputTool', () => {
   });
 
   it('should return an error if startLine exceeds total lines', async () => {
-    vi.mocked(deps.getOutputFilePath).mockReturnValue('/path/to/file.xml');
-    vi.mocked(deps.access).mockResolvedValue(undefined);
-    vi.mocked(deps.readFile).mockResolvedValue('Line 1\nLine 2\nLine 3');
+    deps.getOutputFilePath.mockReturnValue('/path/to/file.xml');
+    deps.access.mockResolvedValue(undefined);
+    deps.readFile.mockResolvedValue('Line 1\nLine 2\nLine 3');
 
     const result = await toolHandler({ outputId: 'test-id', startLine: 10 });
 
@@ -177,9 +182,9 @@ describe('readRepomixOutputTool', () => {
   });
 
   it('should return an error if startLine is greater than endLine', async () => {
-    vi.mocked(deps.getOutputFilePath).mockReturnValue('/path/to/file.xml');
-    vi.mocked(deps.access).mockResolvedValue(undefined);
-    vi.mocked(deps.readFile).mockResolvedValue('Line 1\nLine 2\nLine 3\nLine 4\nLine 5');
+    deps.getOutputFilePath.mockReturnValue('/path/to/file.xml');
+    deps.access.mockResolvedValue(undefined);
+    deps.readFile.mockResolvedValue('Line 1\nLine 2\nLine 3\nLine 4\nLine 5');
 
     const result = await toolHandler({ outputId: 'test-id', startLine: 4, endLine: 2 });
 
@@ -190,15 +195,15 @@ describe('readRepomixOutputTool', () => {
   });
 
   it('should handle string parameters by coercing them to numbers', async () => {
-    vi.mocked(deps.getOutputFilePath).mockReturnValue('/path/to/file.xml');
-    vi.mocked(deps.access).mockResolvedValue(undefined);
-    vi.mocked(deps.readFile).mockResolvedValue('Line 1\nLine 2\nLine 3\nLine 4\nLine 5');
+    deps.getOutputFilePath.mockReturnValue('/path/to/file.xml');
+    deps.access.mockResolvedValue(undefined);
+    deps.readFile.mockResolvedValue('Line 1\nLine 2\nLine 3\nLine 4\nLine 5');
 
     // Simulate Cursor AI sending strings instead of numbers
     const result = await toolHandler({
       outputId: 'test-id',
-      startLine: '2' as unknown as number,
-      endLine: '4' as unknown as number,
+      startLine: '2',
+      endLine: '4',
     });
 
     expect(deps.readFile).toHaveBeenCalledWith('/path/to/file.xml', 'utf8');
@@ -208,14 +213,14 @@ describe('readRepomixOutputTool', () => {
   });
 
   it('should handle mixed string and number parameters', async () => {
-    vi.mocked(deps.getOutputFilePath).mockReturnValue('/path/to/file.xml');
-    vi.mocked(deps.access).mockResolvedValue(undefined);
-    vi.mocked(deps.readFile).mockResolvedValue('Line 1\nLine 2\nLine 3\nLine 4\nLine 5');
+    deps.getOutputFilePath.mockReturnValue('/path/to/file.xml');
+    deps.access.mockResolvedValue(undefined);
+    deps.readFile.mockResolvedValue('Line 1\nLine 2\nLine 3\nLine 4\nLine 5');
 
     // Test with startLine as string and endLine as number
     const result = await toolHandler({
       outputId: 'test-id',
-      startLine: '2' as unknown as number,
+      startLine: '2',
       endLine: 4,
     });
 

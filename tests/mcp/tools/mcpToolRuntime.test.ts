@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { runCli } from '../../../src/cli/cliRun.js';
 import type { CliOptions } from '../../../src/cli/types.js';
 import { logger, repomixLogLevels } from '../../../src/shared/logger.js';
+import type { MockedDeps } from '../../testing/depsDoubles.js';
 
 // Type guard for structured content with result property
 function hasResult(obj: unknown): obj is { result: string } {
@@ -52,7 +53,7 @@ describe('mcpToolRuntime', () => {
 
   describe('createToolWorkspace', () => {
     const tmpBaseDir = path.join('/tmp/repomix', 'mcp-outputs');
-    let deps: NonNullable<Parameters<typeof createToolWorkspace>[0]>;
+    let deps: MockedDeps<NonNullable<Parameters<typeof createToolWorkspace>[0]>>;
 
     beforeEach(() => {
       deps = {
@@ -72,7 +73,7 @@ describe('mcpToolRuntime', () => {
     });
 
     it('should throw an error if directory creation fails', async () => {
-      vi.mocked(deps.mkdir).mockRejectedValue(new Error('Failed to create directory'));
+      deps.mkdir.mockRejectedValue(new Error('Failed to create directory'));
 
       await expect(createToolWorkspace(deps)).rejects.toThrow(
         'Failed to create temporary directory: Failed to create directory',

@@ -1,10 +1,11 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
+import type { CallToolResult } from '@modelcontextprotocol/server';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { registerGenerateSkillTool } from '../../../src/mcp/tools/generateSkillTool.js';
 import type { runCliPreservingLogLevel } from '../../../src/mcp/tools/mcpToolRuntime.js';
+import { createMcpServerDouble, type McpServerDouble } from '../../testing/mcpServerDoubles.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 const exists = (target: string) =>
@@ -14,17 +15,18 @@ const exists = (target: string) =>
   );
 
 describe('GenerateSkillTool', () => {
-  const mockServer = {
-    registerTool: vi.fn().mockReturnThis(),
-  } as unknown as McpServer;
+  let mockServer: McpServerDouble;
 
-  let toolHandler: (args: {
-    directory: string;
-    skillName?: string;
-    compress?: boolean;
-    includePatterns?: string;
-    ignorePatterns?: string;
-  }) => Promise<CallToolResult>;
+  let toolHandler: (
+    args: {
+      directory: string;
+      skillName?: string;
+      compress?: boolean;
+      includePatterns?: string;
+      ignorePatterns?: string;
+    },
+    ctx?: unknown,
+  ) => Promise<CallToolResult>;
 
   // Real temp workspace: the tool's directory checks and its claim/cleanup of the
   // skill directory run against the file system. Only the pack itself is a double.
@@ -56,8 +58,9 @@ describe('GenerateSkillTool', () => {
     await fs.mkdir(projectDir);
 
     runCli = vi.fn<typeof runCliPreservingLogLevel>();
-    registerGenerateSkillTool(mockServer, { runCliPreservingLogLevel: runCli });
-    toolHandler = (mockServer.registerTool as ReturnType<typeof vi.fn>).mock.calls[0][2];
+    mockServer = createMcpServerDouble();
+    registerGenerateSkillTool(mockServer.server, { runCliPreservingLogLevel: runCli });
+    toolHandler = mockServer.toolHandler();
 
     // Default runCli behavior
     runCli.mockImplementation(async (_directories, cwd, opts = {}) => ({
@@ -268,9 +271,7 @@ describe('GenerateSkillTool', () => {
 
   test('passes the request abort signal to runCli', async () => {
     const { signal } = new AbortController();
-    const handlerWithCtx = toolHandler as (args: { directory: string }, ctx: unknown) => Promise<CallToolResult>;
-
-    await handlerWithCtx({ directory: projectDir }, { mcpReq: { _meta: {}, notify: vi.fn(), signal } });
+    await toolHandler({ directory: projectDir }, { mcpReq: { _meta: {}, notify: vi.fn(), signal } });
 
     expect(runCli).toHaveBeenCalledWith(['.'], projectDir, expect.objectContaining({ signal }), undefined);
     // A run that was not cancelled keeps the generated skill.
@@ -285,12 +286,7 @@ describe('GenerateSkillTool', () => {
       controller.abort();
       throw controller.signal.reason;
     });
-    const handlerWithCtx = toolHandler as (
-      args: { directory: string; skillName: string },
-      ctx: unknown,
-    ) => Promise<CallToolResult>;
-
-    await handlerWithCtx(
+    await toolHandler(
       { directory: projectDir, skillName: 'my-skill' },
       { mcpReq: { _meta: {}, notify: vi.fn(), signal: controller.signal } },
     );

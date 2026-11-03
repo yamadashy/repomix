@@ -1,17 +1,18 @@
-import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
+import type fs from 'node:fs/promises';
+import type { CallToolResult } from '@modelcontextprotocol/server';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { registerFileSystemReadFileTool } from '../../../src/mcp/tools/fileSystemReadFileTool.js';
 import { logger } from '../../../src/shared/logger.js';
+import { type MockedDeps, mockOverloaded } from '../../testing/depsDoubles.js';
+import { createMcpServerDouble, type McpServerDouble } from '../../testing/mcpServerDoubles.js';
 
 type Stats = Awaited<ReturnType<NonNullable<Parameters<typeof registerFileSystemReadFileTool>[2]>['stat']>>;
 
 describe('FileSystemReadFileTool', () => {
-  const mockServer = {
-    registerTool: vi.fn().mockReturnThis(),
-  } as unknown as McpServer;
+  let mockServer: McpServerDouble;
 
   let toolHandler: (args: { path: string }) => Promise<CallToolResult>;
-  let deps: NonNullable<Parameters<typeof registerFileSystemReadFileTool>[2]>;
+  let deps: MockedDeps<NonNullable<Parameters<typeof registerFileSystemReadFileTool>[2]>>;
 
   beforeEach(() => {
     vi.resetAllMocks();
@@ -19,13 +20,14 @@ describe('FileSystemReadFileTool', () => {
     vi.spyOn(logger, 'error').mockImplementation(() => {});
     deps = {
       access: vi.fn(),
-      stat: vi.fn(),
-      readFile: vi.fn(),
+      stat: mockOverloaded<typeof fs.stat>(),
+      readFile: mockOverloaded<typeof fs.readFile>(),
       createSecretLintConfig: vi.fn().mockReturnValue({}),
       runSecretLint: vi.fn().mockResolvedValue(null),
     };
-    registerFileSystemReadFileTool(mockServer, undefined, deps);
-    toolHandler = (mockServer.registerTool as ReturnType<typeof vi.fn>).mock.calls[0][2];
+    mockServer = createMcpServerDouble();
+    registerFileSystemReadFileTool(mockServer.server, undefined, deps);
+    toolHandler = mockServer.toolHandler();
   });
 
   afterEach(() => {
@@ -58,7 +60,7 @@ describe('FileSystemReadFileTool', () => {
 
   test('should handle non-existent file', async () => {
     const testPath = '/non/existent/file.txt';
-    vi.mocked(deps.access).mockRejectedValue(new Error('ENOENT'));
+    deps.access.mockRejectedValue(new Error('ENOENT'));
 
     const result = await toolHandler({ path: testPath });
 
@@ -75,10 +77,10 @@ describe('FileSystemReadFileTool', () => {
 
   test('should handle directory path error', async () => {
     const testPath = '/some/directory';
-    vi.mocked(deps.access).mockResolvedValueOnce(undefined);
-    vi.mocked(deps.stat).mockResolvedValueOnce({
+    deps.access.mockResolvedValueOnce(undefined);
+    deps.stat.mockResolvedValueOnce({
       isDirectory: () => true,
-    } as unknown as Stats);
+    } as Stats);
 
     const result = await toolHandler({ path: testPath });
 
@@ -102,13 +104,13 @@ describe('FileSystemReadFileTool', () => {
   test('should successfully read file and return content', async () => {
     const testPath = '/test/file.txt';
     const fileContent = 'Line 1\nLine 2\nLine 3';
-    vi.mocked(deps.access).mockResolvedValueOnce(undefined);
-    vi.mocked(deps.stat).mockResolvedValueOnce({
+    deps.access.mockResolvedValueOnce(undefined);
+    deps.stat.mockResolvedValueOnce({
       isDirectory: () => false,
       size: 21,
-    } as unknown as Stats);
-    vi.mocked(deps.readFile).mockResolvedValueOnce(fileContent);
-    vi.mocked(deps.runSecretLint).mockResolvedValueOnce(null);
+    } as Stats);
+    deps.readFile.mockResolvedValueOnce(fileContent);
+    deps.runSecretLint.mockResolvedValueOnce(null);
 
     const result = await toolHandler({ path: testPath });
 
@@ -133,13 +135,13 @@ describe('FileSystemReadFileTool', () => {
   test('should block file when security check fails', async () => {
     const testPath = '/test/secrets.txt';
     const fileContent = 'API_KEY=secret123';
-    vi.mocked(deps.access).mockResolvedValueOnce(undefined);
-    vi.mocked(deps.stat).mockResolvedValueOnce({
+    deps.access.mockResolvedValueOnce(undefined);
+    deps.stat.mockResolvedValueOnce({
       isDirectory: () => false,
       size: 17,
-    } as unknown as Stats);
-    vi.mocked(deps.readFile).mockResolvedValueOnce(fileContent);
-    vi.mocked(deps.runSecretLint).mockResolvedValueOnce({
+    } as Stats);
+    deps.readFile.mockResolvedValueOnce(fileContent);
+    deps.runSecretLint.mockResolvedValueOnce({
       filePath: testPath,
       messages: ['Found potential secret'],
       type: 'file',
@@ -166,8 +168,8 @@ describe('FileSystemReadFileTool', () => {
 
   test('should handle general errors during file reading', async () => {
     const testPath = '/test/file.txt';
-    vi.mocked(deps.access).mockResolvedValueOnce(undefined);
-    vi.mocked(deps.stat).mockRejectedValueOnce(new Error('Disk I/O error'));
+    deps.access.mockResolvedValueOnce(undefined);
+    deps.stat.mockRejectedValueOnce(new Error('Disk I/O error'));
 
     const result = await toolHandler({ path: testPath });
 
@@ -184,8 +186,8 @@ describe('FileSystemReadFileTool', () => {
 
   test('should handle non-Error objects in catch block', async () => {
     const testPath = '/test/file.txt';
-    vi.mocked(deps.access).mockResolvedValueOnce(undefined);
-    vi.mocked(deps.stat).mockRejectedValueOnce('string error');
+    deps.access.mockResolvedValueOnce(undefined);
+    deps.stat.mockRejectedValueOnce('string error');
 
     const result = await toolHandler({ path: testPath });
 

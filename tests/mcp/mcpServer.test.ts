@@ -1,18 +1,17 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import type { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, type Mock, test, vi } from 'vitest';
+import type { getVersion as getVersionImpl } from '../../src/core/file/packageJsonParse.js';
 import { createMcpServer, type McpServerConfig, runMcpServer } from '../../src/mcp/mcpServer.js';
 import { logger } from '../../src/shared/logger.js';
+import { createMcpServerDouble, type McpServerDouble } from '../testing/mcpServerDoubles.js';
 
-// Stands in for the SDK's McpServer class; it must work as a constructor.
-const MockMcpServer = vi.fn().mockImplementation(function (this: unknown) {
-  Object.assign(this as object, {
-    registerTool: vi.fn().mockReturnThis(),
-    registerPrompt: vi.fn().mockReturnThis(),
-    connect: vi.fn().mockResolvedValue(undefined),
-    close: vi.fn().mockResolvedValue(undefined),
-  });
-  return this;
+// Stands in for the SDK's McpServer class; it must work as a constructor. Each instance is a
+// recorded double, so tests can assert on the tools and prompts registered on it.
+let lastServer: McpServerDouble;
+const MockMcpServer = vi.fn(function (this: unknown, ..._args: ConstructorParameters<typeof McpServer>) {
+  lastServer = createMcpServerDouble();
+  return lastServer.server;
 });
 
 const createServer = (version: string, config?: McpServerConfig) =>
@@ -67,7 +66,7 @@ describe('MCP Server', () => {
 
     test('embeds icons as data URIs with a PNG fallback', () => {
       createServer(mockVersion);
-      const [serverInfo] = MockMcpServer.mock.calls[0] as ConstructorParameters<typeof McpServer>;
+      const [serverInfo] = MockMcpServer.mock.calls[0];
       const icons = serverInfo.icons ?? [];
       expect(icons.map(({ mimeType, sizes }) => ({ mimeType, sizes }))).toEqual([
         { mimeType: 'image/svg+xml', sizes: ['any'] },
@@ -84,7 +83,7 @@ describe('MCP Server', () => {
 
     test('bounds tool input size and sets list cache hints', () => {
       createServer(mockVersion);
-      const [, options] = MockMcpServer.mock.calls[0] as ConstructorParameters<typeof McpServer>;
+      const [, options] = MockMcpServer.mock.calls[0];
       expect(options?.maxToolInputElements).toBe(10_000);
       expect(options?.cacheHints).toEqual({
         'tools/list': { ttlMs: 60 * 60 * 1000 },
@@ -93,9 +92,8 @@ describe('MCP Server', () => {
     });
 
     test('registers the 6 packing/analysis tools by default (non-sandboxed)', () => {
-      const server = createServer(mockVersion);
-      const registerTool = (server as unknown as { registerTool: ReturnType<typeof vi.fn> }).registerTool;
-      const names = registerTool.mock.calls.map((c) => c[0]);
+      createServer(mockVersion);
+      const names = lastServer.registerTool.mock.calls.map((c) => c[0]);
       expect(names).toEqual(
         expect.arrayContaining([
           'pack_codebase',
@@ -111,14 +109,12 @@ describe('MCP Server', () => {
       expect(names).not.toContain('file_system_read_file');
       expect(names).not.toContain('file_system_read_directory');
       expect(names).toHaveLength(6);
-      const registerPrompt = (server as unknown as { registerPrompt: ReturnType<typeof vi.fn> }).registerPrompt;
-      expect(registerPrompt.mock.calls.map((c) => c[0])).toEqual(['pack_remote_repository']);
+      expect(lastServer.registerPrompt.mock.calls.map((c) => c[0])).toEqual(['pack_remote_repository']);
     });
 
     test('registers only the 5 read-only tools and no prompts when sandboxed', () => {
-      const server = createServer(mockVersion, { sandboxed: true, root: '/allowed/dir' });
-      const registerTool = (server as unknown as { registerTool: ReturnType<typeof vi.fn> }).registerTool;
-      const names = registerTool.mock.calls.map((c) => c[0]);
+      createServer(mockVersion, { sandboxed: true, root: '/allowed/dir' });
+      const names = lastServer.registerTool.mock.calls.map((c) => c[0]);
       expect(names.sort()).toEqual(
         [
           'file_system_read_directory',
@@ -128,8 +124,7 @@ describe('MCP Server', () => {
           'read_repomix_output',
         ].sort(),
       );
-      const registerPrompt = (server as unknown as { registerPrompt: ReturnType<typeof vi.fn> }).registerPrompt;
-      expect(registerPrompt).not.toHaveBeenCalled();
+      expect(lastServer.registerPrompt).not.toHaveBeenCalled();
     });
 
     test('sandboxed instructions tell the agent paths are relative to the workspace root', () => {
@@ -148,6 +143,7 @@ describe('MCP Server', () => {
     let transport: ReturnType<typeof createFakeTransport>;
     let handle: { close: ReturnType<typeof vi.fn<() => Promise<void>>> };
     let serveStdio: ReturnType<typeof vi.fn<(...args: ServeStdioArgs) => { close: () => Promise<void> }>>;
+    let getVersion: Mock<typeof getVersionImpl>;
     let deps: NonNullable<Parameters<typeof runMcpServer>[1]>;
     let existingListeners: Record<'SIGINT' | 'SIGTERM', NodeJS.SignalsListener[]>;
 
@@ -164,8 +160,9 @@ describe('MCP Server', () => {
         if (options?.transport) options.transport.onclose = vi.fn();
         return handle;
       });
+      getVersion = vi.fn<typeof getVersionImpl>().mockResolvedValue(mockVersion);
       deps = {
-        getVersion: vi.fn().mockResolvedValue(mockVersion),
+        getVersion,
         serveStdio,
         createMcpServer: createServer,
         createStdioTransport: () => transport as unknown as StdioServerTransport,
@@ -197,7 +194,7 @@ describe('MCP Server', () => {
       const second = factory({} as never);
       expect(first).not.toBeInstanceOf(Promise);
       expect(first).not.toBe(second);
-      expect(deps?.getVersion).toHaveBeenCalledTimes(1);
+      expect(getVersion).toHaveBeenCalledTimes(1);
       expect(MockMcpServer).toHaveBeenLastCalledWith(
         expect.objectContaining({ name: 'repomix-mcp-server', version: mockVersion }),
         expect.objectContaining({ instructions: expect.stringContaining('SANDBOX MODE') }),
@@ -206,7 +203,7 @@ describe('MCP Server', () => {
 
     test('should handle startup error', async () => {
       const error = new Error('Version lookup failed');
-      vi.mocked(deps?.getVersion as ReturnType<typeof vi.fn>).mockRejectedValue(error);
+      getVersion.mockRejectedValue(error);
 
       await runMcpServer({ processExit: mockExit }, deps);
 

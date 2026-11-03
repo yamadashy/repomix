@@ -1,13 +1,13 @@
-import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
+import type { CallToolResult } from '@modelcontextprotocol/server';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { runCliPreservingLogLevel } from '../../../src/mcp/tools/mcpToolRuntime.js';
 import { registerPackCodebaseTool } from '../../../src/mcp/tools/packCodebaseTool.js';
+import type { MockedDeps } from '../../testing/depsDoubles.js';
+import { createMcpServerDouble, type McpServerDouble } from '../../testing/mcpServerDoubles.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 describe('PackCodebaseTool', () => {
-  const mockServer = {
-    registerTool: vi.fn().mockReturnThis(),
-  } as unknown as McpServer;
+  let mockServer: McpServerDouble;
 
   let toolHandler: (
     args: {
@@ -21,7 +21,7 @@ describe('PackCodebaseTool', () => {
     ctx?: unknown,
   ) => Promise<CallToolResult>;
 
-  let deps: NonNullable<Parameters<typeof registerPackCodebaseTool>[2]>;
+  let deps: MockedDeps<NonNullable<Parameters<typeof registerPackCodebaseTool>[2]>>;
   let runCli: ReturnType<typeof vi.fn<typeof runCliPreservingLogLevel>>;
 
   const defaultPackResult = {
@@ -51,8 +51,9 @@ describe('PackCodebaseTool', () => {
       removeToolWorkspace: vi.fn(),
       runCliPreservingLogLevel: runCli,
     };
-    registerPackCodebaseTool(mockServer, undefined, deps);
-    const handler = (mockServer.registerTool as ReturnType<typeof vi.fn>).mock.calls[0][2];
+    mockServer = createMcpServerDouble();
+    registerPackCodebaseTool(mockServer.server, undefined, deps);
+    const handler = mockServer.toolHandler();
     // The SDK applies the schema default for `style` before invoking the handler.
     toolHandler = (args, ctx?) => handler({ style: 'xml', ...args }, ctx);
 
@@ -232,7 +233,7 @@ describe('PackCodebaseTool', () => {
   test('should handle workspace creation error', async () => {
     const testDir = '/test/project';
     const error = new Error('Workspace creation failed');
-    vi.mocked(deps.createToolWorkspace).mockRejectedValue(error);
+    deps.createToolWorkspace.mockRejectedValue(error);
 
     const result = await toolHandler({ directory: testDir });
 
@@ -245,13 +246,13 @@ describe('PackCodebaseTool', () => {
   });
 
   test('rejects a directory outside the allowed root when sandboxed', async () => {
-    const server = { registerTool: vi.fn().mockReturnThis() } as unknown as McpServer;
-    registerPackCodebaseTool(server, { sandboxed: true, root: '/allowed/dir' }, deps);
-    const handler = (server.registerTool as ReturnType<typeof vi.fn>).mock.calls[0][2];
+    const server = createMcpServerDouble();
+    registerPackCodebaseTool(server.server, { sandboxed: true, root: '/allowed/dir' }, deps);
+    const handler = server.toolHandler();
 
     const result = await handler({ directory: '../../etc', compress: false, topFilesLength: 10, style: 'xml' });
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('relative to workspace root');
+    expect((result.content[0] as { type: 'text'; text: string }).text).toContain('relative to workspace root');
   });
 });

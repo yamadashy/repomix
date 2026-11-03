@@ -17,7 +17,7 @@ import {
 import { registerPackCodebaseTool } from '../../../src/mcp/tools/packCodebaseTool.js';
 import { registerReadRepomixOutputTool } from '../../../src/mcp/tools/readRepomixOutputTool.js';
 import { logger, repomixLogLevels } from '../../../src/shared/logger.js';
-
+import { createMcpServerDouble, type ToolHandler } from '../../testing/mcpServerDoubles.js';
 // BLACKBOX CONTRACT for --sandbox. Drives the five tool handlers on a REAL temp
 // workspace (no path/fs mocks) and asserts only observable request→response
 // behavior. `runCli` is a test double ONLY to (a) prove the pattern/path guard rejects
@@ -74,11 +74,13 @@ const ESCAPING_PATTERNS = [
 ];
 const ALLOWED_PATTERNS = ['**/*.{js,ts}', 'src/**,docs/**', '!node_modules/**', 'a..b/**'];
 
-type Handler = (args: Record<string, unknown>) => Promise<CallToolResult>;
-const capture = (register: (s: McpServer, c: { sandboxed: boolean; root: string }) => void, root: string): Handler => {
-  const server = { registerTool: vi.fn().mockReturnThis() } as unknown as McpServer;
-  register(server, { sandboxed: true, root });
-  return (server.registerTool as ReturnType<typeof vi.fn>).mock.calls[0][2];
+const capture = (
+  register: (s: McpServer, c: { sandboxed: boolean; root: string }) => void,
+  root: string,
+): ToolHandler => {
+  const server = createMcpServerDouble();
+  register(server.server, { sandboxed: true, root });
+  return server.toolHandler();
 };
 // Stands in for the CLI behind the real log-level-preserving wrapper, so the pack tool
 // keeps its real workspace, response and log-level handling.
@@ -96,9 +98,9 @@ const rejectedAsEscape = (r: CallToolResult): boolean => r.isError === true && /
 
 describe('sandbox contract', () => {
   let root = '';
-  let readFile: Handler;
-  let readDir: Handler;
-  let pack: Handler;
+  let readFile: ToolHandler;
+  let readDir: ToolHandler;
+  let pack: ToolHandler;
 
   beforeEach(async () => {
     root = await fsp.realpath(await fsp.mkdtemp(path.join(os.tmpdir(), 'sbx-contract-')));
@@ -343,10 +345,7 @@ describe('sandbox contract', () => {
       });
       const notify = vi.fn().mockResolvedValue(undefined);
       const ctx = { mcpReq: { _meta: { progressToken: 'tok' }, notify } };
-      await (pack as unknown as (args: Record<string, unknown>, c: unknown) => Promise<CallToolResult>)(
-        { directory: '.', compress: false, topFilesLength: 10, style: 'xml' },
-        ctx,
-      );
+      await pack({ directory: '.', compress: false, topFilesLength: 10, style: 'xml' }, ctx);
 
       expect(notify).toHaveBeenCalled();
       for (const [notification] of notify.mock.calls) {

@@ -1,26 +1,29 @@
 import path from 'node:path';
-import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
+import type { CallToolResult } from '@modelcontextprotocol/server';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { runCliPreservingLogLevel } from '../../../src/mcp/tools/mcpToolRuntime.js';
 import { registerPackRemoteRepositoryTool } from '../../../src/mcp/tools/packRemoteRepositoryTool.js';
+import type { MockedDeps } from '../../testing/depsDoubles.js';
+import { createMcpServerDouble, type McpServerDouble } from '../../testing/mcpServerDoubles.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 describe('PackRemoteRepositoryTool', () => {
-  const mockServer = {
-    registerTool: vi.fn().mockReturnThis(),
-  } as unknown as McpServer;
+  let mockServer: McpServerDouble;
 
-  let toolHandler: (args: {
-    remote: string;
-    compress?: boolean;
-    includePatterns?: string;
-    ignorePatterns?: string;
-    outputPatterns?: { pattern: string; compress?: boolean; directoryStructureOnly?: boolean }[];
-    topFilesLength?: number;
-    style?: 'xml' | 'markdown' | 'json' | 'plain';
-  }) => Promise<CallToolResult>;
+  let toolHandler: (
+    args: {
+      remote: string;
+      compress?: boolean;
+      includePatterns?: string;
+      ignorePatterns?: string;
+      outputPatterns?: { pattern: string; compress?: boolean; directoryStructureOnly?: boolean }[];
+      topFilesLength?: number;
+      style?: 'xml' | 'markdown' | 'json' | 'plain';
+    },
+    ctx?: unknown,
+  ) => Promise<CallToolResult>;
 
-  let deps: NonNullable<Parameters<typeof registerPackRemoteRepositoryTool>[1]>;
+  let deps: MockedDeps<NonNullable<Parameters<typeof registerPackRemoteRepositoryTool>[1]>>;
   let runCli: ReturnType<typeof vi.fn<typeof runCliPreservingLogLevel>>;
 
   const defaultPackResult = {
@@ -50,10 +53,11 @@ describe('PackRemoteRepositoryTool', () => {
       removeToolWorkspace: vi.fn(),
       runCliPreservingLogLevel: runCli,
     };
-    registerPackRemoteRepositoryTool(mockServer, deps);
-    const handler = (mockServer.registerTool as ReturnType<typeof vi.fn>).mock.calls[0][2];
+    mockServer = createMcpServerDouble();
+    registerPackRemoteRepositoryTool(mockServer.server, deps);
+    const handler = mockServer.toolHandler();
     // The SDK applies the schema default for `style` before invoking the handler.
-    toolHandler = (args, ctx?: unknown) => handler({ style: 'xml', ...args }, ctx);
+    toolHandler = (args, ctx) => handler({ style: 'xml', ...args }, ctx);
 
     runCli.mockImplementation(async (_directories, cwd, opts = {}) => ({
       packResult: defaultPackResult,
@@ -158,9 +162,7 @@ describe('PackRemoteRepositoryTool', () => {
       controller.abort();
       throw controller.signal.reason;
     });
-    const handlerWithCtx = toolHandler as (args: { remote: string }, ctx: unknown) => Promise<CallToolResult>;
-
-    await handlerWithCtx(
+    await toolHandler(
       { remote: 'yamadashy/repomix' },
       { mcpReq: { _meta: {}, notify: vi.fn(), signal: controller.signal } },
     );
@@ -175,7 +177,7 @@ describe('PackRemoteRepositoryTool', () => {
   });
 
   test('returns an error response when workspace creation fails', async () => {
-    vi.mocked(deps.createToolWorkspace).mockRejectedValue(new Error('mkdtemp failed'));
+    deps.createToolWorkspace.mockRejectedValue(new Error('mkdtemp failed'));
 
     const result = await toolHandler({ remote: 'user/repo' });
 

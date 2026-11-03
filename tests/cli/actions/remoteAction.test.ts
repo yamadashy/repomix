@@ -39,9 +39,11 @@ const createMockDefaultActionResult = (): DefaultActionRunnerResult => ({
 });
 
 describe('remoteAction functions', () => {
+  let loggerSpies: ReturnType<typeof silenceLogger>;
+
   beforeEach(() => {
     vi.resetAllMocks();
-    silenceLogger();
+    loggerSpies = silenceLogger();
   });
 
   afterEach(() => {
@@ -941,7 +943,7 @@ describe('remoteAction functions', () => {
         execGitShallowClone: vi.fn().mockResolvedValue(undefined),
       });
 
-      const logged = vi.mocked(logger.log).mock.calls.flat().join('\n');
+      const logged = loggerSpies.log.mock.calls.flat().join('\n');
       expect(logged).not.toContain(token);
       expect(logged).toContain('https://***@github.com/owner/repo.git');
     });

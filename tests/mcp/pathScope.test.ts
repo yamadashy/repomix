@@ -5,7 +5,7 @@ import { PathScopeError, resolveWithinRoot, toVirtualPath } from '../../src/mcp/
 // Resolve to a platform-native absolute root (D:\allowed\dir on Windows,
 // /allowed/dir on POSIX) so assertions match resolveWithinRoot's path.resolve.
 const ROOT = path.resolve('/allowed/dir');
-const idRealpath = async (p: string) => p as unknown as string;
+const idRealpath = async (p: string) => p;
 
 describe('resolveWithinRoot', () => {
   test('"." selects the root', async () => {
@@ -102,13 +102,13 @@ describe('resolveWithinRoot', () => {
   test('rejects a symlink that resolves to a SIBLING sharing the root as a string prefix', async () => {
     // "<root>evil" shares the prefix but is not inside "<root>/" — the boundary
     // check (root + separator) must not be fooled by the bare string prefix.
-    const siblingRealpath = async (p: string) => (p === ROOT ? ROOT : (`${ROOT}evil` as unknown as string));
+    const siblingRealpath = async (p: string) => (p === ROOT ? ROOT : `${ROOT}evil`);
     await expect(resolveWithinRoot(ROOT, 'link', { realpath: siblingRealpath })).rejects.toBeInstanceOf(PathScopeError);
   });
 
   test('accepts a symlink that resolves to a real child inside root', async () => {
     const child = path.join(ROOT, 'sub', 'real.ts');
-    const childRealpath = async (p: string) => (p === ROOT ? ROOT : (child as unknown as string));
+    const childRealpath = async (p: string) => (p === ROOT ? ROOT : child);
     await expect(resolveWithinRoot(ROOT, 'link', { realpath: childRealpath })).resolves.toBe(child);
   });
 
@@ -118,13 +118,13 @@ describe('resolveWithinRoot', () => {
     const candidate = path.join(ROOT, 'src', 'x.ts');
     const rootFailsRealpath = async (p: string) => {
       if (p === ROOT) throw new Error('EACCES');
-      return candidate as unknown as string;
+      return candidate;
     };
     await expect(resolveWithinRoot(ROOT, 'src/x.ts', { realpath: rootFailsRealpath })).resolves.toBe(candidate);
   });
 
   test('rejects a symlink that escapes root (realpath resolves outside)', async () => {
-    const escapingRealpath = async (p: string) => (p === ROOT ? ROOT : ('/etc/secret' as unknown as string));
+    const escapingRealpath = async (p: string) => (p === ROOT ? ROOT : '/etc/secret');
     await expect(resolveWithinRoot(ROOT, 'link', { realpath: escapingRealpath })).rejects.toBeInstanceOf(
       PathScopeError,
     );

@@ -1,12 +1,25 @@
+import type fs from 'node:fs/promises';
 import path from 'node:path';
 import { describe, expect, test, vi } from 'vitest';
 import { writeSkillOutput } from '../../../src/core/skill/writeSkillOutput.js';
 import { RepomixError } from '../../../src/shared/errorHandle.js';
+import { type MockedDeps, mockOverloaded } from '../../testing/depsDoubles.js';
+
+type Deps = NonNullable<Parameters<typeof writeSkillOutput>[2]>;
+
+const createDeps = (): MockedDeps<Deps> => {
+  const deps: MockedDeps<Deps> = {
+    mkdir: mockOverloaded<typeof fs.mkdir>(),
+    writeFile: vi.fn<typeof fs.writeFile>(),
+  };
+  deps.mkdir.mockResolvedValue(undefined);
+  deps.writeFile.mockResolvedValue(undefined);
+  return deps;
+};
 
 describe('writeSkillOutput', () => {
   test('should create skill directory structure and write files', async () => {
-    const mockMkdir = vi.fn().mockResolvedValue(undefined);
-    const mockWriteFile = vi.fn().mockResolvedValue(undefined);
+    const deps = createDeps();
 
     const output = {
       skillMd: '---\nname: test-skill\n---\n# Test Skill',
@@ -19,29 +32,26 @@ describe('writeSkillOutput', () => {
 
     const skillDir = '/test/project/.claude/skills/test-skill';
 
-    const result = await writeSkillOutput(output, skillDir, {
-      mkdir: mockMkdir as unknown as typeof import('node:fs/promises').mkdir,
-      writeFile: mockWriteFile as unknown as typeof import('node:fs/promises').writeFile,
-    });
+    const result = await writeSkillOutput(output, skillDir, deps);
 
     // Check references directory was created (includes skill directory with recursive: true)
-    expect(mockMkdir).toHaveBeenCalledWith(path.join(skillDir, 'references'), {
+    expect(deps.mkdir).toHaveBeenCalledWith(path.join(skillDir, 'references'), {
       recursive: true,
     });
 
     // Check files were written
-    expect(mockWriteFile).toHaveBeenCalledWith(path.join(skillDir, 'SKILL.md'), output.skillMd, 'utf-8');
-    expect(mockWriteFile).toHaveBeenCalledWith(
+    expect(deps.writeFile).toHaveBeenCalledWith(path.join(skillDir, 'SKILL.md'), output.skillMd, 'utf-8');
+    expect(deps.writeFile).toHaveBeenCalledWith(
       path.join(skillDir, 'references', 'summary.md'),
       output.references.summary,
       'utf-8',
     );
-    expect(mockWriteFile).toHaveBeenCalledWith(
+    expect(deps.writeFile).toHaveBeenCalledWith(
       path.join(skillDir, 'references', 'project-structure.md'),
       output.references.structure,
       'utf-8',
     );
-    expect(mockWriteFile).toHaveBeenCalledWith(
+    expect(deps.writeFile).toHaveBeenCalledWith(
       path.join(skillDir, 'references', 'files.md'),
       output.references.files,
       'utf-8',
@@ -52,8 +62,7 @@ describe('writeSkillOutput', () => {
   });
 
   test('should handle skill directories with various paths', async () => {
-    const mockMkdir = vi.fn().mockResolvedValue(undefined);
-    const mockWriteFile = vi.fn().mockResolvedValue(undefined);
+    const deps = createDeps();
 
     const output = {
       skillMd: '# Skill',
@@ -66,19 +75,15 @@ describe('writeSkillOutput', () => {
 
     const skillDir = '/home/user/.claude/skills/my-special-skill';
 
-    await writeSkillOutput(output, skillDir, {
-      mkdir: mockMkdir as unknown as typeof import('node:fs/promises').mkdir,
-      writeFile: mockWriteFile as unknown as typeof import('node:fs/promises').writeFile,
-    });
+    await writeSkillOutput(output, skillDir, deps);
 
-    expect(mockMkdir).toHaveBeenCalledWith(path.join(skillDir, 'references'), {
+    expect(deps.mkdir).toHaveBeenCalledWith(path.join(skillDir, 'references'), {
       recursive: true,
     });
   });
 
   test('should write tech-stacks.md when techStack is provided', async () => {
-    const mockMkdir = vi.fn().mockResolvedValue(undefined);
-    const mockWriteFile = vi.fn().mockResolvedValue(undefined);
+    const deps = createDeps();
 
     const output = {
       skillMd: '# Skill',
@@ -92,13 +97,10 @@ describe('writeSkillOutput', () => {
 
     const skillDir = '/test/project/.claude/skills/test-skill';
 
-    await writeSkillOutput(output, skillDir, {
-      mkdir: mockMkdir as unknown as typeof import('node:fs/promises').mkdir,
-      writeFile: mockWriteFile as unknown as typeof import('node:fs/promises').writeFile,
-    });
+    await writeSkillOutput(output, skillDir, deps);
 
     // Check tech-stacks.md was written
-    expect(mockWriteFile).toHaveBeenCalledWith(
+    expect(deps.writeFile).toHaveBeenCalledWith(
       path.join(skillDir, 'references', 'tech-stacks.md'),
       output.references.techStack,
       'utf-8',
@@ -106,10 +108,10 @@ describe('writeSkillOutput', () => {
   });
 
   test('should throw RepomixError with permission message on EPERM error', async () => {
-    const mockMkdir = vi.fn().mockResolvedValue(undefined);
+    const deps = createDeps();
     const permError = new Error('Permission denied') as NodeJS.ErrnoException;
     permError.code = 'EPERM';
-    const mockWriteFile = vi.fn().mockRejectedValue(permError);
+    deps.writeFile.mockRejectedValue(permError);
 
     const output = {
       skillMd: '# Skill',
@@ -122,20 +124,17 @@ describe('writeSkillOutput', () => {
 
     const skillDir = '/test/project/.claude/skills/test-skill';
 
-    const promise = writeSkillOutput(output, skillDir, {
-      mkdir: mockMkdir as unknown as typeof import('node:fs/promises').mkdir,
-      writeFile: mockWriteFile as unknown as typeof import('node:fs/promises').writeFile,
-    });
+    const promise = writeSkillOutput(output, skillDir, deps);
 
     await expect(promise).rejects.toThrow(RepomixError);
     await expect(promise).rejects.toThrow(/Permission denied/);
   });
 
   test('should throw RepomixError with permission message on EACCES error', async () => {
-    const mockMkdir = vi.fn().mockResolvedValue(undefined);
+    const deps = createDeps();
     const accessError = new Error('Access denied') as NodeJS.ErrnoException;
     accessError.code = 'EACCES';
-    const mockWriteFile = vi.fn().mockRejectedValue(accessError);
+    deps.writeFile.mockRejectedValue(accessError);
 
     const output = {
       skillMd: '# Skill',
@@ -148,19 +147,16 @@ describe('writeSkillOutput', () => {
 
     const skillDir = '/test/project/.claude/skills/test-skill';
 
-    const promise = writeSkillOutput(output, skillDir, {
-      mkdir: mockMkdir as unknown as typeof import('node:fs/promises').mkdir,
-      writeFile: mockWriteFile as unknown as typeof import('node:fs/promises').writeFile,
-    });
+    const promise = writeSkillOutput(output, skillDir, deps);
 
     await expect(promise).rejects.toThrow(RepomixError);
     await expect(promise).rejects.toThrow(/Permission denied/);
   });
 
   test('should throw RepomixError with generic message on other errors', async () => {
-    const mockMkdir = vi.fn().mockResolvedValue(undefined);
+    const deps = createDeps();
     const genericError = new Error('Disk full');
-    const mockWriteFile = vi.fn().mockRejectedValue(genericError);
+    deps.writeFile.mockRejectedValue(genericError);
 
     const output = {
       skillMd: '# Skill',
@@ -173,18 +169,15 @@ describe('writeSkillOutput', () => {
 
     const skillDir = '/test/project/.claude/skills/test-skill';
 
-    const promise = writeSkillOutput(output, skillDir, {
-      mkdir: mockMkdir as unknown as typeof import('node:fs/promises').mkdir,
-      writeFile: mockWriteFile as unknown as typeof import('node:fs/promises').writeFile,
-    });
+    const promise = writeSkillOutput(output, skillDir, deps);
 
     await expect(promise).rejects.toThrow(RepomixError);
     await expect(promise).rejects.toThrow(/Disk full/);
   });
 
   test('should handle non-Error objects in catch block', async () => {
-    const mockMkdir = vi.fn().mockResolvedValue(undefined);
-    const mockWriteFile = vi.fn().mockRejectedValue('string error');
+    const deps = createDeps();
+    deps.writeFile.mockRejectedValue('string error');
 
     const output = {
       skillMd: '# Skill',
@@ -197,11 +190,6 @@ describe('writeSkillOutput', () => {
 
     const skillDir = '/test/project/.claude/skills/test-skill';
 
-    await expect(
-      writeSkillOutput(output, skillDir, {
-        mkdir: mockMkdir as unknown as typeof import('node:fs/promises').mkdir,
-        writeFile: mockWriteFile as unknown as typeof import('node:fs/promises').writeFile,
-      }),
-    ).rejects.toThrow(RepomixError);
+    await expect(writeSkillOutput(output, skillDir, deps)).rejects.toThrow(RepomixError);
   });
 });
