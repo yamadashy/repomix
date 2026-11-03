@@ -144,7 +144,12 @@ describe('GenerateSkillTool', () => {
   test("a concurrent same-name call is refused and never removes the first call's skill", async () => {
     const skillDir = skillDirOf('shared-skill');
     let releaseFirst: () => void = () => {};
+    let markFirstPacking: () => void = () => {};
+    const firstPacking = new Promise<void>((resolve) => {
+      markFirstPacking = resolve;
+    });
     runCli.mockImplementationOnce(async (_directories, cwd, opts = {}) => {
+      markFirstPacking();
       await new Promise<void>((resolve) => {
         releaseFirst = resolve;
       });
@@ -154,7 +159,7 @@ describe('GenerateSkillTool', () => {
 
     const first = toolHandler({ directory: projectDir, skillName: 'shared-skill' });
     // Wait until the first call has claimed the directory and is inside the pack.
-    await vi.waitFor(() => expect(runCli).toHaveBeenCalledTimes(1));
+    await firstPacking;
     const second = await toolHandler({ directory: projectDir, skillName: 'shared-skill' });
     releaseFirst();
     const firstResult = await first;
