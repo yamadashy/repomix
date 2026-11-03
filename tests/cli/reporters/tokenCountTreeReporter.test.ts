@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { reportTokenCountTree } from '../../../src/cli/reporters/tokenCountTreeReporter.js';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
-import { silenceLogger, tagColors } from '../../testing/cliDoubles.js';
+import { tagColors } from '../../testing/cliDoubles.js';
+import { silenceLogger } from '../../testing/loggerDoubles.js';
 
 describe('reportTokenCountTree', () => {
   let mockLogger: ReturnType<typeof silenceLogger>['log'];

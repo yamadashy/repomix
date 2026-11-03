@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { runMigrationAction } from '../../../src/cli/actions/migrationAction.js';
-import { silenceLogger } from '../../testing/cliDoubles.js';
+import { silenceLogger } from '../../testing/loggerDoubles.js';
 
 type MigrationDeps = NonNullable<Parameters<typeof runMigrationAction>[1]>;
 

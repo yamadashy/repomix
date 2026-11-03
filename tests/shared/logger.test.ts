@@ -1,6 +1,6 @@
 import pc from 'picocolors';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { logger, repomixLogLevels } from '../../src/shared/logger.js';
+import { logger, repomixLogLevels, setLogLevelByWorkerData } from '../../src/shared/logger.js';
 
 // Tag each color so assertions do not depend on whether the terminal supports colors.
 const stubColors = () => {
@@ -145,9 +145,7 @@ describe('logger', () => {
 });
 
 describe('setLogLevelByWorkerData', () => {
-  // setLogLevelByWorkerData reads `workerData` (captured at module load) and
-  // process.env at call time. Re-import per case via vi.resetModules so each
-  // test sees a fresh module with its own mocked workerData.
+  // setLogLevelByWorkerData reads process.env at call time; workerData is injected through deps.
   const originalLevel = logger.getLogLevel();
   const originalEnvLogLevel = process.env.REPOMIX_LOG_LEVEL;
 
@@ -156,8 +154,6 @@ describe('setLogLevelByWorkerData', () => {
   });
 
   afterEach(() => {
-    vi.doUnmock('node:worker_threads');
-    vi.resetModules();
     logger.setLogLevel(originalLevel);
     if (originalEnvLogLevel === undefined) {
       delete process.env.REPOMIX_LOG_LEVEL;
@@ -166,68 +162,55 @@ describe('setLogLevelByWorkerData', () => {
     }
   });
 
-  it('sets log level from REPOMIX_LOG_LEVEL env var', async () => {
+  it('sets log level from REPOMIX_LOG_LEVEL env var', () => {
     process.env.REPOMIX_LOG_LEVEL = String(repomixLogLevels.DEBUG);
-    const { setLogLevelByWorkerData, logger: freshLogger } = await import('../../src/shared/logger.js');
 
     setLogLevelByWorkerData();
 
-    expect(freshLogger.getLogLevel()).toBe(repomixLogLevels.DEBUG);
+    expect(logger.getLogLevel()).toBe(repomixLogLevels.DEBUG);
   });
 
-  it('ignores non-numeric REPOMIX_LOG_LEVEL', async () => {
+  it('ignores non-numeric REPOMIX_LOG_LEVEL', () => {
     process.env.REPOMIX_LOG_LEVEL = 'not-a-number';
-    const { setLogLevelByWorkerData, logger: freshLogger } = await import('../../src/shared/logger.js');
-    const before = freshLogger.getLogLevel();
+    const before = logger.getLogLevel();
 
     setLogLevelByWorkerData();
 
-    expect(freshLogger.getLogLevel()).toBe(before);
+    expect(logger.getLogLevel()).toBe(before);
   });
 
-  it('ignores out-of-range REPOMIX_LOG_LEVEL', async () => {
+  it('ignores out-of-range REPOMIX_LOG_LEVEL', () => {
     process.env.REPOMIX_LOG_LEVEL = '999';
-    const { setLogLevelByWorkerData, logger: freshLogger } = await import('../../src/shared/logger.js');
-    const before = freshLogger.getLogLevel();
+    const before = logger.getLogLevel();
 
     setLogLevelByWorkerData();
 
-    expect(freshLogger.getLogLevel()).toBe(before);
+    expect(logger.getLogLevel()).toBe(before);
   });
 
-  it('falls back to workerData when env var is unset', async () => {
-    vi.resetModules();
-    vi.doMock('node:worker_threads', () => ({
+  it('falls back to workerData when env var is unset', () => {
+    setLogLevelByWorkerData({
       workerData: ['some-task', { logLevel: repomixLogLevels.ERROR }],
-    }));
-    const { setLogLevelByWorkerData, logger: freshLogger } = await import('../../src/shared/logger.js');
+    });
 
-    setLogLevelByWorkerData();
-
-    expect(freshLogger.getLogLevel()).toBe(repomixLogLevels.ERROR);
+    expect(logger.getLogLevel()).toBe(repomixLogLevels.ERROR);
   });
 
-  it('ignores invalid logLevel in workerData', async () => {
-    vi.resetModules();
-    vi.doMock('node:worker_threads', () => ({
+  it('ignores invalid logLevel in workerData', () => {
+    const before = logger.getLogLevel();
+
+    setLogLevelByWorkerData({
       workerData: ['some-task', { logLevel: 42 }],
-    }));
-    const { setLogLevelByWorkerData, logger: freshLogger } = await import('../../src/shared/logger.js');
-    const before = freshLogger.getLogLevel();
+    });
 
-    setLogLevelByWorkerData();
-
-    expect(freshLogger.getLogLevel()).toBe(before);
+    expect(logger.getLogLevel()).toBe(before);
   });
 
-  it('does nothing when workerData is null and env var is unset', async () => {
-    vi.resetModules();
-    vi.doMock('node:worker_threads', () => ({ workerData: null }));
-    const { setLogLevelByWorkerData, logger: freshLogger } = await import('../../src/shared/logger.js');
-    const before = freshLogger.getLogLevel();
+  it('does nothing when workerData is null and env var is unset', () => {
+    const before = logger.getLogLevel();
 
-    setLogLevelByWorkerData();
+    setLogLevelByWorkerData({ workerData: null });
 
-    expect(freshLogger.getLogLevel()).toBe(before);
+    expect(logger.getLogLevel()).toBe(before);
   });
 });

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createArchiveEntryFilter } from '../../../src/core/git/archiveEntryFilter.js';
-import { silenceLogger } from '../../testing/coreFileGitLogger.js';
+import { silenceLogger } from '../../testing/loggerDoubles.js';
 
 describe('archiveEntryFilter', () => {
   beforeEach(() => {

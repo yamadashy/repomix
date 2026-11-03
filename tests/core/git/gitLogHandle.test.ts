@@ -8,7 +8,7 @@ import {
 } from '../../../src/core/git/gitLogHandle.js';
 import { RepomixError } from '../../../src/shared/errorHandle.js';
 import { logger } from '../../../src/shared/logger.js';
-import { silenceLogger } from '../../testing/coreFileGitLogger.js';
+import { silenceLogger } from '../../testing/loggerDoubles.js';
 
 describe('gitLogHandle', () => {
   beforeEach(() => {

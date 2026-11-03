@@ -6,7 +6,7 @@ import {
   parseRemoteValue,
 } from '../../../src/core/git/gitRemoteParse.js';
 import { isValidRemoteValue } from '../../../src/index.js';
-import { silenceLogger } from '../../testing/coreFileGitLogger.js';
+import { silenceLogger } from '../../testing/loggerDoubles.js';
 
 describe('remoteAction functions', () => {
   beforeEach(() => {

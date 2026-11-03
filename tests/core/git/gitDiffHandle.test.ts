@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { getGitDiffs, getStagedDiff, getWorkTreeDiff } from '../../../src/core/git/gitDiffHandle.js';
 import { logger } from '../../../src/shared/logger.js';
-import { silenceLogger } from '../../testing/coreFileGitLogger.js';
+import { silenceLogger } from '../../testing/loggerDoubles.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 describe('gitDiffHandle', () => {

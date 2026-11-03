@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { getFileChangeCount, isGitInstalled, isGitRepository } from '../../../src/core/git/gitRepositoryHandle.js';
 import { logger } from '../../../src/shared/logger.js';
-import { silenceLogger } from '../../testing/coreFileGitLogger.js';
+import { silenceLogger } from '../../testing/loggerDoubles.js';
 
 describe('gitRepositoryHandle', () => {
   beforeEach(() => {

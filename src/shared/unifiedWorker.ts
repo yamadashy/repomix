@@ -19,16 +19,25 @@ export type WorkerType = 'fileProcess' | 'securityCheck' | 'calculateMetrics';
 type WorkerHandler = (task: any) => Promise<any>;
 type WorkerCleanup = () => void | Promise<void>;
 
+type WorkerModule = { default: WorkerHandler; onWorkerTermination?: WorkerCleanup };
+
+// Dynamic imports avoid loading all worker code when not needed.
+const workerModuleLoaders: Record<WorkerType, () => Promise<WorkerModule>> = {
+  fileProcess: () => import('../core/file/workers/fileProcessWorker.js'),
+  securityCheck: () => import('../core/security/workers/securityCheckWorker.js'),
+  calculateMetrics: () => import('../core/metrics/workers/calculateMetricsWorker.js'),
+};
+
 // Cache loaded handlers by worker type
 const handlerCache = new Map<WorkerType, { handler: WorkerHandler; cleanup?: WorkerCleanup }>();
 
 /**
- * Dynamically load the appropriate worker handler based on workerType.
- * Uses dynamic imports to avoid loading all worker code when not needed.
+ * Load the appropriate worker handler based on workerType.
  * Results are cached for reuse.
  */
 const loadWorkerHandler = async (
   workerType: WorkerType,
+  loaders: Record<WorkerType, () => Promise<WorkerModule>>,
 ): Promise<{ handler: WorkerHandler; cleanup?: WorkerCleanup }> => {
   // Check cache first
   const cached = handlerCache.get(workerType);
@@ -36,27 +45,12 @@ const loadWorkerHandler = async (
     return cached;
   }
 
-  let result: { handler: WorkerHandler; cleanup?: WorkerCleanup };
-
-  switch (workerType) {
-    case 'fileProcess': {
-      const module = await import('../core/file/workers/fileProcessWorker.js');
-      result = { handler: module.default as WorkerHandler, cleanup: module.onWorkerTermination };
-      break;
-    }
-    case 'securityCheck': {
-      const module = await import('../core/security/workers/securityCheckWorker.js');
-      result = { handler: module.default as WorkerHandler, cleanup: module.onWorkerTermination };
-      break;
-    }
-    case 'calculateMetrics': {
-      const module = await import('../core/metrics/workers/calculateMetricsWorker.js');
-      result = { handler: module.default as WorkerHandler, cleanup: module.onWorkerTermination };
-      break;
-    }
-    default:
-      throw new Error(`Unknown worker type: ${workerType}`);
+  // Own-property check so an unexpected workerType string cannot reach Object.prototype members.
+  if (!Object.hasOwn(loaders, workerType)) {
+    throw new Error(`Unknown worker type: ${workerType}`);
   }
+  const module = await loaders[workerType]();
+  const result = { handler: module.default, cleanup: module.onWorkerTermination };
 
   // Cache the result
   handlerCache.set(workerType, result);
@@ -97,7 +91,7 @@ const inferWorkerTypeFromTask = (task: unknown): WorkerType | null => {
  * Get workerType from workerData.
  * In Tinypool child_process mode, workerData is an array.
  */
-const getWorkerTypeFromWorkerData = (): WorkerType | undefined => {
+const getWorkerTypeFromWorkerData = (workerData: unknown): WorkerType | undefined => {
   if (!workerData) {
     return undefined;
   }
@@ -127,10 +121,10 @@ const getWorkerTypeFromWorkerData = (): WorkerType | undefined => {
  * In bundled environments where Tinypool may reuse child processes across different
  * worker pools, we use task-based inference to determine the correct handler.
  */
-export default async (task: unknown): Promise<unknown> => {
+export default async (task: unknown, deps = { workerData, workerModuleLoaders }): Promise<unknown> => {
   // Determine worker type: try workerData/env first, then infer from task
   let workerType: WorkerType | undefined =
-    getWorkerTypeFromWorkerData() ?? (process.env.REPOMIX_WORKER_TYPE as WorkerType | undefined);
+    getWorkerTypeFromWorkerData(deps.workerData) ?? (process.env.REPOMIX_WORKER_TYPE as WorkerType | undefined);
 
   // In bundled environments, Tinypool may reuse child processes.
   // If the task doesn't match the initially configured worker type, infer from task.
@@ -146,7 +140,7 @@ export default async (task: unknown): Promise<unknown> => {
   }
 
   // Load handler (cached)
-  const { handler } = await loadWorkerHandler(workerType);
+  const { handler } = await loadWorkerHandler(workerType, deps.workerModuleLoaders);
   return handler(task);
 };
 

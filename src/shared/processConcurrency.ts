@@ -91,7 +91,7 @@ const raisePipedStreamMaxListeners = (amount: number): Map<NodeJS.WriteStream, n
   return raised;
 };
 
-export const createWorkerPool = (options: WorkerOptions): Tinypool => {
+export const createWorkerPool = (options: WorkerOptions, deps = { Tinypool }): Tinypool => {
   const { numOfTasks, workerType, runtime = 'child_process', maxWorkerThreads } = options;
   const { minThreads, maxThreads } = getWorkerThreadCount(numOfTasks, maxWorkerThreads);
 
@@ -104,7 +104,7 @@ export const createWorkerPool = (options: WorkerOptions): Tinypool => {
 
   const startTime = process.hrtime.bigint();
 
-  const pool = new Tinypool({
+  const pool = new deps.Tinypool({
     filename: workerPath,
     runtime,
     minThreads,
@@ -180,8 +180,8 @@ export interface TaskRunner<T, R> {
   cleanup: () => Promise<void>;
 }
 
-export const initTaskRunner = <T, R>(options: WorkerOptions): TaskRunner<T, R> => {
-  const pool = createWorkerPool(options);
+export const initTaskRunner = <T, R>(options: WorkerOptions, deps = { Tinypool }): TaskRunner<T, R> => {
+  const pool = createWorkerPool(options, deps);
   const { signal } = options;
   // Shared so cleanup() after an abort waits for the teardown the abort started.
   let teardown: Promise<void> | undefined;

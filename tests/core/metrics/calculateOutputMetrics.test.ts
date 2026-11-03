@@ -8,7 +8,7 @@ import {
 } from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
 import { logger } from '../../../src/shared/logger.js';
 import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
-import { silenceLogger } from '../../testing/coreMetricsOutputDoubles.js';
+import { silenceLogger } from '../../testing/loggerDoubles.js';
 
 const mockInitTaskRunner = (_options: WorkerOptions): MetricsTaskRunner => {
   return {

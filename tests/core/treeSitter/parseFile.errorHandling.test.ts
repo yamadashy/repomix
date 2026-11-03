@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LanguageParser } from '../../../src/core/treeSitter/languageParser.js';
 import { cleanupLanguageParser, parseFile } from '../../../src/core/treeSitter/parseFile.js';
 import { logger } from '../../../src/shared/logger.js';
-import { silenceLogger } from '../../testing/coreFileGitLogger.js';
+import { silenceLogger } from '../../testing/loggerDoubles.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 // A single mock LanguageParser instance reused via the module singleton in

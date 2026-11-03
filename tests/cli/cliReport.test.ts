@@ -11,7 +11,8 @@ import {
 import type { SuspiciousFileResult } from '../../src/core/security/securityCheck.js';
 import type { PackResult } from '../../src/index.js';
 import { logger } from '../../src/shared/logger.js';
-import { silenceLogger, tagColors } from '../testing/cliDoubles.js';
+import { tagColors } from '../testing/cliDoubles.js';
+import { silenceLogger } from '../testing/loggerDoubles.js';
 import { createMockConfig } from '../testing/testUtils.js';
 
 describe('cliReport', () => {

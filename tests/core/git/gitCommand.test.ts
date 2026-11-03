@@ -15,7 +15,7 @@ import {
   execLsRemoteHead,
 } from '../../../src/core/git/gitCommand.js';
 import { logger } from '../../../src/shared/logger.js';
-import { silenceLogger } from '../../testing/coreFileGitLogger.js';
+import { silenceLogger } from '../../testing/loggerDoubles.js';
 
 const expectGitRemoteOpts = expect.objectContaining({
   timeout: 30000,

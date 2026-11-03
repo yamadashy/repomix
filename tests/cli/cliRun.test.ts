@@ -8,7 +8,7 @@ import type { CliOptions } from '../../src/cli/types.js';
 import { getVersion } from '../../src/core/file/packageJsonParse.js';
 import type { PackResult } from '../../src/core/packager.js';
 import { logger, repomixLogLevels } from '../../src/shared/logger.js';
-import { silenceLogger } from '../testing/cliDoubles.js';
+import { silenceLogger } from '../testing/loggerDoubles.js';
 import { createMockConfig } from '../testing/testUtils.js';
 
 const createDeps = () => ({
@@ -668,6 +668,14 @@ describe('cliRun', () => {
       await runCli(['.'], process.cwd(), options, undefined, deps);
 
       expect(vi.mocked(logger.setOutputStream)).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('default deps', () => {
+    test('lazily loads the real version action', async () => {
+      await runCli([], process.cwd(), { version: true });
+
+      expect(vi.mocked(logger.log)).toHaveBeenCalledWith(await getVersion());
     });
   });
 });
