@@ -851,12 +851,15 @@ describe('remoteAction functions', () => {
       );
     });
 
-    test('rejects a whitespace-only --skill-output before packing', async () => {
+    test.each([
+      ['an empty', ''],
+      ['a whitespace-only', '   '],
+    ])('rejects %s --skill-output before packing', async (_label, skillOutput) => {
       const deps = createSkillDeps();
 
-      await expect(
-        runRemoteAction(repoUrl, { skillGenerate: true, skillOutput: '   ' }, undefined, deps),
-      ).rejects.toThrow('--skill-output path cannot be empty');
+      await expect(runRemoteAction(repoUrl, { skillGenerate: true, skillOutput }, undefined, deps)).rejects.toThrow(
+        '--skill-output path cannot be empty',
+      );
 
       expect(deps.resolveAndPrepareSkillDir).not.toHaveBeenCalled();
       expect(deps.promptSkillLocation).not.toHaveBeenCalled();
