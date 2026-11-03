@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793680157999,
+  "lastUpdate": 1793680267422,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -16103,6 +16103,51 @@ window.BENCHMARK_DATA = {
             "range": "±41",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1017ms, Q3: 1058ms\nAll times: 998, 1003, 1008, 1008, 1013, 1017, 1018, 1019, 1024, 1026, 1026, 1027, 1027, 1043, 1049, 1058, 1083, 1150, 1179, 1492ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a234a6a808935a1a505d37fc11f288018dd63649",
+          "message": "Merge pull request #1988 from yamadashy/test/mcp-shared-di-instead-of-vi-mock\n\ntest(mcp,shared): Replace vi.mock module mocks with dependency injection",
+          "timestamp": "2026-11-03T13:29:10+09:00",
+          "tree_id": "89477b6989dd119878b9bbbd8ccc56b33219e7fe",
+          "url": "https://github.com/yamadashy/repomix/commit/a234a6a808935a1a505d37fc11f288018dd63649"
+        },
+        "date": 1793680266361,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 980,
+            "range": "±204",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 890ms, Q3: 1094ms\nAll times: 710, 721, 805, 826, 830, 830, 871, 890, 891, 911, 915, 922, 942, 944, 956, 980, 981, 991, 1013, 1020, 1035, 1067, 1094, 1101, 1133, 1190, 1276, 1339, 1386, 1395ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 591,
+            "range": "±25",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 583ms, Q3: 608ms\nAll times: 568, 577, 578, 580, 582, 583, 584, 584, 586, 590, 591, 592, 593, 600, 607, 608, 608, 623, 654, 660ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1367,
+            "range": "±21",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1357ms, Q3: 1378ms\nAll times: 1336, 1342, 1351, 1354, 1356, 1357, 1359, 1362, 1364, 1364, 1367, 1368, 1372, 1373, 1375, 1378, 1382, 1388, 1434, 1459ms"
           }
         ]
       }
