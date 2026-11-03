@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793693435422,
+  "lastUpdate": 1793699683276,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -16283,6 +16283,51 @@ window.BENCHMARK_DATA = {
             "range": "±38",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1343ms, Q3: 1381ms\nAll times: 1322, 1324, 1332, 1338, 1342, 1343, 1344, 1348, 1352, 1352, 1356, 1357, 1361, 1366, 1377, 1381, 1385, 1388, 1388, 1409ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fe38d506f1fee94d0b4a580b3447a9e674b44a17",
+          "message": "Merge pull request #1992 from yamadashy/test/injectable-time-env\n\ntest: Inject time and environment instead of faking timers and stubbing env",
+          "timestamp": "2026-11-03T18:52:48+09:00",
+          "tree_id": "2b73da8d5a8dc4e793c4026cc050cfd8d12357d8",
+          "url": "https://github.com/yamadashy/repomix/commit/fe38d506f1fee94d0b4a580b3447a9e674b44a17"
+        },
+        "date": 1793699681907,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1014,
+            "range": "±125",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 945ms, Q3: 1070ms\nAll times: 854, 878, 890, 909, 916, 927, 932, 945, 954, 966, 969, 976, 997, 999, 1012, 1014, 1023, 1030, 1041, 1050, 1053, 1056, 1070, 1079, 1099, 1102, 1110, 1119, 1164, 1268ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 873,
+            "range": "±26",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 868ms, Q3: 894ms\nAll times: 863, 864, 865, 867, 867, 868, 869, 870, 871, 871, 873, 877, 877, 886, 892, 894, 897, 900, 902, 953ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1284,
+            "range": "±21",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1275ms, Q3: 1296ms\nAll times: 1263, 1267, 1270, 1270, 1272, 1275, 1278, 1279, 1282, 1284, 1284, 1288, 1292, 1295, 1296, 1296, 1298, 1302, 1335, 1360ms"
           }
         ]
       }
