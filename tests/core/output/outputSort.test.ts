@@ -1,29 +1,26 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
+import { sortOutputFiles } from '../../../src/core/output/outputSort.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 describe('outputSort', () => {
   const sep = path.sep;
 
   // sortOutputFiles only consults git when `<cwd>/.git` exists, so run against a
-  // real temp directory that contains an empty `.git` folder.
+  // real temp directory that contains an empty `.git` folder. outputSort caches git
+  // results per cwd, so a fresh directory per test also keeps those caches isolated.
   let repoDir: string;
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     repoDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-output-sort-'));
     await fs.mkdir(path.join(repoDir, '.git'));
   });
 
-  afterAll(async () => {
+  afterEach(async () => {
     await fs.rm(repoDir, { recursive: true, force: true });
-  });
-
-  // Reset module cache before each test to ensure clean state for caching tests
-  beforeEach(async () => {
-    vi.resetModules();
   });
 
   describe('sort by git changes', () => {
@@ -42,7 +39,6 @@ describe('outputSort', () => {
     });
 
     test('should sort files by git change count', async () => {
-      const { sortOutputFiles } = await import('../../../src/core/output/outputSort.js');
       const input: ProcessedFile[] = [
         { path: `src${sep}utils${sep}file1.ts`, content: 'content1' },
         { path: `src${sep}utils${sep}file2.ts`, content: 'content2' },
@@ -75,7 +71,6 @@ describe('outputSort', () => {
     });
 
     test('should return original order when git is not installed', async () => {
-      const { sortOutputFiles } = await import('../../../src/core/output/outputSort.js');
       const input: ProcessedFile[] = [
         { path: `src${sep}utils${sep}file1.ts`, content: 'content1' },
         { path: `src${sep}utils${sep}file2.ts`, content: 'content2' },
@@ -94,7 +89,6 @@ describe('outputSort', () => {
     });
 
     test('should return original order when git command fails', async () => {
-      const { sortOutputFiles } = await import('../../../src/core/output/outputSort.js');
       const input: ProcessedFile[] = [
         { path: `src${sep}utils${sep}file1.ts`, content: 'content1' },
         { path: `src${sep}utils${sep}file2.ts`, content: 'content2' },
@@ -112,7 +106,6 @@ describe('outputSort', () => {
     });
 
     test('should return original order when git sort is disabled', async () => {
-      const { sortOutputFiles } = await import('../../../src/core/output/outputSort.js');
       const input: ProcessedFile[] = [
         { path: `src${sep}utils${sep}file1.ts`, content: 'content1' },
         { path: `src${sep}utils${sep}file2.ts`, content: 'content2' },
@@ -141,7 +134,6 @@ describe('outputSort', () => {
     });
 
     test('should cache git file change counts for repeated calls', async () => {
-      const { sortOutputFiles } = await import('../../../src/core/output/outputSort.js');
       const input1: ProcessedFile[] = [
         { path: `src${sep}file1.ts`, content: 'content1' },
         { path: `src${sep}file2.ts`, content: 'content2' },
