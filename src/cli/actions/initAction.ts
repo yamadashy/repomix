@@ -16,15 +16,23 @@ const onCancelOperation = (clack: typeof prompts) => {
   process.exit(0);
 };
 
-export const runInitAction = async (rootDir: string, isGlobal: boolean): Promise<void> => {
+export const runInitAction = async (
+  rootDir: string,
+  isGlobal: boolean,
+  deps = {
+    prompts,
+    getGlobalDirectory,
+  },
+): Promise<void> => {
+  const { prompts } = deps;
   prompts.intro(pc.bold(`Welcome to Repomix ${isGlobal ? 'Global ' : ''}Configuration!`));
 
   try {
     // Step 1: Ask if user wants to create a config file
-    const isCreatedConfig = await createConfigFile(rootDir, isGlobal);
+    const isCreatedConfig = await createConfigFile(rootDir, isGlobal, deps);
 
     // Step 2: Ask if user wants to create a .repomixignore file
-    const isCreatedIgnoreFile = await createIgnoreFile(rootDir, isGlobal);
+    const isCreatedIgnoreFile = await createIgnoreFile(rootDir, isGlobal, deps);
 
     if (!isCreatedConfig && !isCreatedIgnoreFile) {
       prompts.outro(

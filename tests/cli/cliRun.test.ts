@@ -3,7 +3,13 @@ import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import { Command, program } from 'commander';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { canonicalizeSandboxRoot, commanderActionEndpoint, run, runCli } from '../../src/cli/cliRun.js';
+import {
+  canonicalizeSandboxRoot,
+  commanderActionEndpoint,
+  createOutputErrorHandler,
+  run,
+  runCli,
+} from '../../src/cli/cliRun.js';
 import type { CliOptions } from '../../src/cli/types.js';
 import { getVersion } from '../../src/core/file/packageJsonParse.js';
 import type { PackResult } from '../../src/core/packager.js';
@@ -164,6 +170,53 @@ describe('cliRun', () => {
     exitSpy.mockReset();
     parseSpy.mockReset();
     handleErrorSpy.mockReset();
+  });
+
+  describe('unknown option output', () => {
+    const createHandler = () => {
+      const originalOutputError = vi.fn<(str: string, write: (str: string) => void) => void>();
+      return { originalOutputError, handler: createOutputErrorHandler(originalOutputError) };
+    };
+
+    test.each([
+      ["error: unknown option '--exclude'\n", '--exclude', '--ignore'],
+      ["error: unknown option '-format'\n", '-format', '--style'],
+    ])('should suggest a semantic alternative for %j', (str, unknownOption, suggestion) => {
+      const { originalOutputError, handler } = createHandler();
+      const write = vi.fn();
+
+      handler(str, write);
+
+      expect(loggerSpies.error).toHaveBeenCalledWith(`✖ Unknown option: ${unknownOption}`);
+      expect(loggerSpies.info).toHaveBeenCalledWith(`Did you mean: ${suggestion}?`);
+      expect(originalOutputError).not.toHaveBeenCalled();
+      expect(write).not.toHaveBeenCalled();
+    });
+
+    test.each(["error: unknown option '--frobnicate'\n", "error: missing required argument 'number'\n"])(
+      'should fall back to the original Commander output for %j',
+      (str) => {
+        const { originalOutputError, handler } = createHandler();
+        const write = vi.fn();
+
+        handler(str, write);
+
+        expect(originalOutputError).toHaveBeenCalledWith(str, write);
+        expect(loggerSpies.info).not.toHaveBeenCalled();
+      },
+    );
+
+    test('should recognize the unknown option message Commander actually emits', () => {
+      const write = vi.fn();
+      const command = new Command()
+        .exitOverride()
+        .option('--ignore <patterns>')
+        .configureOutput({ outputError: createOutputErrorHandler(write) });
+
+      expect(() => command.parse(['--exclude', '*.log'], { from: 'user' })).toThrow();
+      expect(loggerSpies.info).toHaveBeenCalledWith('Did you mean: --ignore?');
+      expect(write).not.toHaveBeenCalled();
+    });
   });
 
   describe('executeAction', () => {

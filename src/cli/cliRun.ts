@@ -56,6 +56,37 @@ const semanticSuggestionMap: Record<string, string[]> = {
   auto: ['--watch'],
 };
 
+type OutputErrorHandler = (str: string, write: (str: string) => void) => void;
+
+/**
+ * Wraps Commander's error output so an unknown option with a semantic match
+ * (e.g. `--exclude`) prints a "Did you mean" hint instead of the raw error.
+ */
+export const createOutputErrorHandler =
+  (originalOutputError: OutputErrorHandler): OutputErrorHandler =>
+  (str, write) => {
+    // Check if this is an unknown option error
+    if (str.includes('unknown option')) {
+      const match = str.match(/unknown option '?(-{1,2}[^ ']+)'?/i);
+      if (match?.[1]) {
+        const unknownOption = match[1];
+        const cleanOption = unknownOption.replace(/^-+/, '');
+
+        // Check if the option has a semantic match
+        const semanticMatches = semanticSuggestionMap[cleanOption];
+        if (semanticMatches) {
+          // We have a direct semantic match
+          logger.error(`✖ Unknown option: ${unknownOption}`);
+          logger.info(`Did you mean: ${semanticMatches.join(' or ')}?`);
+          return;
+        }
+      }
+    }
+
+    // Fall back to the original Commander error handler
+    originalOutputError(str, write);
+  };
+
 export const run = async () => {
   try {
     program
@@ -228,28 +259,7 @@ export const run = async () => {
     const originalOutputError = configOutput.outputError || ((str, write) => write(str));
 
     program.configureOutput({
-      outputError: (str, write) => {
-        // Check if this is an unknown option error
-        if (str.includes('unknown option')) {
-          const match = str.match(/unknown option '?(-{1,2}[^ ']+)'?/i);
-          if (match?.[1]) {
-            const unknownOption = match[1];
-            const cleanOption = unknownOption.replace(/^-+/, '');
-
-            // Check if the option has a semantic match
-            const semanticMatches = semanticSuggestionMap[cleanOption];
-            if (semanticMatches) {
-              // We have a direct semantic match
-              logger.error(`✖ Unknown option: ${unknownOption}`);
-              logger.info(`Did you mean: ${semanticMatches.join(' or ')}?`);
-              return;
-            }
-          }
-        }
-
-        // Fall back to the original Commander error handler
-        originalOutputError(str, write);
-      },
+      outputError: createOutputErrorHandler(originalOutputError),
     });
 
     await program.parseAsync(process.argv);
