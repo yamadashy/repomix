@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793547288628,
+  "lastUpdate": 1793680157999,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -16058,6 +16058,51 @@ window.BENCHMARK_DATA = {
             "range": "±32",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 748ms, Q3: 780ms\nAll times: 722, 730, 731, 732, 746, 748, 750, 755, 757, 758, 758, 761, 767, 769, 779, 780, 790, 806, 817, 824ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e51db234a4a183c3bfd39afe0a73502cf5a29856",
+          "message": "Merge pull request #1986 from yamadashy/test/core-metrics-output-di-instead-of-vi-mock\n\ntest(core): Replace vi.mock module mocks with dependency injection in metrics, output and packager tests",
+          "timestamp": "2026-11-03T13:27:28+09:00",
+          "tree_id": "5d29306bce78cc3a0f1fe13c76248656ccba4edf",
+          "url": "https://github.com/yamadashy/repomix/commit/e51db234a4a183c3bfd39afe0a73502cf5a29856"
+        },
+        "date": 1793680156893,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 647,
+            "range": "±38",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 631ms, Q3: 669ms\nAll times: 604, 611, 612, 618, 619, 625, 625, 631, 632, 632, 634, 635, 636, 640, 642, 647, 647, 650, 656, 658, 662, 664, 669, 682, 687, 703, 708, 726, 732, 743ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1004,
+            "range": "±29",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 998ms, Q3: 1027ms\nAll times: 985, 987, 987, 989, 994, 998, 999, 999, 1002, 1004, 1004, 1008, 1009, 1010, 1011, 1027, 1122, 1123, 1130, 1148ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1026,
+            "range": "±41",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1017ms, Q3: 1058ms\nAll times: 998, 1003, 1008, 1008, 1013, 1017, 1018, 1019, 1024, 1026, 1026, 1027, 1027, 1043, 1049, 1058, 1083, 1150, 1179, 1492ms"
           }
         ]
       }
