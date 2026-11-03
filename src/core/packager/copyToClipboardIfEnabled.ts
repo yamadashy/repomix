@@ -11,12 +11,13 @@ export const copyToClipboardIfEnabled = async (
   deps = {
     spawn,
     writeClipboardText: clipboard.writeText,
+    env: process.env,
   },
 ): Promise<void> => {
   if (!config.output.copyToClipboard) return;
   progressCallback('Copying to clipboard...');
 
-  if (process.env.NODE_ENV !== 'test' && process.env.WAYLAND_DISPLAY) {
+  if (deps.env.NODE_ENV !== 'test' && deps.env.WAYLAND_DISPLAY) {
     logger.trace('Wayland detected; attempting wl-copy.');
     try {
       await new Promise<void>((resolve, reject) => {

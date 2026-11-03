@@ -37,7 +37,7 @@ describe('fileSearch stdin paths', () => {
     expect(filePaths.sort()).toEqual(['root.ts', 'src/(routes)/page[1].ts', 'src/deep/module.ts']);
   });
 
-  it.runIf(!isWindows)('preserves literal backslashes in POSIX file names', async () => {
+  (isWindows ? it.skip : it)('preserves literal backslashes in POSIX file names', async () => {
     await writeFixture(tmpDir, {
       'src/back\\slash.ts': 'export const literal = true;\n',
       'src/back/slash.ts': 'export const nested = true;\n',

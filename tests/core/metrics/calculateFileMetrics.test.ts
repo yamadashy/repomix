@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
 import { calculateFileMetrics } from '../../../src/core/metrics/calculateFileMetrics.js';
-import { __resetTokenCountCacheForTests } from '../../../src/core/metrics/tokenCountCache.js';
+import {
+  __resetTokenCountCacheForTests,
+  __setTokenCountCacheEnvForTests,
+} from '../../../src/core/metrics/tokenCountCache.js';
 import type { RepomixProgressCallback } from '../../../src/shared/types.js';
 import { createInlineMetricsTaskRunner } from '../../testing/taskRunnerDoubles.js';
 
@@ -103,20 +106,14 @@ describe('calculateFileMetrics', () => {
   // production cache-hit fast path is therefore not exercised by the default
   // tests — these scenarios opt back in and assert the end-to-end behavior.
   describe('token-count cache (production path)', () => {
-    let prevCacheEnv: string | undefined;
-
     beforeEach(() => {
-      prevCacheEnv = process.env.REPOMIX_TOKEN_CACHE;
-      delete process.env.REPOMIX_TOKEN_CACHE;
+      // An env without REPOMIX_TOKEN_CACHE=0 re-enables the cache for these tests only.
+      __setTokenCountCacheEnvForTests({});
       __resetTokenCountCacheForTests();
     });
 
     afterEach(() => {
-      if (prevCacheEnv === undefined) {
-        delete process.env.REPOMIX_TOKEN_CACHE;
-      } else {
-        process.env.REPOMIX_TOKEN_CACHE = prevCacheEnv;
-      }
+      __setTokenCountCacheEnvForTests();
       __resetTokenCountCacheForTests();
     });
 

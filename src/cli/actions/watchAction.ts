@@ -6,6 +6,7 @@ import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { type PackResult, pack } from '../../core/packager.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
+import { nodeTimers, type Timers } from '../../shared/timers.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import { redactOptionsForLog } from '../../shared/urlRedact.js';
 import { reportResults } from '../cliReport.js';
@@ -29,6 +30,7 @@ export interface WatchDeps {
   pack?: typeof pack;
   reportResults?: typeof reportResults;
   Spinner?: typeof Spinner;
+  timers?: Timers;
 }
 
 interface PackDeps {
@@ -82,6 +84,7 @@ export const runWatchAction = async (
 
   const packDeps: PackDeps = { pack: resolvedDeps.pack ?? pack, Spinner: resolvedDeps.Spinner ?? Spinner };
   const report = resolvedDeps.reportResults ?? reportResults;
+  const timers = resolvedDeps.timers ?? nodeTimers;
 
   logger.trace('Watch mode: loaded CLI options:', redactOptionsForLog(cliOptions));
 
@@ -143,7 +146,7 @@ export const runWatchAction = async (
   // Rebuild guard — prevents concurrent packs and queues a follow-up if changes arrive mid-pack
   let isRebuilding = false;
   let pendingRebuild = false;
-  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let debounceTimer: NodeJS.Timeout | null = null;
   let shuttingDown = false;
   let activeRebuildPromise: Promise<void> | null = null;
 
@@ -153,9 +156,9 @@ export const runWatchAction = async (
     }
 
     if (debounceTimer !== null) {
-      clearTimeout(debounceTimer);
+      timers.clearTimeout(debounceTimer);
     }
-    debounceTimer = setTimeout(async () => {
+    debounceTimer = timers.setTimeout(async () => {
       debounceTimer = null;
 
       // Re-check shutdown in case it was initiated while the timer was pending
@@ -220,7 +223,7 @@ export const runWatchAction = async (
     shuttingDown = true;
 
     if (debounceTimer !== null) {
-      clearTimeout(debounceTimer);
+      timers.clearTimeout(debounceTimer);
     }
     pendingRebuild = false;
     process.removeListener('SIGINT', cleanup);

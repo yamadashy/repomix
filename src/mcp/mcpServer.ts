@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/server';
 import { StdioServerTransport, serveStdio } from '@modelcontextprotocol/server/stdio';
 import { getVersion } from '../core/file/packageJsonParse.js';
 import { logger } from '../shared/logger.js';
+import { nodeTimers } from '../shared/timers.js';
 import { MCP_SERVER_ICONS } from './mcpServerIcons.js';
 import { registerPackRemoteRepositoryPrompt } from './prompts/packRemoteRepositoryPrompts.js';
 import { registerAttachPackedOutputTool } from './tools/attachPackedOutputTool.js';
@@ -137,6 +138,7 @@ export const runMcpServer = async (
     createMcpServer,
     createStdioTransport: () => new StdioServerTransport(),
     shutdownTimeoutMs: SHUTDOWN_TIMEOUT_MS,
+    timers: nodeTimers,
   },
 ) => {
   const config: McpServerConfig = {
@@ -163,7 +165,7 @@ export const runMcpServer = async (
       shuttingDown = true;
       let timer: NodeJS.Timeout | undefined;
       const timedOut = new Promise<'timeout'>((resolve) => {
-        timer = setTimeout(() => resolve('timeout'), deps.shutdownTimeoutMs);
+        timer = deps.timers.setTimeout(() => resolve('timeout'), deps.shutdownTimeoutMs);
         timer.unref();
       });
       try {
@@ -176,7 +178,7 @@ export const runMcpServer = async (
         logger.error('Error during MCP server shutdown:', error);
         processExit(1);
       } finally {
-        clearTimeout(timer);
+        deps.timers.clearTimeout(timer);
       }
     };
 

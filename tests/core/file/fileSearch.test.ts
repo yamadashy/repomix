@@ -436,7 +436,7 @@ node_modules
       );
     });
 
-    test.runIf(!isWindows)('Honor .gitignore files in subdirectories', async () => {
+    (isWindows ? test.skip : test)('Honor .gitignore files in subdirectories', async () => {
       const mockConfig = createMockConfig({
         include: ['**/*.js'],
         ignore: {
@@ -482,7 +482,7 @@ node_modules
       expect(result.emptyDirPaths).toEqual([]);
     });
 
-    test.runIf(!isWindows)('should respect parent directory .gitignore patterns (v16 behavior)', async () => {
+    (isWindows ? test.skip : test)('should respect parent directory .gitignore patterns (v16 behavior)', async () => {
       // This test verifies globby v16's key improvement: respecting parent directory .gitignore files.
       // In v15, only .gitignore files in the cwd and below were checked.
       // In v16, .gitignore files in parent directories (up to the git root) are also respected,
@@ -543,7 +543,7 @@ node_modules
       );
     });
 
-    test.runIf(!isWindows)('should respect parent directory .ignore patterns', async () => {
+    (isWindows ? test.skip : test)('should respect parent directory .ignore patterns', async () => {
       // This test verifies that .ignore files in parent directories are respected,
       // similar to .gitignore behavior in v16.
       const mockConfig = createMockConfig({
@@ -603,7 +603,7 @@ node_modules
       );
     });
 
-    test.runIf(!isWindows)('should respect parent directory .repomixignore patterns', async () => {
+    (isWindows ? test.skip : test)('should respect parent directory .repomixignore patterns', async () => {
       // This test verifies that .repomixignore files in parent directories are respected.
       // .repomixignore is always enabled by default.
       const mockConfig = createMockConfig({
@@ -743,7 +743,7 @@ node_modules
       expect(result.filePaths).toEqual(['file1.js', 'file2.js']);
     });
 
-    test.runIf(!isWindows)('should handle git worktree with parent .gitignore correctly', async () => {
+    (isWindows ? test.skip : test)('should handle git worktree with parent .gitignore correctly', async () => {
       // This test verifies that git worktree environments correctly handle parent directory .gitignore files.
       // It combines worktree detection with parent .gitignore pattern application.
 

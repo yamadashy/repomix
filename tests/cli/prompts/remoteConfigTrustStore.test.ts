@@ -85,7 +85,7 @@ describe('remoteConfigTrustStore', () => {
       expect(trusted).toBe(false);
     });
 
-    it.skipIf(process.platform === 'win32')(
+    (process.platform === 'win32' ? it.skip : it)(
       'refuses to honor a marker in a foreign-owned store dir (read path)',
       async () => {
         // The seeding attack: another local user plants a marker whose digest matches.
@@ -98,7 +98,7 @@ describe('remoteConfigTrustStore', () => {
       },
     );
 
-    it.skipIf(process.platform === 'win32')(
+    (process.platform === 'win32' ? it.skip : it)(
       'refuses to honor a marker in a world-writable store dir (read path)',
       async () => {
         const digest = sha256('config-bytes');
@@ -110,7 +110,7 @@ describe('remoteConfigTrustStore', () => {
       },
     );
 
-    it.skipIf(process.platform === 'win32')(
+    (process.platform === 'win32' ? it.skip : it)(
       'checks the parent umbrella as well as the trusted-remotes subdir',
       async () => {
         const digest = sha256('config-bytes');
@@ -160,7 +160,7 @@ describe('remoteConfigTrustStore', () => {
       ).resolves.toBeUndefined();
     });
 
-    it.skipIf(process.platform === 'win32')('refuses to touch a symlinked trust store dir', async () => {
+    (process.platform === 'win32' ? it.skip : it)('refuses to touch a symlinked trust store dir', async () => {
       const writeFile = vi.fn().mockResolvedValue(undefined);
       const chmod = vi.fn().mockResolvedValue(undefined);
       await markRemoteConfigTrusted('github.com/user/repo', sha256('x'), {
@@ -174,7 +174,7 @@ describe('remoteConfigTrustStore', () => {
       expect(writeFile).not.toHaveBeenCalled();
     });
 
-    it.skipIf(process.platform === 'win32')(
+    (process.platform === 'win32' ? it.skip : it)(
       'refuses to write a marker into a foreign-owned trust store dir',
       async () => {
         const writeFile = vi.fn().mockResolvedValue(undefined);
@@ -188,7 +188,7 @@ describe('remoteConfigTrustStore', () => {
       },
     );
 
-    it.skipIf(process.platform === 'win32')('refuses a world-writable trust store dir', async () => {
+    (process.platform === 'win32' ? it.skip : it)('refuses a world-writable trust store dir', async () => {
       const writeFile = vi.fn().mockResolvedValue(undefined);
       await markRemoteConfigTrusted('github.com/user/repo', sha256('x'), {
         mkdir: vi.fn().mockResolvedValue(undefined),

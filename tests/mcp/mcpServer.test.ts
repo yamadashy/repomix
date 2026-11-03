@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, type Mock, test, vi } from 'vi
 import type { getVersion as getVersionImpl } from '../../src/core/file/packageJsonParse.js';
 import { createMcpServer, type McpServerConfig, runMcpServer } from '../../src/mcp/mcpServer.js';
 import { logger } from '../../src/shared/logger.js';
+import { nodeTimers } from '../../src/shared/timers.js';
+import { createManualClock } from '../testing/manualClock.js';
 import { createMcpServerDouble, type McpServerDouble } from '../testing/mcpServerDoubles.js';
 
 // Stands in for the SDK's McpServer class; it must work as a constructor. Each instance is a
@@ -167,6 +169,7 @@ describe('MCP Server', () => {
         createMcpServer: createServer,
         createStdioTransport: () => transport as unknown as StdioServerTransport,
         shutdownTimeoutMs: 5_000,
+        timers: nodeTimers,
       };
     });
 
@@ -256,21 +259,17 @@ describe('MCP Server', () => {
     });
 
     test('exits anyway when shutdown hangs past the timeout (e.g. stdout never drains)', async () => {
-      vi.useFakeTimers();
-      try {
-        handle.close.mockImplementation(() => new Promise<void>(() => {}));
+      const clock = createManualClock();
+      handle.close.mockImplementation(() => new Promise<void>(() => {}));
 
-        await runMcpServer({ processExit: mockExit }, { ...deps, shutdownTimeoutMs: 100 });
-        process.emit('SIGTERM');
-        await vi.advanceTimersByTimeAsync(99);
-        expect(mockExit).not.toHaveBeenCalled();
+      await runMcpServer({ processExit: mockExit }, { ...deps, shutdownTimeoutMs: 100, timers: clock.timers });
+      process.emit('SIGTERM');
+      await clock.advance(99);
+      expect(mockExit).not.toHaveBeenCalled();
 
-        await vi.advanceTimersByTimeAsync(1);
-        expect(logger.trace).toHaveBeenCalledWith('MCP server shutdown timed out, exiting');
-        expect(mockExit).toHaveBeenCalledWith(0);
-      } finally {
-        vi.useRealTimers();
-      }
+      await clock.advance(1);
+      expect(logger.trace).toHaveBeenCalledWith('MCP server shutdown timed out, exiting');
+      expect(mockExit).toHaveBeenCalledWith(0);
     });
 
     test('should handle shutdown error', async () => {
