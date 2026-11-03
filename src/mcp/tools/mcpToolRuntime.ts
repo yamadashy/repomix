@@ -145,11 +145,17 @@ type McpToolStructuredContent = (BaseMcpToolResponse & Record<string, unknown>) 
 /**
  * Creates a temporary directory for MCP tool operations
  */
-export const createToolWorkspace = async (): Promise<string> => {
+export const createToolWorkspace = async (
+  deps = {
+    getRepomixTmpDir,
+    mkdir: fs.mkdir,
+    mkdtemp: fs.mkdtemp,
+  },
+): Promise<string> => {
   try {
-    const tmpBaseDir = path.join(getRepomixTmpDir(), 'mcp-outputs');
-    await fs.mkdir(tmpBaseDir, { recursive: true });
-    const tempDir = await fs.mkdtemp(`${tmpBaseDir}/`);
+    const tmpBaseDir = path.join(deps.getRepomixTmpDir(), 'mcp-outputs');
+    await deps.mkdir(tmpBaseDir, { recursive: true });
+    const tempDir = await deps.mkdtemp(`${tmpBaseDir}/`);
     return tempDir;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -168,8 +174,8 @@ export const removeToolWorkspace = async (tempDir: string): Promise<void> => {
 /**
  * Generate a unique output ID
  */
-export const generateOutputId = (): string => {
-  return crypto.randomBytes(8).toString('hex');
+export const generateOutputId = (deps = { randomBytes: crypto.randomBytes }): string => {
+  return deps.randomBytes(8).toString('hex');
 };
 
 /**
@@ -200,11 +206,12 @@ export const runCliPreservingLogLevel = async (
   cwd: string,
   options: CliOptions,
   progressCallback?: RepomixProgressCallback,
+  deps = { runCli },
 ): Promise<Awaited<ReturnType<typeof runCli>>> => {
   if (activePacks === 0) logLevelBeforePacks = logger.getLogLevel();
   activePacks++;
   try {
-    return await runCli(directories, cwd, options, progressCallback);
+    return await deps.runCli(directories, cwd, options, progressCallback);
   } finally {
     activePacks--;
     if (activePacks === 0 && logLevelBeforePacks !== undefined) {

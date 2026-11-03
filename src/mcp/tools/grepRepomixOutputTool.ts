@@ -83,6 +83,14 @@ interface SearchResult {
 export const registerGrepRepomixOutputTool = (
   mcpServer: McpServer,
   config: McpServerConfig = { sandboxed: false, root: process.cwd() },
+  deps = {
+    access: fs.access,
+    readFile: fs.readFile,
+    getOutputFilePath,
+    requiresSecretScan,
+    createSecretLintConfig,
+    runSecretLint,
+  },
 ) => {
   mcpServer.registerTool(
     'grep_repomix_output',
@@ -110,7 +118,7 @@ export const registerGrepRepomixOutputTool = (
       try {
         logger.trace(`Searching Repomix output with ID: ${outputId}, pattern: ${pattern}`);
 
-        const filePath = getOutputFilePath(outputId);
+        const filePath = deps.getOutputFilePath(outputId);
         if (!filePath) {
           return buildMcpToolErrorResponse({
             errorMessage: `Error: Output file with ID ${outputId} not found. The output file may have been deleted or the ID is invalid.`,
@@ -122,7 +130,7 @@ export const registerGrepRepomixOutputTool = (
         }
 
         try {
-          await fs.access(filePath);
+          await deps.access(filePath);
         } catch {
           return buildMcpToolErrorResponse({
             errorMessage: config.sandboxed
@@ -135,13 +143,18 @@ export const registerGrepRepomixOutputTool = (
           });
         }
 
-        const content = await fs.readFile(filePath, 'utf8');
+        const content = await deps.readFile(filePath, 'utf8');
 
         // For files attached from an untrusted path, scan for secrets before serving
         // any content. This flags recognized secret formats; it is a heuristic, not a
         // guarantee that nothing sensitive is returned.
-        if (requiresSecretScan(outputId)) {
-          const securityCheckResult = await runSecretLint(filePath, content, 'file', createSecretLintConfig());
+        if (deps.requiresSecretScan(outputId)) {
+          const securityCheckResult = await deps.runSecretLint(
+            filePath,
+            content,
+            'file',
+            deps.createSecretLintConfig(),
+          );
           if (securityCheckResult !== null) {
             return buildMcpToolErrorResponse({
               errorMessage: config.sandboxed

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { logger } from '../../src/shared/logger.js';
 import {
   getMemoryStats,
@@ -7,15 +7,13 @@ import {
   withMemoryLogging,
 } from '../../src/shared/memoryUtils.js';
 
-vi.mock('../../src/shared/logger', () => ({
-  logger: {
-    trace: vi.fn(),
-  },
-}));
-
 describe('memoryUtils', () => {
+  beforeEach(() => {
+    vi.spyOn(logger, 'trace').mockImplementation(() => {});
+  });
+
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('getMemoryStats returns numeric MB values and a heap percentage', () => {
@@ -42,7 +40,7 @@ describe('memoryUtils', () => {
 
     logMemoryDifference('parse', before, after);
 
-    const message = (logger.trace as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+    const message = vi.mocked(logger.trace).mock.calls[0][0] as string;
     expect(message).toContain('+5.00MB'); // heap diff
     expect(message).toContain('-2.00MB'); // rss diff
     expect(message).toContain('-1.00MB'); // external diff
@@ -64,7 +62,7 @@ describe('memoryUtils', () => {
       }),
     ).rejects.toBe(boom);
 
-    const messages = (logger.trace as ReturnType<typeof vi.fn>).mock.calls.map((c) => String(c[0]));
+    const messages = vi.mocked(logger.trace).mock.calls.map((c) => String(c[0]));
     expect(messages.some((m) => m.includes('After (Error)'))).toBe(true);
   });
 });

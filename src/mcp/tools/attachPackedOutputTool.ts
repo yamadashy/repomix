@@ -48,9 +48,12 @@ const attachPackedOutputOutputSchema = z.object({
  * @returns Object containing the resolved path and detected format
  * @throws Error if the file doesn't exist or isn't a supported format
  */
-async function resolveOutputFilePath(inputPath: string): Promise<{ filePath: string; format: string }> {
+async function resolveOutputFilePath(
+  inputPath: string,
+  deps: { stat: typeof fs.stat; access: typeof fs.access },
+): Promise<{ filePath: string; format: string }> {
   try {
-    const stats = await fs.stat(inputPath);
+    const stats = await deps.stat(inputPath);
 
     if (stats.isDirectory()) {
       // If it's a directory, look for repomix output files in priority order
@@ -59,7 +62,7 @@ async function resolveOutputFilePath(inputPath: string): Promise<{ filePath: str
       for (const fileName of possibleFiles) {
         const outputFilePath = path.join(inputPath, fileName);
         try {
-          await fs.access(outputFilePath);
+          await deps.access(outputFilePath);
           const format = getFormatFromFileName(fileName);
           return { filePath: outputFilePath, format };
         } catch {
@@ -244,7 +247,15 @@ function extractFileMetricsJson(content: string): { filePaths: string[]; fileCha
 /**
  * Register the attach packed output tool with the MCP server
  */
-export const registerAttachPackedOutputTool = (mcpServer: McpServer) => {
+export const registerAttachPackedOutputTool = (
+  mcpServer: McpServer,
+  deps = {
+    stat: fs.stat,
+    access: fs.access,
+    readFile: fs.readFile,
+    formatPackToolResponse,
+  },
+) => {
   mcpServer.registerTool(
     'attach_packed_output',
     {
@@ -266,10 +277,10 @@ It will return in that case a new output ID and the updated content.`,
     async ({ path: inputPath, topFilesLength }): Promise<CallToolResult> => {
       try {
         // Resolve the path to the repomix output file
-        const { filePath: outputFilePath, format } = await resolveOutputFilePath(inputPath);
+        const { filePath: outputFilePath, format } = await resolveOutputFilePath(inputPath, deps);
 
         // Read the file content
-        const content = await fs.readFile(outputFilePath, 'utf8');
+        const content = await deps.readFile(outputFilePath, 'utf8');
 
         // Extract file paths and character counts from the content
         const { filePaths, fileCharCounts } = extractFileMetrics(content, format);
@@ -309,7 +320,7 @@ It will return in that case a new output ID and the updated content.`,
         // runs at serve time (not just here), so it stays correct even if the file
         // changes after being attached. It flags recognized secret formats; it is a
         // heuristic, not a guarantee about which file the path points at.
-        return await formatPackToolResponse(context, packResult, outputFilePath, topFilesLength, true);
+        return await deps.formatPackToolResponse(context, packResult, outputFilePath, topFilesLength, true);
       } catch (error) {
         return buildMcpToolErrorResponse(convertErrorToJson(error));
       }

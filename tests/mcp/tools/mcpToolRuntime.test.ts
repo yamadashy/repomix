@@ -1,9 +1,8 @@
-import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { runCli } from '../../../src/cli/cliRun.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { runCli } from '../../../src/cli/cliRun.js';
 import type { CliOptions } from '../../../src/cli/types.js';
 import { logger, repomixLogLevels } from '../../../src/shared/logger.js';
 
@@ -29,13 +28,6 @@ import {
 } from '../../../src/mcp/tools/mcpToolRuntime.js';
 import { structuredContentOf } from '../../testing/testUtils.js';
 
-vi.mock('node:fs/promises');
-vi.mock('node:path');
-vi.mock('node:os');
-vi.mock('node:crypto');
-// The CLI is only observed here: runCli itself owns the log level the wrapper protects.
-vi.mock('../../../src/cli/cliRun.js');
-
 describe('mcpToolRuntime', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -59,31 +51,30 @@ describe('mcpToolRuntime', () => {
   });
 
   describe('createToolWorkspace', () => {
+    const tmpBaseDir = path.join('/tmp/repomix', 'mcp-outputs');
+    let deps: NonNullable<Parameters<typeof createToolWorkspace>[0]>;
+
     beforeEach(() => {
-      vi.mocked(os.tmpdir).mockReturnValue('/tmp');
-      vi.mocked(path.join).mockImplementation((...args) => args.join('/'));
-      vi.mocked(fs.mkdir).mockResolvedValue(undefined);
-      vi.mocked(fs.mkdtemp).mockResolvedValue('/tmp/repomix/mcp-outputs/temp-dir');
+      deps = {
+        getRepomixTmpDir: vi.fn().mockReturnValue('/tmp/repomix'),
+        mkdir: vi.fn().mockResolvedValue(undefined),
+        mkdtemp: vi.fn().mockResolvedValue('/tmp/repomix/mcp-outputs/temp-dir'),
+      };
     });
 
     it('should create a temporary directory for tool operations', async () => {
-      const tempDir = await createToolWorkspace();
+      const tempDir = await createToolWorkspace(deps);
 
-      expect(os.tmpdir).toHaveBeenCalled();
-      // path.join is now invoked twice: once inside shared/tmpDir.getRepomixTmpDir
-      // to build the umbrella, then again here to append the mcp-outputs subdir.
-      expect(path.join).toHaveBeenCalledWith('/tmp', 'repomix');
-      expect(path.join).toHaveBeenCalledWith('/tmp/repomix', 'mcp-outputs');
-      expect(fs.mkdir).toHaveBeenCalledWith('/tmp/repomix/mcp-outputs', { recursive: true });
-      expect(fs.mkdtemp).toHaveBeenCalledWith('/tmp/repomix/mcp-outputs/');
+      expect(deps.getRepomixTmpDir).toHaveBeenCalled();
+      expect(deps.mkdir).toHaveBeenCalledWith(tmpBaseDir, { recursive: true });
+      expect(deps.mkdtemp).toHaveBeenCalledWith(`${tmpBaseDir}/`);
       expect(tempDir).toBe('/tmp/repomix/mcp-outputs/temp-dir');
     });
 
     it('should throw an error if directory creation fails', async () => {
-      const error = new Error('Failed to create directory');
-      vi.mocked(fs.mkdir).mockRejectedValue(error);
+      vi.mocked(deps.mkdir).mockRejectedValue(new Error('Failed to create directory'));
 
-      await expect(createToolWorkspace()).rejects.toThrow(
+      await expect(createToolWorkspace(deps)).rejects.toThrow(
         'Failed to create temporary directory: Failed to create directory',
       );
     });
@@ -91,23 +82,31 @@ describe('mcpToolRuntime', () => {
 
   describe('generateOutputId', () => {
     it('should generate a unique output ID', () => {
-      vi.mocked(crypto.randomBytes).mockImplementation(() => ({
-        toString: () => 'abcdef1234567890',
-      }));
+      const randomBytes = vi.fn().mockReturnValue({ toString: () => 'abcdef1234567890' });
 
-      const outputId = generateOutputId();
+      const outputId = generateOutputId({ randomBytes });
 
-      expect(crypto.randomBytes).toHaveBeenCalledWith(8);
+      expect(randomBytes).toHaveBeenCalledWith(8);
       expect(outputId).toBe('abcdef1234567890');
+    });
+
+    it('should encode 8 random bytes as 16 hex characters by default', () => {
+      expect(generateOutputId()).toMatch(/^[0-9a-f]{16}$/);
     });
   });
 
   describe('formatToolResponse', () => {
-    beforeEach(() => {
-      vi.mocked(crypto.randomBytes).mockImplementation(() => ({
-        toString: () => 'abcdef1234567890',
-      }));
-      vi.mocked(fs.readFile).mockResolvedValue('Line 1\nLine 2\nLine 3\nLine 4\nLine 5');
+    let tempDir: string;
+    let outputFilePath: string;
+
+    beforeEach(async () => {
+      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-mcp-runtime-'));
+      outputFilePath = path.join(tempDir, 'output.xml');
+      await fs.writeFile(outputFilePath, 'Line 1\nLine 2\nLine 3\nLine 4\nLine 5');
+    });
+
+    afterEach(async () => {
+      await fs.rm(tempDir, { recursive: true, force: true });
     });
 
     it('should format a tool response with directory context', async () => {
@@ -130,7 +129,6 @@ describe('mcpToolRuntime', () => {
         processedFiles: [],
         safeFilePaths: [],
       };
-      const outputFilePath = '/path/to/output.xml';
 
       const response = await formatPackToolResponse(context, metrics, outputFilePath);
 
@@ -147,7 +145,9 @@ describe('mcpToolRuntime', () => {
 
       const resultJson = JSON.parse(structuredContent.result);
       expect(resultJson.directory).toBe('/path/to/dir');
-      expect(resultJson.outputId).toBe('abcdef1234567890');
+      expect(resultJson.outputId).toMatch(/^[0-9a-f]{16}$/);
+      expect(resultJson.outputId).toBe(structuredContentOf(response).outputId);
+      expect(getOutputFilePath(resultJson.outputId)).toBe(outputFilePath);
       expect(resultJson.metrics.totalFiles).toBe(10);
       expect(resultJson.metrics.totalLines).toBe(5);
       expect(response).toHaveProperty('structuredContent');
@@ -174,7 +174,6 @@ describe('mcpToolRuntime', () => {
         processedFiles: [],
         safeFilePaths: [],
       };
-      const outputFilePath = '/path/to/output.xml';
 
       const response = await formatPackToolResponse(context, metrics, outputFilePath);
 
@@ -218,7 +217,6 @@ describe('mcpToolRuntime', () => {
         processedFiles: [],
         safeFilePaths: [],
       };
-      const outputFilePath = '/path/to/output.xml';
       const topFilesLen = 3;
 
       const response = await formatPackToolResponse(context, metrics, outputFilePath, topFilesLen);
@@ -240,32 +238,10 @@ describe('mcpToolRuntime', () => {
     });
 
     it('sandboxed scope omits host paths from the pack response', async () => {
-      // real fs read of the output file is needed by formatPackToolResponse;
-      // create a tmp output file with known content.
-      const os = await import('node:os');
-      const fsp = await import('node:fs/promises');
-      const path = await import('node:path');
-
-      // node:os/node:path/node:fs/promises are automocked for this whole test file
-      // (see the vi.mock calls above). This test needs genuine temp files and real
-      // path math to verify that host paths are actually scrubbed from the response,
-      // so delegate the mocked functions to their real implementations here.
-      const realOs = await vi.importActual<typeof import('node:os')>('node:os');
-      const realFsp = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises');
-      const realPath = await vi.importActual<typeof import('node:path')>('node:path');
-      vi.mocked(os.tmpdir).mockImplementation(realOs.tmpdir);
-      vi.mocked(path.join).mockImplementation(realPath.join);
-      vi.mocked(path.resolve).mockImplementation(realPath.resolve);
-      vi.mocked(path.relative).mockImplementation(realPath.relative);
-      vi.mocked(fsp.mkdtemp).mockImplementation(realFsp.mkdtemp);
-      vi.mocked(fsp.writeFile).mockImplementation(realFsp.writeFile);
-      vi.mocked(fsp.readFile).mockImplementation(realFsp.readFile);
-      vi.mocked(fsp.rm).mockImplementation(realFsp.rm); // else the cleanup rm hits the stub and leaks temp dirs
-
-      const root = await fsp.mkdtemp(path.join(os.tmpdir(), 'iso-root-'));
-      const outDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'iso-out-'));
-      const outputFilePath = path.join(outDir, 'repomix-output.xml');
-      await fsp.writeFile(outputFilePath, '<files>\n<file path="src/a.ts">x</file>\n</files>\n');
+      const root = await fs.mkdtemp(path.join(os.tmpdir(), 'iso-root-'));
+      const outDir = await fs.mkdtemp(path.join(os.tmpdir(), 'iso-out-'));
+      const sandboxOutputFilePath = path.join(outDir, 'repomix-output.xml');
+      await fs.writeFile(sandboxOutputFilePath, '<files>\n<file path="src/a.ts">x</file>\n</files>\n');
 
       const metrics = {
         totalFiles: 1,
@@ -277,7 +253,7 @@ describe('mcpToolRuntime', () => {
         safeFilePaths: ['src/a.ts'],
       };
 
-      const result = await formatPackToolResponse({ directory: root }, metrics, outputFilePath, 5, false, {
+      const result = await formatPackToolResponse({ directory: root }, metrics, sandboxOutputFilePath, 5, false, {
         sandboxed: true,
         root,
       });
@@ -288,8 +264,8 @@ describe('mcpToolRuntime', () => {
       expect(structuredContentOf(result).outputFilePath).toBe('');
       expect(structuredContentOf(result).description).not.toContain('read the file directly using path');
 
-      await fsp.rm(root, { recursive: true, force: true });
-      await fsp.rm(outDir, { recursive: true, force: true });
+      await fs.rm(root, { recursive: true, force: true });
+      await fs.rm(outDir, { recursive: true, force: true });
     });
   });
 
@@ -401,6 +377,14 @@ describe('mcpToolRuntime', () => {
 
   describe('runCliPreservingLogLevel', () => {
     const cliOptions = {} as CliOptions;
+    // The CLI is only observed here: runCli itself owns the log level the wrapper protects.
+    let runCliMock: ReturnType<typeof vi.fn<typeof runCli>>;
+    const run = (...args: Parameters<typeof runCliPreservingLogLevel>) =>
+      runCliPreservingLogLevel(args[0], args[1], args[2], args[3], { runCli: runCliMock });
+
+    beforeEach(() => {
+      runCliMock = vi.fn<typeof runCli>();
+    });
 
     const deferred = () => {
       let release = (): void => {};
@@ -411,7 +395,7 @@ describe('mcpToolRuntime', () => {
     };
 
     const cliSilencesTheLogger = () => {
-      vi.mocked(runCli).mockImplementation(async () => {
+      runCliMock.mockImplementation(async () => {
         // What runCli does for { quiet: true } / stdout mode: repoint the shared
         // singleton and leave it there.
         logger.setLogLevel(repomixLogLevels.SILENT);
@@ -423,19 +407,19 @@ describe('mcpToolRuntime', () => {
       logger.setLogLevel(repomixLogLevels.DEBUG);
       cliSilencesTheLogger();
 
-      await runCliPreservingLogLevel(['.'], '/repo', cliOptions);
+      await run(['.'], '/repo', cliOptions);
 
       expect(logger.getLogLevel()).toBe(repomixLogLevels.DEBUG);
     });
 
     it('should restore the log level when the pack fails', async () => {
       logger.setLogLevel(repomixLogLevels.INFO);
-      vi.mocked(runCli).mockImplementation(async () => {
+      runCliMock.mockImplementation(async () => {
         logger.setLogLevel(repomixLogLevels.SILENT);
         throw new Error('pack failed');
       });
 
-      await expect(runCliPreservingLogLevel(['.'], '/repo', cliOptions)).rejects.toThrow('pack failed');
+      await expect(run(['.'], '/repo', cliOptions)).rejects.toThrow('pack failed');
 
       expect(logger.getLogLevel()).toBe(repomixLogLevels.INFO);
     });
@@ -446,15 +430,15 @@ describe('mcpToolRuntime', () => {
       logger.setLogLevel(repomixLogLevels.DEBUG);
       const gates = [deferred(), deferred()];
       let started = 0;
-      vi.mocked(runCli).mockImplementation(async () => {
+      runCliMock.mockImplementation(async () => {
         const gate = gates[started++];
         logger.setLogLevel(repomixLogLevels.SILENT);
         await gate.promise;
         return undefined;
       });
 
-      const first = runCliPreservingLogLevel(['.'], '/repo', cliOptions);
-      const second = runCliPreservingLogLevel(['.'], '/repo', cliOptions);
+      const first = run(['.'], '/repo', cliOptions);
+      const second = run(['.'], '/repo', cliOptions);
 
       expect(logger.getLogLevel()).toBe(repomixLogLevels.SILENT);
 
@@ -469,18 +453,18 @@ describe('mcpToolRuntime', () => {
 
     it('should pass the CLI result straight through', async () => {
       const cliResult = { packResult: {}, config: {} } as unknown as Awaited<ReturnType<typeof runCli>>;
-      vi.mocked(runCli).mockResolvedValue(cliResult);
+      runCliMock.mockResolvedValue(cliResult);
 
-      await expect(runCliPreservingLogLevel(['.'], '/repo', cliOptions)).resolves.toBe(cliResult);
+      await expect(run(['.'], '/repo', cliOptions)).resolves.toBe(cliResult);
     });
 
     it('should forward directories, cwd, options and the progress callback to the CLI', async () => {
       cliSilencesTheLogger();
       const progressCallback = vi.fn();
 
-      await runCliPreservingLogLevel(['/a', '/b'], '/cwd', cliOptions, progressCallback);
+      await run(['/a', '/b'], '/cwd', cliOptions, progressCallback);
 
-      expect(runCli).toHaveBeenCalledWith(['/a', '/b'], '/cwd', cliOptions, progressCallback);
+      expect(runCliMock).toHaveBeenCalledWith(['/a', '/b'], '/cwd', cliOptions, progressCallback);
     });
   });
 });

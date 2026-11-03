@@ -39,6 +39,14 @@ const readRepomixOutputOutputSchema = z.object({
 export const registerReadRepomixOutputTool = (
   mcpServer: McpServer,
   config: McpServerConfig = { sandboxed: false, root: process.cwd() },
+  deps = {
+    access: fs.access,
+    readFile: fs.readFile,
+    getOutputFilePath,
+    requiresSecretScan,
+    createSecretLintConfig,
+    runSecretLint,
+  },
 ) => {
   mcpServer.registerTool(
     'read_repomix_output',
@@ -60,7 +68,7 @@ export const registerReadRepomixOutputTool = (
         logger.trace(`Reading Repomix output with ID: ${outputId}`);
 
         // Get the file path from the registry
-        const filePath = getOutputFilePath(outputId);
+        const filePath = deps.getOutputFilePath(outputId);
         if (!filePath) {
           return buildMcpToolErrorResponse({
             errorMessage: `Error: Output file with ID ${outputId} not found. The output file may have been deleted or the ID is invalid.`,
@@ -69,7 +77,7 @@ export const registerReadRepomixOutputTool = (
 
         // Check if the file exists
         try {
-          await fs.access(filePath);
+          await deps.access(filePath);
         } catch {
           return buildMcpToolErrorResponse({
             errorMessage: config.sandboxed
@@ -79,13 +87,18 @@ export const registerReadRepomixOutputTool = (
         }
 
         // Read the file content
-        const content = await fs.readFile(filePath, 'utf8');
+        const content = await deps.readFile(filePath, 'utf8');
 
         // For files attached from an untrusted path, scan for secrets before serving
         // any content. This detects recognized secret formats in the content; it does
         // not restrict which file the path points at.
-        if (requiresSecretScan(outputId)) {
-          const securityCheckResult = await runSecretLint(filePath, content, 'file', createSecretLintConfig());
+        if (deps.requiresSecretScan(outputId)) {
+          const securityCheckResult = await deps.runSecretLint(
+            filePath,
+            content,
+            'file',
+            deps.createSecretLintConfig(),
+          );
           if (securityCheckResult !== null) {
             return buildMcpToolErrorResponse({
               errorMessage: config.sandboxed

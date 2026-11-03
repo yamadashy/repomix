@@ -30,6 +30,13 @@ const fileSystemReadFileOutputSchema = z.object({
 export const registerFileSystemReadFileTool = (
   mcpServer: McpServer,
   config: McpServerConfig = { sandboxed: false, root: process.cwd() },
+  deps = {
+    access: fs.access,
+    stat: fs.stat,
+    readFile: fs.readFile,
+    createSecretLintConfig,
+    runSecretLint,
+  },
 ) => {
   const description = config.sandboxed
     ? 'Read a file from the workspace, at a path relative to the workspace root (e.g. "src/index.ts"). Content matching known secret formats (API keys, passwords) is refused; that scan is a heuristic safeguard — access is bounded by the workspace root, not by the scan.'
@@ -71,7 +78,7 @@ export const registerFileSystemReadFileTool = (
 
         // Check if file exists
         try {
-          await fs.access(absPath);
+          await deps.access(absPath);
         } catch {
           return buildMcpToolErrorResponse({
             errorMessage: `Error: File not found at path: ${displayPath}`,
@@ -79,7 +86,7 @@ export const registerFileSystemReadFileTool = (
         }
 
         // Check if it's a directory (the same stat also carries the size below)
-        const stats = await fs.stat(absPath);
+        const stats = await deps.stat(absPath);
         if (stats.isDirectory()) {
           return buildMcpToolErrorResponse({
             errorMessage: `Error: The specified path is a directory, not a file: ${displayPath}. Use file_system_read_directory for directories.`,
@@ -87,11 +94,11 @@ export const registerFileSystemReadFileTool = (
         }
 
         // Read file content
-        const fileContent = await fs.readFile(absPath, 'utf8');
+        const fileContent = await deps.readFile(absPath, 'utf8');
 
         // Perform security check using the existing worker
-        const secretLintConfig = createSecretLintConfig();
-        const securityCheckResult = await runSecretLint(absPath, fileContent, 'file', secretLintConfig);
+        const secretLintConfig = deps.createSecretLintConfig();
+        const securityCheckResult = await deps.runSecretLint(absPath, fileContent, 'file', secretLintConfig);
 
         // If security check found issues, block the file
         if (securityCheckResult !== null) {

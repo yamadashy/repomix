@@ -49,7 +49,7 @@ const generateSkillOutputSchema = z.object({
   description: z.string().describe('Human-readable description of the skill generation results'),
 });
 
-export const registerGenerateSkillTool = (mcpServer: McpServer) => {
+export const registerGenerateSkillTool = (mcpServer: McpServer, deps = { runCliPreservingLogLevel }) => {
   mcpServer.registerTool(
     'generate_skill',
     {
@@ -143,7 +143,7 @@ Example Path:
         } as CliOptions;
 
         const result = await withMcpProgress(ctx, { sandboxed: false }, (progressCallback) =>
-          runCliPreservingLogLevel(['.'], directory, cliOptions, progressCallback),
+          deps.runCliPreservingLogLevel(['.'], directory, cliOptions, progressCallback),
         );
         if (!result) {
           return buildMcpToolErrorResponse({

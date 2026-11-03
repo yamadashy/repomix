@@ -9,8 +9,6 @@ import {
   initTaskRunner,
 } from '../../src/shared/processConcurrency.js';
 
-vi.mock('node:os');
-
 // Use vi.hoisted for class mock that needs to work as constructor
 const { MockTinypool } = vi.hoisted(() => {
   // Create a mock function wrapped class for spy functionality
@@ -27,10 +25,14 @@ vi.mock('tinypool', () => ({
 }));
 
 describe('processConcurrency', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   describe('getProcessConcurrency', () => {
     it('should use os.availableParallelism when available', () => {
       const mockAvailableParallelism = vi.fn().mockReturnValue(4);
-      vi.mocked(os).availableParallelism = mockAvailableParallelism;
+      vi.spyOn(os, 'availableParallelism').mockImplementation(mockAvailableParallelism);
 
       const result = getProcessConcurrency();
 
@@ -41,7 +43,7 @@ describe('processConcurrency', () => {
 
   describe('getWorkerThreadCount', () => {
     beforeEach(() => {
-      vi.mocked(os).availableParallelism = vi.fn().mockReturnValue(8);
+      vi.spyOn(os, 'availableParallelism').mockReturnValue(8);
     });
 
     it('should return minimum 1 thread', () => {
@@ -102,7 +104,7 @@ describe('processConcurrency', () => {
 
   describe('initWorker', () => {
     beforeEach(() => {
-      vi.mocked(os).availableParallelism = vi.fn().mockReturnValue(4);
+      vi.spyOn(os, 'availableParallelism').mockReturnValue(4);
       // Use regular function syntax for constructor mock
       vi.mocked(Tinypool).mockImplementation(function (this: unknown) {
         (this as Record<string, unknown>).run = vi.fn();
@@ -155,7 +157,7 @@ describe('processConcurrency', () => {
 
   describe('initTaskRunner', () => {
     beforeEach(() => {
-      vi.mocked(os).availableParallelism = vi.fn().mockReturnValue(4);
+      vi.spyOn(os, 'availableParallelism').mockReturnValue(4);
       // Use regular function syntax for constructor mock
       vi.mocked(Tinypool).mockImplementation(function (this: unknown) {
         (this as Record<string, unknown>).run = vi.fn();
@@ -290,7 +292,7 @@ describe('processConcurrency', () => {
     beforeEach(() => {
       stdoutBaseline = process.stdout.getMaxListeners();
       stderrBaseline = process.stderr.getMaxListeners();
-      vi.mocked(os).availableParallelism = vi.fn().mockReturnValue(4);
+      vi.spyOn(os, 'availableParallelism').mockReturnValue(4);
       vi.mocked(Tinypool).mockImplementation(function (this: unknown) {
         (this as Record<string, unknown>).destroy = vi.fn().mockResolvedValue(undefined);
         return this as Tinypool;

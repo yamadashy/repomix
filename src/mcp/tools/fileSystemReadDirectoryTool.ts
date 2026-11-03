@@ -29,6 +29,10 @@ const fileSystemReadDirectoryOutputSchema = z.object({
 export const registerFileSystemReadDirectoryTool = (
   mcpServer: McpServer,
   config: McpServerConfig = { sandboxed: false, root: process.cwd() },
+  deps = {
+    stat: fs.stat,
+    readdir: fs.readdir,
+  },
 ) => {
   const description = config.sandboxed
     ? 'List the contents of a directory in the workspace, at a path relative to the workspace root (e.g. "." or "src"). Returns a formatted list showing files and subdirectories with clear [FILE]/[DIR] indicators. Useful for exploring project structure and understanding codebase organization.'
@@ -72,7 +76,7 @@ export const registerFileSystemReadDirectoryTool = (
 
         // Check if directory exists
         try {
-          const stats = await fs.stat(absPath);
+          const stats = await deps.stat(absPath);
           if (!stats.isDirectory()) {
             return buildMcpToolErrorResponse({
               errorMessage: `Error: The specified path is not a directory: ${displayPath}. Use file_system_read_file for files.`,
@@ -88,7 +92,7 @@ export const registerFileSystemReadDirectoryTool = (
         }
 
         // Read directory contents
-        const entries = await fs.readdir(absPath, { withFileTypes: true });
+        const entries = await deps.readdir(absPath, { withFileTypes: true });
         const contents = entries.map((entry) => `${entry.isDirectory() ? '[DIR]' : '[FILE]'} ${entry.name}`);
 
         const fileCount = entries.filter((entry) => entry.isFile()).length;

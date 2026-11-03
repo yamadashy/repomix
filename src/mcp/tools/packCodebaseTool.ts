@@ -87,6 +87,12 @@ const packCodebaseOutputSchema = z.object({
 export const registerPackCodebaseTool = (
   mcpServer: McpServer,
   config: McpServerConfig = { sandboxed: false, root: process.cwd() },
+  deps = {
+    createToolWorkspace,
+    formatPackToolResponse,
+    removeToolWorkspace,
+    runCliPreservingLogLevel,
+  },
 ) => {
   const inputSchema = packCodebaseInputSchema.extend({
     directory: z
@@ -149,7 +155,7 @@ export const registerPackCodebaseTool = (
           }
         }
 
-        tempDir = await createToolWorkspace();
+        tempDir = await deps.createToolWorkspace();
         const outputFileName = defaultFilePathMap[style as keyof typeof defaultFilePathMap];
         const outputFilePath = path.join(tempDir, outputFileName);
 
@@ -184,7 +190,7 @@ export const registerPackCodebaseTool = (
         // session, so it goes through the save/restore wrapper all packing tools share.
         // Sandbox: progress messages are reduced to fixed stage strings (see mcpProgress).
         const result = await withMcpProgress(ctx, { sandboxed: config.sandboxed }, (progressCallback) =>
-          runCliPreservingLogLevel(['.'], targetDirectory, cliOptions, progressCallback),
+          deps.runCliPreservingLogLevel(['.'], targetDirectory, cliOptions, progressCallback),
         );
         if (!result) {
           return buildMcpToolErrorResponse({
@@ -195,7 +201,7 @@ export const registerPackCodebaseTool = (
         // Extract metrics information from the pack result
         const { packResult } = result;
 
-        return await formatPackToolResponse(
+        return await deps.formatPackToolResponse(
           { directory: targetDirectory },
           packResult,
           outputFilePath,
@@ -215,7 +221,7 @@ export const registerPackCodebaseTool = (
       } finally {
         // The SDK never delivers a cancelled request's response, so nothing will read
         // this workspace's output.
-        if (signal?.aborted && tempDir) await removeToolWorkspace(tempDir);
+        if (signal?.aborted && tempDir) await deps.removeToolWorkspace(tempDir);
       }
     },
   );
