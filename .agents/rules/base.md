@@ -79,7 +79,9 @@ export const functionName = async (
 ```
 
 - Mock dependencies by passing test doubles through the deps object
-- Use `vi.mock()` only when dependency injection is not feasible
+- Do not use module mocking (`vi.mock`, `vi.doMock`, `vi.resetModules`). The suite has none:
+  use `deps`, a real temp directory for filesystem code, or `vi.spyOn` on a shared object
+  (`silenceLogger()` in `tests/testing/loggerDoubles.ts` for the logger)
 
 ## Output Generation
 
