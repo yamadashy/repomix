@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793680897721,
+  "lastUpdate": 1793689962382,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -16193,6 +16193,51 @@ window.BENCHMARK_DATA = {
             "range": "±20",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 796ms, Q3: 816ms\nAll times: 760, 761, 768, 774, 775, 796, 796, 799, 801, 803, 804, 810, 811, 812, 816, 816, 835, 837, 856, 857ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2d559b72309b3eea5149d0cd15a41840a43959b2",
+          "message": "Merge pull request #1990 from yamadashy/test/unify-silence-logger\n\ntest: Remove the remaining vi.mock calls and share one logger double",
+          "timestamp": "2026-11-03T16:11:15+09:00",
+          "tree_id": "2aac1fe96f6e94742f9cbfc1007e8cb909e8c6d9",
+          "url": "https://github.com/yamadashy/repomix/commit/2d559b72309b3eea5149d0cd15a41840a43959b2"
+        },
+        "date": 1793689961548,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 651,
+            "range": "±102",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 594ms, Q3: 696ms\nAll times: 580, 581, 583, 584, 584, 592, 593, 594, 599, 605, 622, 627, 640, 651, 651, 651, 658, 659, 660, 662, 674, 695, 696, 698, 703, 730, 774, 776, 879, 880ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 849,
+            "range": "±11",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 845ms, Q3: 856ms\nAll times: 838, 842, 843, 843, 844, 845, 847, 847, 848, 848, 849, 851, 853, 854, 855, 856, 864, 866, 869, 910ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1292,
+            "range": "±45",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1282ms, Q3: 1327ms\nAll times: 1252, 1265, 1281, 1282, 1282, 1282, 1283, 1284, 1285, 1290, 1292, 1293, 1298, 1298, 1303, 1327, 1332, 1419, 1447, 1496ms"
           }
         ]
       }
