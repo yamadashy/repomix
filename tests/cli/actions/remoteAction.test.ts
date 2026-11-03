@@ -777,6 +777,113 @@ describe('remoteAction functions', () => {
     });
   });
 
+  describe('--skill-generate in remote mode', () => {
+    // Assembled from parts so the fixture does not read as a real basic-auth literal to secret scanners.
+    const credential = 'token';
+    const repoUrl = `https://user:${credential}@gitlab.com/owner/my-repo.git`;
+
+    const createSkillDeps = () => ({
+      isGitInstalled: async () => true,
+      execGitShallowClone: vi.fn(async () => {}),
+      getRemoteRefs: async () => ['main'],
+      runDefaultAction: vi.fn(async () => ({
+        ...createMockDefaultActionResult(),
+        config: createMockConfig({ skillGenerate: true }),
+      })),
+      downloadGitHubArchive: vi.fn(),
+      isGitHubRepository: vi.fn().mockReturnValue(false),
+      parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
+      isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
+      confirmRemoteConfigTrust: vi.fn(),
+      copyOutputToCurrentDirectory: copyOutputToCurrentDirectoryMock,
+      resolveAndPrepareSkillDir: vi.fn(async (skillOutput: string) => `/resolved/${skillOutput}`),
+      promptSkillLocation: vi.fn(async (skillName: string) => ({
+        location: 'project' as const,
+        skillDir: `/prompted/${skillName}`,
+      })),
+      Spinner: MockSpinner,
+    });
+
+    test('uses --skill-output without prompting and passes the resolved skill settings to the packer', async () => {
+      const deps = createSkillDeps();
+
+      await runRemoteAction(
+        repoUrl,
+        { skillGenerate: 'custom-skill', skillOutput: 'out', force: true },
+        undefined,
+        deps,
+      );
+
+      expect(deps.resolveAndPrepareSkillDir).toHaveBeenCalledWith('out', process.cwd(), true);
+      expect(deps.promptSkillLocation).not.toHaveBeenCalled();
+      expect(deps.runDefaultAction).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.any(String),
+        expect.objectContaining({
+          skillName: 'custom-skill',
+          skillDir: '/resolved/out',
+          skillProjectName: 'My Repo',
+          // The source URL ends up in SKILL.md, so credentials must be stripped
+          skillSourceUrl: expect.not.stringContaining('token'),
+          force: true,
+        }),
+        undefined,
+      );
+      // Skill output is written straight to its target, so nothing is copied out of the temp dir
+      expect(copyOutputToCurrentDirectoryMock).not.toHaveBeenCalled();
+    });
+
+    test('prompts for the skill location with a name derived from the URL when --skill-output is omitted', async () => {
+      const deps = createSkillDeps();
+
+      await runRemoteAction(repoUrl, { skillGenerate: true }, undefined, deps);
+
+      expect(deps.resolveAndPrepareSkillDir).not.toHaveBeenCalled();
+      expect(deps.promptSkillLocation).toHaveBeenCalledWith('repomix-reference-my-repo', process.cwd());
+      expect(deps.runDefaultAction).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.any(String),
+        expect.objectContaining({
+          skillName: 'repomix-reference-my-repo',
+          skillDir: '/prompted/repomix-reference-my-repo',
+        }),
+        undefined,
+      );
+    });
+
+    test('rejects a whitespace-only --skill-output before packing', async () => {
+      const deps = createSkillDeps();
+
+      await expect(
+        runRemoteAction(repoUrl, { skillGenerate: true, skillOutput: '   ' }, undefined, deps),
+      ).rejects.toThrow('--skill-output path cannot be empty');
+
+      expect(deps.resolveAndPrepareSkillDir).not.toHaveBeenCalled();
+      expect(deps.promptSkillLocation).not.toHaveBeenCalled();
+      expect(deps.runDefaultAction).not.toHaveBeenCalled();
+    });
+
+    test('leaves skill settings unset when --skill-generate is not used', async () => {
+      const deps = createSkillDeps();
+      deps.runDefaultAction.mockResolvedValue(createMockDefaultActionResult());
+
+      await runRemoteAction(repoUrl, {}, undefined, deps);
+
+      expect(deps.promptSkillLocation).not.toHaveBeenCalled();
+      expect(deps.runDefaultAction).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.any(String),
+        expect.objectContaining({
+          skillName: undefined,
+          skillDir: undefined,
+          skillProjectName: undefined,
+          skillSourceUrl: undefined,
+        }),
+        undefined,
+      );
+    });
+  });
+
   describe('--config path validation in remote mode', () => {
     test('should reject relative --config path in remote mode', async () => {
       await expect(

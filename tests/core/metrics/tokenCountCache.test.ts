@@ -7,6 +7,7 @@ import {
   __setTokenCountCacheEnvForTests,
   contentCacheKey,
   getCached,
+  getCacheFilePath,
   getRepoSeenMarkerPath,
   isCacheDisabled,
   loadTokenCountCache,
@@ -16,6 +17,7 @@ import {
   tokenCountCacheFileExistsSync,
   tokenCountCacheSeenMarkerExistsSync,
 } from '../../../src/core/metrics/tokenCountCache.js';
+import { getRepomixTmpDir } from '../../../src/shared/tmpDir.js';
 
 describe('tokenCountCache', () => {
   let tmpDir: string;
@@ -125,6 +127,24 @@ describe('tokenCountCache', () => {
       expect(data.entries[key]).toBe(1);
       expect(data.entries[key2]).toBe(2);
       expect(secondStat.size).toBeGreaterThanOrEqual(firstStat.size);
+    });
+  });
+
+  describe('cache location and save failures', () => {
+    it('defaults to a token-counts.json under the repomix temp dir without an override', () => {
+      __setTokenCountCacheEnvForTests({});
+      expect(path.basename(getCacheFilePath())).toBe('token-counts.json');
+      expect(getCacheFilePath().startsWith(getRepomixTmpDir() + path.sep)).toBe(true);
+    });
+
+    it('does not throw when the cache directory cannot be created', async () => {
+      const blocker = path.join(tmpDir, 'not-a-dir');
+      await fs.writeFile(blocker, '');
+      env.REPOMIX_TOKEN_CACHE_PATH = path.join(blocker, 'token-counts.json');
+      setCached(contentCacheKey('o200k_base', 'x'), 1);
+
+      await expect(saveTokenCountCache(['/some/repo'])).resolves.toBeUndefined();
+      expect(tokenCountCacheSeenMarkerExistsSync(['/some/repo'])).toBe(false);
     });
   });
 
@@ -288,6 +308,27 @@ describe('tokenCountCache', () => {
       // No setCached → save short-circuits without writing the cache file
       // or touching the marker. Both must remain absent.
       await saveTokenCountCache(repo);
+
+      expect(tokenCountCacheFileExistsSync()).toBe(false);
+      expect(tokenCountCacheSeenMarkerExistsSync(repo)).toBe(false);
+    });
+
+    it('creates the marker for a repo when the shared cache already exists but nothing is dirty', async () => {
+      // Upgrade path: a cache written by a release without markers must still mark the repo as seen.
+      const repo = ['/some/repo'];
+      await fs.writeFile(cacheFile, JSON.stringify({ version: 1, entries: {} }));
+
+      await saveTokenCountCache(repo);
+
+      expect(tokenCountCacheSeenMarkerExistsSync(repo)).toBe(true);
+    });
+
+    it('reports cold-likely when the cache is disabled even if the marker exists', async () => {
+      const repo = ['/some/repo'];
+      setCached(contentCacheKey('o200k_base', 'a'), 1);
+      await saveTokenCountCache(repo);
+
+      env.REPOMIX_TOKEN_CACHE = '0';
 
       expect(tokenCountCacheFileExistsSync()).toBe(false);
       expect(tokenCountCacheSeenMarkerExistsSync(repo)).toBe(false);

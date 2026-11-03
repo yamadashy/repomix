@@ -160,10 +160,14 @@ export const runRemoteAction = async (
           throw new RepomixError('--skill-output path cannot be empty');
         }
         // Non-interactive mode: use provided path directly
-        skillDir = await resolveAndPrepareSkillDir(cliOptions.skillOutput, process.cwd(), cliOptions.force ?? false);
+        skillDir = await deps.resolveAndPrepareSkillDir(
+          cliOptions.skillOutput,
+          process.cwd(),
+          cliOptions.force ?? false,
+        );
       } else {
         // Interactive mode: prompt for skill location
-        const promptResult = await promptSkillLocation(skillName, process.cwd());
+        const promptResult = await deps.promptSkillLocation(skillName, process.cwd());
         skillDir = promptResult.skillDir;
       }
     }
@@ -410,6 +414,8 @@ const defaultDeps = {
   isArchiveDownloadSupported,
   confirmRemoteConfigTrust,
   copyOutputToCurrentDirectory,
+  resolveAndPrepareSkillDir,
+  promptSkillLocation,
   Spinner,
   env: process.env,
 };

@@ -35,6 +35,8 @@ export interface ArchiveDownloadDeps {
   tarExtract: typeof tarExtract;
   createGunzip: typeof zlib.createGunzip;
   createArchiveEntryFilter: typeof createArchiveEntryFilter;
+  // Clock used to throttle progress updates; defaults to Date.now
+  now?: () => number;
 }
 
 const defaultDeps: ArchiveDownloadDeps = {
@@ -44,6 +46,7 @@ const defaultDeps: ArchiveDownloadDeps = {
   tarExtract,
   createGunzip: zlib.createGunzip,
   createArchiveEntryFilter,
+  now: Date.now,
 };
 
 /**
@@ -138,6 +141,7 @@ const downloadAndExtractArchive = async (
     const total = totalSize ? Number.parseInt(totalSize, 10) : null;
     let downloaded = 0;
     let lastProgressUpdate = 0;
+    const now = deps.now ?? Date.now;
 
     const nodeStream = Readable.fromWeb(response.body as import('node:stream/web').ReadableStream);
 
@@ -147,9 +151,9 @@ const downloadAndExtractArchive = async (
         downloaded += chunk.length;
 
         // Update progress at most every 100ms to avoid too frequent updates
-        const now = Date.now();
-        if (onProgress && now - lastProgressUpdate > 100) {
-          lastProgressUpdate = now;
+        const currentTime = now();
+        if (onProgress && currentTime - lastProgressUpdate > 100) {
+          lastProgressUpdate = currentTime;
           onProgress({
             downloaded,
             total,

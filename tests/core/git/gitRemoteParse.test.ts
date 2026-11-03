@@ -368,6 +368,10 @@ describe('remoteAction functions', () => {
       expect(result).toBeNull();
     });
 
+    test('should return null for non-GitHub SSH URLs', () => {
+      expect(parseGitHubRepoInfo('git@gitlab.com:user/repo.git')).toBeNull();
+    });
+
     test('should handle git@ URLs', () => {
       const result = parseGitHubRepoInfo('git@github.com:yamadashy/repomix.git');
       expect(result).toEqual({

@@ -2,12 +2,18 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import type * as prompts from '@clack/prompts';
+import { group as realGroup } from '@clack/prompts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createConfigFile, createIgnoreFile } from '../../../src/cli/actions/initAction.js';
+import { createConfigFile, createIgnoreFile, runInitAction } from '../../../src/cli/actions/initAction.js';
+import { silenceLogger } from '../../testing/loggerDoubles.js';
 
 const createMockPrompts = () => ({
+  intro: vi.fn(),
+  outro: vi.fn(),
   confirm: vi.fn(),
   group: vi.fn(),
+  select: vi.fn(),
+  text: vi.fn<(options: { message: string; initialValue?: string; validate: (value: string) => unknown }) => unknown>(),
   isCancel: vi.fn().mockReturnValue(false),
   cancel: vi.fn(),
   log: { info: vi.fn(), success: vi.fn() },
@@ -159,6 +165,90 @@ describe('initAction', () => {
 
       expect(result).toBe(true);
       expect(await pathExists(path.join(rootDir, 'repomix.config.json'))).toBe(true);
+    });
+  });
+
+  describe('createConfigFile prompt group', () => {
+    // Run the real clack group so the per-question callbacks execute against the select/text doubles.
+    beforeEach(() => {
+      mockPrompts.confirm.mockResolvedValue(true);
+      mockPrompts.group.mockImplementation(realGroup);
+    });
+
+    it('should default the output file path to the chosen style and write both answers', async () => {
+      mockPrompts.select.mockResolvedValue('markdown');
+      mockPrompts.text.mockImplementation(async ({ initialValue }) => initialValue);
+
+      await createConfigFile(rootDir, false, deps);
+
+      expect(mockPrompts.select).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'Output style:', initialValue: 'xml' }),
+      );
+      expect(mockPrompts.text).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'Output file path:', initialValue: 'repomix-output.md' }),
+      );
+      const config = JSON.parse(await fs.readFile(path.join(rootDir, 'repomix.config.json'), 'utf8'));
+      expect(config.output).toMatchObject({ style: 'markdown', filePath: 'repomix-output.md' });
+    });
+
+    it('should require a non-empty output file path', async () => {
+      mockPrompts.select.mockResolvedValue('json');
+      mockPrompts.text.mockResolvedValue('out.json');
+
+      await createConfigFile(rootDir, false, deps);
+
+      const { validate } = mockPrompts.text.mock.calls[0][0];
+      expect(validate('')).toBe('Output file path is required');
+      expect(validate('out.json')).toBeUndefined();
+    });
+  });
+
+  describe('runInitAction', () => {
+    it('should create both files and report completion', async () => {
+      mockPrompts.confirm.mockResolvedValue(true);
+      mockPrompts.group.mockResolvedValue({ outputFilePath: 'out.xml', outputStyle: 'xml' });
+
+      await runInitAction(rootDir, false, deps);
+
+      expect(mockPrompts.intro).toHaveBeenCalledWith(expect.stringContaining('Welcome to Repomix Configuration!'));
+      expect(await pathExists(path.join(rootDir, 'repomix.config.json'))).toBe(true);
+      expect(await pathExists(path.join(rootDir, '.repomixignore'))).toBe(true);
+      expect(mockPrompts.outro).toHaveBeenCalledWith(expect.stringContaining('Initialization complete!'));
+    });
+
+    it('should report that nothing was created when every prompt is declined', async () => {
+      mockPrompts.confirm.mockResolvedValue(false);
+
+      await runInitAction(rootDir, false, deps);
+
+      expect(await pathExists(path.join(rootDir, 'repomix.config.json'))).toBe(false);
+      expect(await pathExists(path.join(rootDir, '.repomixignore'))).toBe(false);
+      expect(mockPrompts.outro).toHaveBeenCalledWith(expect.stringContaining('No files were created.'));
+    });
+
+    it('should write only the config into the global directory in global mode', async () => {
+      mockPrompts.confirm.mockResolvedValue(true);
+      mockPrompts.group.mockResolvedValue({ outputFilePath: 'out.xml', outputStyle: 'xml' });
+
+      await runInitAction(rootDir, true, deps);
+
+      expect(mockPrompts.intro).toHaveBeenCalledWith(
+        expect.stringContaining('Welcome to Repomix Global Configuration!'),
+      );
+      expect(await pathExists(path.join(globalDir, 'repomix.config.json'))).toBe(true);
+      expect(await pathExists(path.join(rootDir, '.repomixignore'))).toBe(false);
+      expect(mockPrompts.outro).toHaveBeenCalledWith(expect.stringContaining('Initialization complete!'));
+    });
+
+    it('should log the error instead of throwing when a step fails', async () => {
+      const loggerSpies = silenceLogger();
+      const error = new Error('prompt failed');
+      mockPrompts.confirm.mockRejectedValue(error);
+
+      await expect(runInitAction(rootDir, false, deps)).resolves.toBeUndefined();
+
+      expect(loggerSpies.error).toHaveBeenCalledWith('An error occurred during initialization:', error);
+      expect(mockPrompts.outro).not.toHaveBeenCalled();
     });
   });
 

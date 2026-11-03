@@ -1,3 +1,6 @@
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import process from 'node:process';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildCliConfig, buildMergedConfig, runDefaultAction } from '../../../src/cli/actions/defaultAction.js';
@@ -163,6 +166,13 @@ describe('defaultAction', () => {
       ['test1.txt', 'test2.txt'],
       expect.any(Object),
     );
+  });
+
+  it.each([[['src']], [['.', 'lib']]])('should reject directory arguments %j in stdin mode', async (directories) => {
+    await expect(runDefaultAction(directories, process.cwd(), { stdin: true }, undefined, deps)).rejects.toThrow(
+      'When using --stdin, do not specify directory arguments.',
+    );
+    expect(deps.readFilePathsFromStdin).not.toHaveBeenCalled();
   });
 
   it('should forward the abort signal to pack', async () => {
@@ -484,6 +494,99 @@ describe('defaultAction', () => {
       await expect(runDefaultAction(['.'], process.cwd(), options, undefined, deps)).rejects.toThrow(
         '--skill-project-name can only be used with --skill-generate',
       );
+    });
+
+    it.each<[string, CliOptions]>([
+      ['--skill-output', { skillOutput: 'out-skill' }],
+      ['--force', { force: true }],
+    ])('should throw error when %s is used without --skill-generate', async (flag, options) => {
+      await expect(runDefaultAction(['.'], process.cwd(), options, undefined, deps)).rejects.toThrow(
+        `${flag} can only be used with --skill-generate`,
+      );
+      expect(deps.pack).not.toHaveBeenCalled();
+    });
+
+    it('should throw error when --skill-output is whitespace only', async () => {
+      deps.buildMergedConfig.mockResolvedValue(createMockConfig({ cwd: process.cwd(), skillGenerate: true }));
+
+      await expect(
+        runDefaultAction(['.'], process.cwd(), { skillGenerate: true, skillOutput: '   ' }, undefined, deps),
+      ).rejects.toThrow('--skill-output path cannot be empty');
+    });
+
+    describe('skill name and directory resolution', () => {
+      let tempDir: string;
+
+      beforeEach(async () => {
+        tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-default-action-skill-'));
+      });
+
+      afterEach(async () => {
+        await fs.rm(tempDir, { recursive: true, force: true });
+      });
+
+      const getPackOptions = () => deps.pack.mock.calls[0][5];
+
+      it('should use the --skill-generate name and resolve a relative --skill-output against cwd', async () => {
+        deps.buildMergedConfig.mockResolvedValue(createMockConfig({ cwd: tempDir, skillGenerate: 'my-skill' }));
+
+        await runDefaultAction(
+          ['.'],
+          tempDir,
+          { skillGenerate: 'my-skill', skillOutput: 'skills/out' },
+          undefined,
+          deps,
+        );
+
+        expect(getPackOptions()).toMatchObject({
+          skillName: 'my-skill',
+          skillDir: path.join(tempDir, 'skills', 'out'),
+        });
+      });
+
+      it('should derive the skill name from the target directory when --skill-generate has no name', async () => {
+        const projectDir = path.join(tempDir, 'My_Project');
+        await fs.mkdir(projectDir);
+        deps.buildMergedConfig.mockResolvedValue(createMockConfig({ cwd: tempDir, skillGenerate: true }));
+
+        await runDefaultAction(
+          ['My_Project'],
+          tempDir,
+          { skillGenerate: true, skillOutput: path.join(tempDir, 'out') },
+          undefined,
+          deps,
+        );
+
+        expect(getPackOptions()).toMatchObject({
+          skillName: 'repomix-reference-my-project',
+          skillDir: path.join(tempDir, 'out'),
+        });
+      });
+
+      it('should refuse an existing --skill-output directory without --force', async () => {
+        await fs.mkdir(path.join(tempDir, 'existing'));
+        deps.buildMergedConfig.mockResolvedValue(createMockConfig({ cwd: tempDir, skillGenerate: 'my-skill' }));
+
+        await expect(
+          runDefaultAction(['.'], tempDir, { skillGenerate: 'my-skill', skillOutput: 'existing' }, undefined, deps),
+        ).rejects.toThrow('Use --force to overwrite.');
+        expect(deps.pack).not.toHaveBeenCalled();
+      });
+
+      it('should keep a pre-resolved skill name and directory (as passed by remoteAction)', async () => {
+        deps.buildMergedConfig.mockResolvedValue(createMockConfig({ cwd: tempDir, skillGenerate: true }));
+        const skillDir = path.join(tempDir, 'pre-resolved');
+
+        await runDefaultAction(
+          ['.'],
+          tempDir,
+          { skillGenerate: true, skillName: 'from-remote', skillDir, skillOutput: 'ignored' },
+          undefined,
+          deps,
+        );
+
+        expect(getPackOptions()).toMatchObject({ skillName: 'from-remote', skillDir });
+      });
     });
 
     it('should throw error when --skill-project-name is empty', async () => {

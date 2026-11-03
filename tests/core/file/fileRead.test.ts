@@ -1,8 +1,9 @@
 import * as fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { readRawFile } from '../../../src/core/file/fileRead.js';
+import { silenceLogger } from '../../testing/loggerDoubles.js';
 
 describe('readRawFile', () => {
   let testDir: string;
@@ -13,6 +14,7 @@ describe('readRawFile', () => {
 
   afterEach(async () => {
     await fs.rm(testDir, { recursive: true, force: true });
+    vi.restoreAllMocks();
   });
 
   test('should read normal text file successfully', async () => {
@@ -193,5 +195,38 @@ def hello():
 
     expect(result.skippedReason).toBeUndefined();
     expect(result.content).toBe('Hello\n');
+  });
+
+  test.each([
+    ['UTF-16 BE', [0xfe, 0xff], Buffer.from('Hi', 'utf16le').swap16()],
+    ['UTF-32 LE', [0xff, 0xfe, 0x00, 0x00], Buffer.from([0x48, 0, 0, 0, 0x69, 0, 0, 0])],
+    ['UTF-32 BE', [0x00, 0x00, 0xfe, 0xff], Buffer.from([0, 0, 0, 0x48, 0, 0, 0, 0x69])],
+  ])('should decode a %s BOM file despite embedded NULL bytes', async (_label, bom, body) => {
+    const filePath = path.join(testDir, 'bom.txt');
+    await fs.writeFile(filePath, Buffer.concat([Buffer.from(bom), body]));
+
+    const result = await readRawFile(filePath, 1024);
+
+    expect(result).toEqual({ content: 'Hi' });
+  });
+
+  test('should skip invalid UTF-8 binary content that has no NULL bytes', async () => {
+    const filePath = path.join(testDir, 'control-bytes.txt');
+    // Control characters mixed with 0xFF: not UTF-8, and no NULL byte for the cheap probe to catch.
+    await fs.writeFile(filePath, Buffer.from(Array.from({ length: 64 }, (_, i) => (i % 2 ? 0xff : 0x01 + (i % 8)))));
+
+    const result = await readRawFile(filePath, 1024);
+
+    expect(result).toEqual({ content: null, skippedReason: 'binary-content' });
+  });
+
+  test('should warn and skip a file that cannot be read', async () => {
+    const { warn } = silenceLogger();
+    const filePath = path.join(testDir, 'missing.txt');
+
+    const result = await readRawFile(filePath, 1024);
+
+    expect(result).toEqual({ content: null, skippedReason: 'encoding-error' });
+    expect(warn).toHaveBeenCalledWith(`Failed to read file: ${filePath}`, expect.any(Error));
   });
 });

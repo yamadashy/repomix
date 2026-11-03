@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { runCli } from '../../../src/cli/cliRun.js';
 import type { CliOptions } from '../../../src/cli/types.js';
+import { PathScopeError } from '../../../src/mcp/pathScope.js';
 import { logger, repomixLogLevels } from '../../../src/shared/logger.js';
 import type { MockedDeps } from '../../testing/depsDoubles.js';
 
@@ -26,12 +27,43 @@ import {
   getOutputFilePath,
   registerOutputFile,
   runCliPreservingLogLevel,
+  sandboxErrorReason,
 } from '../../../src/mcp/tools/mcpToolRuntime.js';
 import { structuredContentOf } from '../../testing/testUtils.js';
 
 describe('mcpToolRuntime', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+  });
+
+  describe('sandboxErrorReason', () => {
+    const errnoError = (code: string) => Object.assign(new Error(`${code}: /host/secret/path`), { code });
+
+    it('should pass a PathScopeError message through unchanged', () => {
+      expect(sandboxErrorReason(new PathScopeError('path must be relative'))).toBe('path must be relative');
+    });
+
+    it.each([
+      ['ENOENT', 'not found'],
+      ['EACCES', 'permission denied'],
+      ['EPERM', 'permission denied'],
+      ['EISDIR', 'path is a directory'],
+      ['ENOTDIR', 'path is not a directory'],
+      ['ELOOP', 'too many symbolic links'],
+      ['ENAMETOOLONG', 'path name too long'],
+      ['EMFILE', 'too many open files'],
+      ['ENFILE', 'too many open files'],
+      ['EIO', 'operation failed'],
+    ])('should map %s to a reason without the host path', (code, reason) => {
+      expect(sandboxErrorReason(errnoError(code))).toBe(reason);
+    });
+
+    it.each([[new Error('boom')], ['string error'], [undefined]])(
+      'should fall back to a generic reason for %j',
+      (error) => {
+        expect(sandboxErrorReason(error)).toBe('operation failed');
+      },
+    );
   });
 
   describe('registerOutputFile and getOutputFilePath', () => {
