@@ -150,6 +150,19 @@ index 123..456 100644
       ...gitDeps,
     });
 
+    // The enabled diff must be fetched and handed to metrics, not just echoed from the stub
+    expect(mockGetWorkTreeDiff).toHaveBeenCalledWith(mockRootDir);
+    expect(mockGetStagedDiff).toHaveBeenCalledWith(mockRootDir);
+    expect(mockCalculateMetrics).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      mockConfig,
+      { workTreeDiffContent: sampleDiff, stagedDiffContent: '' },
+      undefined,
+      expect.anything(),
+    );
+
     // Check gitDiffTokenCount in the result
     expect(result.gitDiffTokenCount).toBe(15);
   });
