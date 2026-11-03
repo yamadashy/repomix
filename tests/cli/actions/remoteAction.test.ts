@@ -10,7 +10,8 @@ import {
 } from '../../../src/cli/actions/remoteAction.js';
 import { OperationCancelledError } from '../../../src/shared/errorHandle.js';
 import { logger } from '../../../src/shared/logger.js';
-import { createMockSpinner, silenceLogger } from '../../testing/cliDoubles.js';
+import { createMockSpinner } from '../../testing/cliDoubles.js';
+import { silenceLogger } from '../../testing/loggerDoubles.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 // Stand-ins for the copy-out step and the spinner. The copy is covered by the

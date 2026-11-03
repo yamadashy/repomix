@@ -9,7 +9,7 @@ import type { SecurityCheckTask } from '../../../src/core/security/workers/secur
 import securityCheckWorker from '../../../src/core/security/workers/securityCheckWorker.js';
 import { logger, repomixLogLevels } from '../../../src/shared/logger.js';
 import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
-import { silenceLogger } from '../../testing/coreFileGitLogger.js';
+import { silenceLogger } from '../../testing/loggerDoubles.js';
 
 // Kept as a module mock: the "default deps" test below calls runSecurityCheck without deps, and the real
 // initTaskRunner would start a Tinypool worker from a .js worker path that does not exist under src/.

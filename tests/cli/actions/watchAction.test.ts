@@ -6,7 +6,8 @@ import type { WatchDeps } from '../../../src/cli/actions/watchAction.js';
 import type { CliOptions } from '../../../src/cli/types.js';
 import type { PackResult } from '../../../src/core/packager.js';
 import { logger } from '../../../src/shared/logger.js';
-import { createMockSpinner, silenceLogger } from '../../testing/cliDoubles.js';
+import { createMockSpinner } from '../../testing/cliDoubles.js';
+import { silenceLogger } from '../../testing/loggerDoubles.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 function createMockPackResult(overrides: Partial<PackResult> = {}): PackResult {

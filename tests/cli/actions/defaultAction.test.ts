@@ -5,7 +5,8 @@ import type { CliOptions } from '../../../src/cli/types.js';
 import type { readFilePathsFromStdin } from '../../../src/core/file/fileStdin.js';
 import type { pack } from '../../../src/core/packager.js';
 import { logger } from '../../../src/shared/logger.js';
-import { createMockSpinner, silenceLogger } from '../../testing/cliDoubles.js';
+import { createMockSpinner } from '../../testing/cliDoubles.js';
+import { silenceLogger } from '../../testing/loggerDoubles.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 const createDeps = () => {

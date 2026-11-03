@@ -4,7 +4,7 @@ import type { FileManipulator } from '../../../src/core/file/fileManipulate.js';
 import { processContent } from '../../../src/core/file/fileProcessContent.js';
 import type { RawFile } from '../../../src/core/file/fileTypes.js';
 import type { parseFile as parseFileType } from '../../../src/core/treeSitter/parseFile.js';
-import { silenceLogger } from '../../testing/coreFileGitLogger.js';
+import { silenceLogger } from '../../testing/loggerDoubles.js';
 
 describe('processContent', () => {
   const mockManipulator = {

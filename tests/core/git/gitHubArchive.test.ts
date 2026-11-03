@@ -12,7 +12,7 @@ import {
 } from '../../../src/core/git/gitHubArchive.js';
 import type { GitHubRepoInfo } from '../../../src/core/git/gitRemoteParse.js';
 import { RepomixError } from '../../../src/shared/errorHandle.js';
-import { silenceLogger } from '../../testing/coreFileGitLogger.js';
+import { silenceLogger } from '../../testing/loggerDoubles.js';
 
 // Type for the deps parameter of downloadGitHubArchive
 interface MockDeps {

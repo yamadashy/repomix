@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { checkRemoteRepoExists, getRemoteRefs } from '../../../src/core/git/gitRemoteHandle.js';
 import { logger } from '../../../src/shared/logger.js';
-import { silenceLogger } from '../../testing/coreFileGitLogger.js';
+import { silenceLogger } from '../../testing/loggerDoubles.js';
 
 describe('gitRemoteHandle', () => {
   beforeEach(() => {

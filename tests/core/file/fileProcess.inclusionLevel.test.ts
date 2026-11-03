@@ -8,7 +8,7 @@ import type { FileProcessTask } from '../../../src/core/file/workers/fileProcess
 import fileProcessWorker from '../../../src/core/file/workers/fileProcessWorker.js';
 import type { parseFile as parseFileType } from '../../../src/core/treeSitter/parseFile.js';
 import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
-import { silenceLogger } from '../../testing/coreFileGitLogger.js';
+import { silenceLogger } from '../../testing/loggerDoubles.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 // parseFile is the Tree-sitter compression entry point. Stub it so these tests

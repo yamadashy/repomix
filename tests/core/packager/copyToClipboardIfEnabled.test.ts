@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vite
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import { copyToClipboardIfEnabled } from '../../../src/core/packager/copyToClipboardIfEnabled.js';
 import type { RepomixProgressCallback } from '../../../src/shared/types.js';
-import { silenceLogger } from '../../testing/coreMetricsOutputDoubles.js';
+import { silenceLogger } from '../../testing/loggerDoubles.js';
 
 // spawn is overloaded, so a single-signature mock needs a cast to fit the deps type.
 type CopyDeps = NonNullable<Parameters<typeof copyToClipboardIfEnabled>[3]>;

@@ -5,7 +5,7 @@ import { loadFileConfig, mergeConfigs } from '../../src/config/configLoad.js';
 import { defaultConfig, type RepomixConfigCli, type RepomixConfigFile } from '../../src/config/configSchema.js';
 import { RepomixConfigValidationError } from '../../src/shared/errorHandle.js';
 import { logger } from '../../src/shared/logger.js';
-import { silenceLogger } from '../testing/coreFileGitLogger.js';
+import { silenceLogger } from '../testing/loggerDoubles.js';
 
 type ConfigLoadDeps = Required<NonNullable<Parameters<typeof loadFileConfig>[3]>>;
 

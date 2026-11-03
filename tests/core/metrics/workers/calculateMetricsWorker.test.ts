@@ -3,7 +3,7 @@ import { getTokenCounter } from '../../../../src/core/metrics/tokenCounterFactor
 import calculateMetricsWorker, {
   onWorkerTermination,
 } from '../../../../src/core/metrics/workers/calculateMetricsWorker.js';
-import { silenceLogger } from '../../../testing/coreMetricsOutputDoubles.js';
+import { silenceLogger } from '../../../testing/loggerDoubles.js';
 
 describe('calculateMetricsWorker default export', () => {
   // Pin the items/single-mode dispatch in the worker default export. unifiedWorker
