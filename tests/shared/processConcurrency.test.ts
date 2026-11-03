@@ -1,5 +1,5 @@
 import os from 'node:os';
-import { Tinypool } from 'tinypool';
+import type { Tinypool } from 'tinypool';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   cleanupWorkerPool,
@@ -9,22 +9,23 @@ import {
   initTaskRunner,
 } from '../../src/shared/processConcurrency.js';
 
-// Use vi.hoisted for class mock that needs to work as constructor
-const { MockTinypool } = vi.hoisted(() => {
-  // Create a mock function wrapped class for spy functionality
-  const MockTinypool = vi.fn().mockImplementation(function (this: unknown) {
+// Stand-in for the Tinypool class, injected through deps so no real worker is spawned.
+const createMockTinypool = () =>
+  vi.fn().mockImplementation(function (this: unknown) {
     (this as Record<string, unknown>).run = vi.fn();
     (this as Record<string, unknown>).destroy = vi.fn();
     return this;
   });
-  return { MockTinypool };
-});
-
-vi.mock('tinypool', () => ({
-  Tinypool: MockTinypool,
-}));
 
 describe('processConcurrency', () => {
+  let MockTinypool: ReturnType<typeof createMockTinypool>;
+  let deps: { Tinypool: typeof Tinypool };
+
+  beforeEach(() => {
+    MockTinypool = createMockTinypool();
+    deps = { Tinypool: MockTinypool as unknown as typeof Tinypool };
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -105,18 +106,12 @@ describe('processConcurrency', () => {
   describe('initWorker', () => {
     beforeEach(() => {
       vi.spyOn(os, 'availableParallelism').mockReturnValue(4);
-      // Use regular function syntax for constructor mock
-      vi.mocked(Tinypool).mockImplementation(function (this: unknown) {
-        (this as Record<string, unknown>).run = vi.fn();
-        (this as Record<string, unknown>).destroy = vi.fn();
-        return this as Tinypool;
-      });
     });
 
     it('should initialize Tinypool with correct configuration', () => {
-      const tinypool = createWorkerPool({ numOfTasks: 500, workerType: 'fileProcess', runtime: 'child_process' });
+      const tinypool = createWorkerPool({ numOfTasks: 500, workerType: 'fileProcess', runtime: 'child_process' }, deps);
 
-      expect(Tinypool).toHaveBeenCalledWith({
+      expect(MockTinypool).toHaveBeenCalledWith({
         filename: expect.stringContaining('fileProcessWorker.js'),
         runtime: 'child_process',
         minThreads: 1,
@@ -137,9 +132,12 @@ describe('processConcurrency', () => {
     });
 
     it('should initialize Tinypool with worker_threads runtime when specified', () => {
-      const tinypool = createWorkerPool({ numOfTasks: 500, workerType: 'securityCheck', runtime: 'worker_threads' });
+      const tinypool = createWorkerPool(
+        { numOfTasks: 500, workerType: 'securityCheck', runtime: 'worker_threads' },
+        deps,
+      );
 
-      expect(Tinypool).toHaveBeenCalledWith({
+      expect(MockTinypool).toHaveBeenCalledWith({
         filename: expect.stringContaining('securityCheckWorker.js'),
         runtime: 'worker_threads',
         minThreads: 1,
@@ -158,16 +156,10 @@ describe('processConcurrency', () => {
   describe('initTaskRunner', () => {
     beforeEach(() => {
       vi.spyOn(os, 'availableParallelism').mockReturnValue(4);
-      // Use regular function syntax for constructor mock
-      vi.mocked(Tinypool).mockImplementation(function (this: unknown) {
-        (this as Record<string, unknown>).run = vi.fn();
-        (this as Record<string, unknown>).destroy = vi.fn();
-        return this as Tinypool;
-      });
     });
 
     it('should return a TaskRunner with run and cleanup methods', () => {
-      const taskRunner = initTaskRunner({ numOfTasks: 100, workerType: 'fileProcess', runtime: 'child_process' });
+      const taskRunner = initTaskRunner({ numOfTasks: 100, workerType: 'fileProcess', runtime: 'child_process' }, deps);
 
       expect(taskRunner).toHaveProperty('run');
       expect(taskRunner).toHaveProperty('cleanup');
@@ -176,9 +168,12 @@ describe('processConcurrency', () => {
     });
 
     it('should pass runtime parameter to createWorkerPool', () => {
-      const taskRunner = initTaskRunner({ numOfTasks: 100, workerType: 'calculateMetrics', runtime: 'worker_threads' });
+      const taskRunner = initTaskRunner(
+        { numOfTasks: 100, workerType: 'calculateMetrics', runtime: 'worker_threads' },
+        deps,
+      );
 
-      expect(Tinypool).toHaveBeenCalledWith(
+      expect(MockTinypool).toHaveBeenCalledWith(
         expect.objectContaining({
           runtime: 'worker_threads',
           workerData: expect.objectContaining({
@@ -193,17 +188,20 @@ describe('processConcurrency', () => {
     it('delegates run and cleanup to the underlying pool', async () => {
       const runMock = vi.fn().mockResolvedValue('result');
       const destroyMock = vi.fn().mockResolvedValue(undefined);
-      vi.mocked(Tinypool).mockImplementation(function (this: unknown) {
+      MockTinypool.mockImplementation(function (this: unknown) {
         (this as Record<string, unknown>).run = runMock;
         (this as Record<string, unknown>).destroy = destroyMock;
         return this as Tinypool;
       });
 
-      const taskRunner = initTaskRunner<{ payload: string }, string>({
-        numOfTasks: 10,
-        workerType: 'fileProcess',
-        runtime: 'worker_threads',
-      });
+      const taskRunner = initTaskRunner<{ payload: string }, string>(
+        {
+          numOfTasks: 10,
+          workerType: 'fileProcess',
+          runtime: 'worker_threads',
+        },
+        deps,
+      );
 
       await expect(taskRunner.run({ payload: 'x' })).resolves.toBe('result');
       expect(runMock).toHaveBeenCalledWith({ payload: 'x' });
@@ -216,7 +214,7 @@ describe('processConcurrency', () => {
       const setupPool = () => {
         const runMock = vi.fn().mockResolvedValue('result');
         const destroyMock = vi.fn().mockResolvedValue(undefined);
-        vi.mocked(Tinypool).mockImplementation(function (this: unknown) {
+        MockTinypool.mockImplementation(function (this: unknown) {
           (this as Record<string, unknown>).run = runMock;
           (this as Record<string, unknown>).destroy = destroyMock;
           return this as Tinypool;
@@ -227,12 +225,15 @@ describe('processConcurrency', () => {
       it('destroys the pool when the signal fires and refuses new tasks', async () => {
         const { runMock, destroyMock } = setupPool();
         const controller = new AbortController();
-        const taskRunner = initTaskRunner<{ payload: string }, string>({
-          numOfTasks: 10,
-          workerType: 'securityCheck',
-          runtime: 'worker_threads',
-          signal: controller.signal,
-        });
+        const taskRunner = initTaskRunner<{ payload: string }, string>(
+          {
+            numOfTasks: 10,
+            workerType: 'securityCheck',
+            runtime: 'worker_threads',
+            signal: controller.signal,
+          },
+          deps,
+        );
 
         controller.abort();
 
@@ -246,12 +247,15 @@ describe('processConcurrency', () => {
         let finishDestroy: () => void = () => {};
         destroyMock.mockReturnValue(new Promise<void>((resolve) => (finishDestroy = resolve)));
         const controller = new AbortController();
-        const taskRunner = initTaskRunner({
-          numOfTasks: 10,
-          workerType: 'securityCheck',
-          runtime: 'worker_threads',
-          signal: controller.signal,
-        });
+        const taskRunner = initTaskRunner(
+          {
+            numOfTasks: 10,
+            workerType: 'securityCheck',
+            runtime: 'worker_threads',
+            signal: controller.signal,
+          },
+          deps,
+        );
 
         controller.abort();
         let cleanedUp = false;
@@ -270,12 +274,15 @@ describe('processConcurrency', () => {
       it('stops listening once cleaned up', async () => {
         const { destroyMock } = setupPool();
         const controller = new AbortController();
-        const taskRunner = initTaskRunner({
-          numOfTasks: 10,
-          workerType: 'securityCheck',
-          runtime: 'worker_threads',
-          signal: controller.signal,
-        });
+        const taskRunner = initTaskRunner(
+          {
+            numOfTasks: 10,
+            workerType: 'securityCheck',
+            runtime: 'worker_threads',
+            signal: controller.signal,
+          },
+          deps,
+        );
 
         await taskRunner.cleanup();
         controller.abort();
@@ -293,7 +300,7 @@ describe('processConcurrency', () => {
       stdoutBaseline = process.stdout.getMaxListeners();
       stderrBaseline = process.stderr.getMaxListeners();
       vi.spyOn(os, 'availableParallelism').mockReturnValue(4);
-      vi.mocked(Tinypool).mockImplementation(function (this: unknown) {
+      MockTinypool.mockImplementation(function (this: unknown) {
         (this as Record<string, unknown>).destroy = vi.fn().mockResolvedValue(undefined);
         return this as Tinypool;
       });
@@ -306,11 +313,11 @@ describe('processConcurrency', () => {
     });
 
     it('restores the limit even when destroy rejects', async () => {
-      vi.mocked(Tinypool).mockImplementation(function (this: unknown) {
+      MockTinypool.mockImplementation(function (this: unknown) {
         (this as Record<string, unknown>).destroy = vi.fn().mockRejectedValue(new Error('destroy failed'));
         return this as Tinypool;
       });
-      const pool = createWorkerPool({ numOfTasks: 1000, workerType: 'fileProcess', runtime: 'worker_threads' });
+      const pool = createWorkerPool({ numOfTasks: 1000, workerType: 'fileProcess', runtime: 'worker_threads' }, deps);
 
       await cleanupWorkerPool(pool);
 
@@ -318,8 +325,11 @@ describe('processConcurrency', () => {
     });
 
     it('adds up overlapping pools and restores in any order', async () => {
-      const first = createWorkerPool({ numOfTasks: 1000, workerType: 'fileProcess', runtime: 'worker_threads' });
-      const second = createWorkerPool({ numOfTasks: 1000, workerType: 'securityCheck', runtime: 'worker_threads' });
+      const first = createWorkerPool({ numOfTasks: 1000, workerType: 'fileProcess', runtime: 'worker_threads' }, deps);
+      const second = createWorkerPool(
+        { numOfTasks: 1000, workerType: 'securityCheck', runtime: 'worker_threads' },
+        deps,
+      );
       expect(process.stdout.getMaxListeners()).toBe(stdoutBaseline + 8);
 
       await cleanupWorkerPool(first);
@@ -330,7 +340,7 @@ describe('processConcurrency', () => {
 
     it('does not lower a limit it never raised', async () => {
       process.stdout.setMaxListeners(0);
-      const pool = createWorkerPool({ numOfTasks: 1000, workerType: 'fileProcess', runtime: 'worker_threads' });
+      const pool = createWorkerPool({ numOfTasks: 1000, workerType: 'fileProcess', runtime: 'worker_threads' }, deps);
       // Something else sets a finite limit while the pool is alive.
       process.stdout.setMaxListeners(10);
 
@@ -343,7 +353,7 @@ describe('processConcurrency', () => {
       const stdoutBefore = process.stdout.getMaxListeners();
       const stderrBefore = process.stderr.getMaxListeners();
 
-      const pool = createWorkerPool({ numOfTasks: 1000, workerType: 'fileProcess', runtime: 'worker_threads' });
+      const pool = createWorkerPool({ numOfTasks: 1000, workerType: 'fileProcess', runtime: 'worker_threads' }, deps);
       expect(process.stdout.getMaxListeners()).toBe(stdoutBefore + 4);
       expect(process.stderr.getMaxListeners()).toBe(stderrBefore + 4);
 
@@ -356,7 +366,7 @@ describe('processConcurrency', () => {
 
     it('leaves the limit alone for child_process pools', async () => {
       const before = process.stdout.getMaxListeners();
-      const pool = createWorkerPool({ numOfTasks: 1000, workerType: 'fileProcess', runtime: 'child_process' });
+      const pool = createWorkerPool({ numOfTasks: 1000, workerType: 'fileProcess', runtime: 'child_process' }, deps);
       expect(process.stdout.getMaxListeners()).toBe(before);
       await cleanupWorkerPool(pool);
       expect(process.stdout.getMaxListeners()).toBe(before);
@@ -366,7 +376,7 @@ describe('processConcurrency', () => {
       const before = process.stdout.getMaxListeners();
       process.stdout.setMaxListeners(0);
       try {
-        const pool = createWorkerPool({ numOfTasks: 1000, workerType: 'fileProcess', runtime: 'worker_threads' });
+        const pool = createWorkerPool({ numOfTasks: 1000, workerType: 'fileProcess', runtime: 'worker_threads' }, deps);
         expect(process.stdout.getMaxListeners()).toBe(0);
         await cleanupWorkerPool(pool);
         expect(process.stdout.getMaxListeners()).toBe(0);

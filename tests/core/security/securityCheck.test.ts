@@ -1,5 +1,6 @@
 // src/core/security/securityCheck.test.ts
 
+import { fileURLToPath } from 'node:url';
 import pc from 'picocolors';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RawFile } from '../../../src/core/file/fileTypes.js';
@@ -10,24 +11,6 @@ import securityCheckWorker from '../../../src/core/security/workers/securityChec
 import { logger, repomixLogLevels } from '../../../src/shared/logger.js';
 import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
 import { silenceLogger } from '../../testing/loggerDoubles.js';
-
-// Kept as a module mock: the "default deps" test below calls runSecurityCheck without deps, and the real
-// initTaskRunner would start a Tinypool worker from a .js worker path that does not exist under src/.
-vi.mock('../../../src/shared/processConcurrency', () => ({
-  getProcessConcurrency: vi.fn(() => 4),
-  initWorker: vi.fn(() => ({
-    run: vi.fn().mockImplementation(async (task: SecurityCheckTask) => {
-      return await securityCheckWorker(task);
-    }),
-  })),
-  cleanupWorkerPool: vi.fn(),
-  initTaskRunner: vi.fn(() => ({
-    run: vi.fn().mockImplementation(async (task: SecurityCheckTask) => {
-      return await securityCheckWorker(task);
-    }),
-    cleanup: vi.fn(),
-  })),
-}));
 
 const mockFiles: RawFile[] = [
   {
@@ -159,15 +142,24 @@ describe('runSecurityCheck', () => {
   });
 
   it('should use default initTaskRunner when no deps provided', async () => {
-    // Test the default initTaskRunner function (lines 16-18)
+    // The default deps start a real Tinypool pool. The TypeScript worker cannot be spawned from the
+    // source tree, so point the pool at a plain-JS stub through the bundled-worker override.
+    vi.stubEnv(
+      'REPOMIX_WORKER_PATH',
+      fileURLToPath(new URL('../../fixtures/workers/securityCheckStubWorker.mjs', import.meta.url)),
+    );
     // Pin logger.getLogLevel to a valid value
     vi.spyOn(logger, 'getLogLevel').mockReturnValue(repomixLogLevels.INFO);
 
-    const result = await runSecurityCheck(mockFiles, () => {});
+    try {
+      const result = await runSecurityCheck(mockFiles, () => {});
 
-    expect(result).toHaveLength(1);
-    expect(result[0].filePath).toBe('test1.js');
-    expect(result[0].messages).toHaveLength(1);
+      expect(result).toHaveLength(1);
+      expect(result[0].filePath).toBe('test1.js');
+      expect(result[0].messages).toHaveLength(1);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it('should process Git diff content when gitDiffResult is provided', async () => {

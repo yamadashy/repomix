@@ -1,106 +1,95 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import handler, { onWorkerTermination } from '../../src/shared/unifiedWorker.js';
 
-// We need to test the internal functions, so we'll test through the module behavior
-// Mock all worker modules
-vi.mock('../../src/core/file/workers/fileProcessWorker.js', () => ({
-  default: vi.fn().mockResolvedValue({ processed: true }),
-  onWorkerTermination: vi.fn(),
-}));
-vi.mock('../../src/core/security/workers/securityCheckWorker.js', () => ({
-  default: vi.fn().mockResolvedValue(null),
-  onWorkerTermination: vi.fn(),
-}));
-vi.mock('../../src/core/metrics/workers/calculateMetricsWorker.js', () => ({
-  default: vi.fn().mockResolvedValue(100),
-  onWorkerTermination: vi.fn(),
-}));
-// Mock worker_threads
-vi.mock('node:worker_threads', () => ({
-  workerData: undefined,
-}));
+// Worker module doubles injected through deps, so the real workers (and their load-time
+// side effects) are never imported.
+const createWorkerModules = () => ({
+  fileProcess: { default: vi.fn().mockResolvedValue({ processed: true }), onWorkerTermination: vi.fn() },
+  securityCheck: { default: vi.fn().mockResolvedValue(null), onWorkerTermination: vi.fn() },
+  calculateMetrics: { default: vi.fn().mockResolvedValue(100), onWorkerTermination: vi.fn() },
+});
+
+const createDeps = (workerData: unknown = undefined) => {
+  const modules = createWorkerModules();
+  const workerModuleLoaders = {
+    fileProcess: vi.fn(async () => modules.fileProcess),
+    securityCheck: vi.fn(async () => modules.securityCheck),
+    calculateMetrics: vi.fn(async () => modules.calculateMetrics),
+  };
+  return { modules, deps: { workerData, workerModuleLoaders } };
+};
 
 describe('unifiedWorker', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    // Reset module cache to clear handler cache
-    vi.resetModules();
+  afterEach(async () => {
+    // The handler cache is module-level; clear it so each test loads through its own doubles.
+    await onWorkerTermination();
   });
 
   describe('inferWorkerTypeFromTask', () => {
     it('should infer fileProcess from task with rawFile and config', async () => {
-      const { default: handler } = await import('../../src/shared/unifiedWorker.js');
+      const { modules, deps } = createDeps();
       const task = {
         rawFile: { path: 'test.ts', content: 'code' },
         config: {},
       };
 
-      await handler(task);
+      await handler(task, deps);
 
-      const fileProcessWorker = await import('../../src/core/file/workers/fileProcessWorker.js');
-      expect(fileProcessWorker.default).toHaveBeenCalledWith(task);
+      expect(modules.fileProcess.default).toHaveBeenCalledWith(task);
     });
 
     it('should infer calculateMetrics from task with content and encoding', async () => {
-      const { default: handler } = await import('../../src/shared/unifiedWorker.js');
+      const { modules, deps } = createDeps();
       const task = {
         content: 'test content',
         encoding: 'cl100k_base',
       };
 
-      await handler(task);
+      await handler(task, deps);
 
-      const calculateMetricsWorker = await import('../../src/core/metrics/workers/calculateMetricsWorker.js');
-      expect(calculateMetricsWorker.default).toHaveBeenCalledWith(task);
+      expect(modules.calculateMetrics.default).toHaveBeenCalledWith(task);
     });
 
     it('should infer securityCheck from task with items (without encoding)', async () => {
-      const { default: handler } = await import('../../src/shared/unifiedWorker.js');
+      const { modules, deps } = createDeps();
       const task = {
         items: [{ filePath: 'test.ts', content: 'test content', type: 'file' }],
       };
 
-      await handler(task);
+      await handler(task, deps);
 
-      const securityCheckWorker = await import('../../src/core/security/workers/securityCheckWorker.js');
-      expect(securityCheckWorker.default).toHaveBeenCalledWith(task);
+      expect(modules.securityCheck.default).toHaveBeenCalledWith(task);
     });
 
     it('should throw error for unrecognizable task structure', async () => {
-      const { default: handler } = await import('../../src/shared/unifiedWorker.js');
+      const { deps } = createDeps();
       const task = { unknownField: 'value' };
 
-      await expect(handler(task)).rejects.toThrow('Cannot determine worker type');
+      await expect(handler(task, deps)).rejects.toThrow('Cannot determine worker type');
     });
 
     it('should throw error for null task', async () => {
-      const { default: handler } = await import('../../src/shared/unifiedWorker.js');
+      const { deps } = createDeps();
 
-      await expect(handler(null)).rejects.toThrow('Cannot determine worker type');
+      await expect(handler(null, deps)).rejects.toThrow('Cannot determine worker type');
     });
 
     it('should throw error for non-object task', async () => {
-      const { default: handler } = await import('../../src/shared/unifiedWorker.js');
+      const { deps } = createDeps();
 
-      await expect(handler('string')).rejects.toThrow('Cannot determine worker type');
+      await expect(handler('string', deps)).rejects.toThrow('Cannot determine worker type');
     });
   });
 
   describe('repeated calls', () => {
-    it('routes every call through the worker handler without throwing', async () => {
-      // Note: this is a smoke test for repeated invocations, not a cache verifier.
-      // Whether handlerCache short-circuits in loadWorkerHandler can't be observed
-      // from outside — both paths still call Map.set(workerType, ...) once per type,
-      // and Node's own module cache makes the dynamic import effectively free on
-      // repeat. Verifying the cache behavior would require either exposing the
-      // cache or measuring import timing, neither of which is worth it for a
-      // micro-optimization.
-      const { default: handler } = await import('../../src/shared/unifiedWorker.js');
-      const fileProcessWorker = await import('../../src/core/file/workers/fileProcessWorker.js');
+    it('routes every call through the worker handler and loads the module once', async () => {
+      const { modules, deps } = createDeps();
 
-      await handler({ rawFile: { path: 'a.ts', content: '' }, config: {} });
-      await handler({ rawFile: { path: 'b.ts', content: '' }, config: {} });
+      await handler({ rawFile: { path: 'a.ts', content: '' }, config: {} }, deps);
+      await handler({ rawFile: { path: 'b.ts', content: '' }, config: {} }, deps);
 
-      expect(fileProcessWorker.default).toHaveBeenCalledTimes(2);
+      expect(modules.fileProcess.default).toHaveBeenCalledTimes(2);
+      expect(deps.workerModuleLoaders.fileProcess).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -109,131 +98,92 @@ describe('unifiedWorker', () => {
       // Tinypool may reuse a child process configured for one worker type to run
       // tasks for another in bundled environments. inferWorkerTypeFromTask must
       // win over getWorkerTypeFromWorkerData so the right handler is dispatched.
-      vi.resetModules();
-      vi.doMock('node:worker_threads', () => ({
-        workerData: ['x', { workerType: 'securityCheck' }],
-      }));
-      const { default: handler } = await import('../../src/shared/unifiedWorker.js');
-      const fileProcessWorker = await import('../../src/core/file/workers/fileProcessWorker.js');
-      const securityCheckWorker = await import('../../src/core/security/workers/securityCheckWorker.js');
+      const { modules, deps } = createDeps(['x', { workerType: 'securityCheck' }]);
 
       // Task structure infers fileProcess even though workerData says securityCheck.
-      await handler({ rawFile: { path: 'a.ts', content: '' }, config: {} });
+      await handler({ rawFile: { path: 'a.ts', content: '' }, config: {} }, deps);
 
-      expect(fileProcessWorker.default).toHaveBeenCalled();
-      expect(securityCheckWorker.default).not.toHaveBeenCalled();
-      vi.doUnmock('node:worker_threads');
+      expect(modules.fileProcess.default).toHaveBeenCalled();
+      expect(modules.securityCheck.default).not.toHaveBeenCalled();
     });
 
     it('falls back to workerData when task structure is unrecognizable (no inference)', async () => {
       // Mirror of the override case: same workerData (securityCheck), but with an
       // ambiguous task that produces no inferred type. Together with the override
       // test above, this distinguishes "inference always wins" from "inference
-      // wins only when it yields a value" — the production behavior at unifiedWorker.ts:140-142.
-      vi.resetModules();
-      vi.doMock('node:worker_threads', () => ({
-        workerData: ['x', { workerType: 'securityCheck' }],
-      }));
-      const { default: handler } = await import('../../src/shared/unifiedWorker.js');
-      const fileProcessWorker = await import('../../src/core/file/workers/fileProcessWorker.js');
-      const securityCheckWorker = await import('../../src/core/security/workers/securityCheckWorker.js');
+      // wins only when it yields a value".
+      const { modules, deps } = createDeps(['x', { workerType: 'securityCheck' }]);
 
-      await handler({ ambiguous: true });
+      await handler({ ambiguous: true }, deps);
 
-      expect(securityCheckWorker.default).toHaveBeenCalled();
-      expect(fileProcessWorker.default).not.toHaveBeenCalled();
-      vi.doUnmock('node:worker_threads');
+      expect(modules.securityCheck.default).toHaveBeenCalled();
+      expect(modules.fileProcess.default).not.toHaveBeenCalled();
     });
   });
 
   describe('workerData detection', () => {
     it('uses workerType from array-shaped workerData (Tinypool child_process)', async () => {
-      vi.resetModules();
-      vi.doMock('node:worker_threads', () => ({
-        workerData: ['something', { workerType: 'fileProcess' }],
-      }));
+      const { modules, deps } = createDeps(['something', { workerType: 'fileProcess' }]);
+
       // Task that is not auto-inferable so workerData is the only signal.
-      const { default: handler } = await import('../../src/shared/unifiedWorker.js');
-      const fileProcessWorker = await import('../../src/core/file/workers/fileProcessWorker.js');
+      await handler({ ambiguous: true }, deps);
 
-      await handler({ ambiguous: true });
-
-      expect(fileProcessWorker.default).toHaveBeenCalled();
-      vi.doUnmock('node:worker_threads');
+      expect(modules.fileProcess.default).toHaveBeenCalled();
     });
 
     it('uses workerType from object-shaped workerData (worker_threads)', async () => {
-      vi.resetModules();
-      vi.doMock('node:worker_threads', () => ({
-        workerData: { workerType: 'securityCheck' },
-      }));
-      const { default: handler } = await import('../../src/shared/unifiedWorker.js');
-      const securityCheckWorker = await import('../../src/core/security/workers/securityCheckWorker.js');
+      const { modules, deps } = createDeps({ workerType: 'securityCheck' });
 
-      await handler({ ambiguous: true });
+      await handler({ ambiguous: true }, deps);
 
-      expect(securityCheckWorker.default).toHaveBeenCalled();
-      vi.doUnmock('node:worker_threads');
+      expect(modules.securityCheck.default).toHaveBeenCalled();
     });
 
     it('falls back to REPOMIX_WORKER_TYPE env var', async () => {
-      vi.resetModules();
-      vi.doMock('node:worker_threads', () => ({ workerData: undefined }));
-      const original = process.env.REPOMIX_WORKER_TYPE;
-      process.env.REPOMIX_WORKER_TYPE = 'calculateMetrics';
+      const { modules, deps } = createDeps(undefined);
+      vi.stubEnv('REPOMIX_WORKER_TYPE', 'calculateMetrics');
 
       try {
-        const { default: handler } = await import('../../src/shared/unifiedWorker.js');
-        const calculateMetricsWorker = await import('../../src/core/metrics/workers/calculateMetricsWorker.js');
+        await handler({ ambiguous: true }, deps);
 
-        await handler({ ambiguous: true });
-
-        expect(calculateMetricsWorker.default).toHaveBeenCalled();
+        expect(modules.calculateMetrics.default).toHaveBeenCalled();
       } finally {
-        if (original === undefined) {
-          delete process.env.REPOMIX_WORKER_TYPE;
-        } else {
-          process.env.REPOMIX_WORKER_TYPE = original;
-        }
-        vi.doUnmock('node:worker_threads');
+        vi.unstubAllEnvs();
       }
     });
   });
 
   describe('onWorkerTermination', () => {
     it('should call cleanup on cached handlers', async () => {
-      // First, load a handler to populate the cache
-      const { default: handler, onWorkerTermination } = await import('../../src/shared/unifiedWorker.js');
+      const { modules, deps } = createDeps();
       const task = {
         content: 'test content',
         encoding: 'cl100k_base',
       };
 
-      await handler(task);
+      // First, load a handler to populate the cache
+      await handler(task, deps);
 
       // Now call termination
       await onWorkerTermination();
 
-      const calculateMetricsWorker = await import('../../src/core/metrics/workers/calculateMetricsWorker.js');
-      expect(calculateMetricsWorker.onWorkerTermination).toHaveBeenCalled();
+      expect(modules.calculateMetrics.onWorkerTermination).toHaveBeenCalled();
     });
 
     it('should clear handler cache after cleanup', async () => {
-      const { default: handler, onWorkerTermination } = await import('../../src/shared/unifiedWorker.js');
+      const { modules, deps } = createDeps();
 
       // Load handler
-      await handler({ content: 'test', encoding: 'cl100k_base' });
+      await handler({ content: 'test', encoding: 'cl100k_base' }, deps);
 
       // Terminate
       await onWorkerTermination();
 
-      // Load again - should call the module import again
-      vi.clearAllMocks();
-      await handler({ content: 'test', encoding: 'cl100k_base' });
+      // Load again - the module must be loaded again because the cache was cleared
+      await handler({ content: 'test', encoding: 'cl100k_base' }, deps);
 
-      const calculateMetricsWorker = await import('../../src/core/metrics/workers/calculateMetricsWorker.js');
-      // The handler should be called again (cache was cleared)
-      expect(calculateMetricsWorker.default).toHaveBeenCalled();
+      expect(modules.calculateMetrics.default).toHaveBeenCalledTimes(2);
+      expect(deps.workerModuleLoaders.calculateMetrics).toHaveBeenCalledTimes(2);
     });
   });
 });
