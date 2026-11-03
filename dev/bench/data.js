@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793700604109,
+  "lastUpdate": 1793706424366,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -16373,6 +16373,51 @@ window.BENCHMARK_DATA = {
             "range": "±27",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1250ms, Q3: 1277ms\nAll times: 1218, 1230, 1235, 1243, 1245, 1250, 1254, 1258, 1263, 1272, 1272, 1274, 1275, 1275, 1276, 1277, 1281, 1294, 1303, 1310ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d8717046df48707204f227b4c2ee3613887be6ee",
+          "message": "Merge pull request #1994 from yamadashy/test/coverage-gaps\n\ntest(coverage): Raise coverage for CLI actions, packager, skill and archive paths",
+          "timestamp": "2026-11-03T20:45:44+09:00",
+          "tree_id": "b5291e615204adf76b56fd6beca5fd9a064debca",
+          "url": "https://github.com/yamadashy/repomix/commit/d8717046df48707204f227b4c2ee3613887be6ee"
+        },
+        "date": 1793706422831,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 873,
+            "range": "±355",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 714ms, Q3: 1069ms\nAll times: 651, 660, 671, 675, 691, 694, 695, 714, 727, 731, 742, 802, 803, 844, 862, 873, 881, 995, 1008, 1018, 1021, 1064, 1069, 1079, 1086, 1114, 1127, 1145, 1165, 1170ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1038,
+            "range": "±27",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1029ms, Q3: 1056ms\nAll times: 1017, 1018, 1023, 1023, 1025, 1029, 1030, 1031, 1032, 1034, 1038, 1042, 1050, 1051, 1055, 1056, 1062, 1077, 1100, 1180ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 837,
+            "range": "±26",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 829ms, Q3: 855ms\nAll times: 814, 818, 821, 821, 825, 829, 832, 833, 834, 837, 837, 839, 845, 848, 853, 855, 861, 867, 876, 908ms"
           }
         ]
       }
