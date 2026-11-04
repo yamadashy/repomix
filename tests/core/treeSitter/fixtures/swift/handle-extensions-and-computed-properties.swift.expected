@@ -1,0 +1,17 @@
+// Define a basic struct
+struct Point {
+var x: Double
+var y: Double
+⋮----
+// Extensions
+⋮----
+// Computed property
+var magnitude: Double {
+⋮----
+// Method
+func distance(to point: Point) -> Double {
+let dx = x - point.x
+let dy = y - point.y
+⋮----
+// Static method
+static func zero() -> Point {
