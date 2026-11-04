@@ -1,0 +1,10 @@
+/* Main styles for the application */
+body {
+⋮----
+/* Header styles */
+.header {
+⋮----
+/* Navigation styles */
+.nav {
+⋮----
+.container {

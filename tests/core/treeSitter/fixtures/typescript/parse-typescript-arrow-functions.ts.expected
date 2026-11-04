@@ -1,0 +1,9 @@
+// Arrow function for addition
+/** Adds two numbers together
+ * @param x First number
+ * @param y Second number
+ */
+const add = (x: number, y: number): number =>
+// Function type declaration
+⋮----
+multiply = (a, b) =>

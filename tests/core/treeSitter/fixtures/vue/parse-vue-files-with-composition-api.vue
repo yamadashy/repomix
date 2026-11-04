@@ -1,0 +1,23 @@
+<template>
+  <div class="composition">
+    <p>Message: {{ message }}</p>
+    <button @click="updateMessage">Update</button>
+  </div>
+</template>
+
+<script setup>
+// Composition API example
+import { ref } from 'vue';
+
+/**
+ * Message state
+ */
+const message = ref('Hello from Composition API');
+
+/**
+ * Updates the message
+ */
+function updateMessage() {
+  message.value = 'Updated message!';
+}
+</script>
