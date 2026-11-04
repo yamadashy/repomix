@@ -1,8 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { mergeConfigs } from '../../../src/config/configLoad.js';
-import type { RepomixConfigFile, RepomixConfigMerged, RepomixOutputStyle } from '../../../src/config/configSchema.js';
+import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import { collectFiles } from '../../../src/core/file/fileCollect.js';
 import { resolveFileLevel } from '../../../src/core/file/fileLevelResolve.js';
 import { readRawFile } from '../../../src/core/file/fileRead.js';
@@ -15,6 +14,7 @@ import { filterOutUntrustedFiles } from '../../../src/core/security/filterOutUnt
 import { runSecurityCheck } from '../../../src/core/security/securityCheck.js';
 import { validateFileSafety } from '../../../src/core/security/validateFileSafety.js';
 import securityCheckWorker from '../../../src/core/security/workers/securityCheckWorker.js';
+import { buildPackSpecConfig } from '../../testing/packSpecConfig.js';
 import { createMetricsTaskRunnerDouble, inlineInitTaskRunner } from '../../testing/taskRunnerDoubles.js';
 import { createTempDir } from '../../testing/tempDir.js';
 
@@ -38,19 +38,6 @@ const FAKE_AWS_SECRET = 'AWS_SECRET_ACCESS_KEY = wJalrXUtnFEMI/K7MDENG/bPxRfiCYS
 // handling, result aggregation) is exercised end-to-end without the cost or
 // flakiness of spawning real worker_threads.
 const inlineSecurityTaskRunner = inlineInitTaskRunner(securityCheckWorker);
-
-const buildMergedConfig = (
-  rootDir: string,
-  outputFilePath: string,
-  overrides: Partial<RepomixConfigFile> = {},
-): RepomixConfigMerged =>
-  mergeConfigs(rootDir, overrides, {
-    output: {
-      filePath: outputFilePath,
-      style: 'xml' as RepomixOutputStyle,
-      git: { sortByChanges: false, includeDiffs: false, includeLogs: false },
-    },
-  });
 
 const runPack = async (rootDir: string, config: RepomixConfigMerged) =>
   pack([rootDir], config, () => {}, {
@@ -107,7 +94,7 @@ describe('security scan spec', () => {
   });
 
   it('detects a known fake credential and excludes the file from the packed output', async () => {
-    const config = buildMergedConfig(tmpDir, outputPath);
+    const config = buildPackSpecConfig(tmpDir, outputPath);
     const result = await runPack(tmpDir, config);
 
     // The orchestration MUST surface the credential file as suspicious.
@@ -130,7 +117,7 @@ describe('security scan spec', () => {
     // Negative-direction contract: future optimizations must not start
     // running the scan unconditionally as a side effect of pre-warming or
     // worker-pool sharing.
-    const config = buildMergedConfig(tmpDir, outputPath, {
+    const config = buildPackSpecConfig(tmpDir, outputPath, 'xml', {
       security: { enableSecurityCheck: false },
     });
     const result = await runPack(tmpDir, config);
