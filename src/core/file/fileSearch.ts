@@ -113,6 +113,19 @@ export const escapeGlobPattern = (pattern: string): string => {
 };
 
 /**
+ * Drops a redundant leading "./" (or several) from an include pattern, keeping a
+ * leading "!". fast-glob keeps the "./" in the paths it returns ("./src/a.ts"), and
+ * those then fail to match the root-relative paths the rest of Repomix compares
+ * against, such as git's change counts. A bare "./" is left alone: it already
+ * selects the whole root.
+ */
+export const normalizeIncludePattern = (pattern: string): string => {
+  const negation = pattern.startsWith('!') ? '!' : '';
+  const stripped = pattern.slice(negation.length).replace(/^(?:\.\/)+/, '');
+  return stripped === '' ? pattern : `${negation}${stripped}`;
+};
+
+/**
  * Normalizes glob patterns by removing trailing slashes and ensuring consistent directory pattern handling.
  * Makes "**\/folder", "**\/folder/", and "**\/folder/**\/*" behave identically.
  *
@@ -254,7 +267,7 @@ export const searchFiles = async (
     logger.trace('Deferred ignore patterns:', deferredIgnorePatterns);
 
     // Start with configured include patterns
-    let includePatterns = config.include.map((pattern) => escapeGlobPattern(pattern));
+    let includePatterns = config.include.map((pattern) => escapeGlobPattern(normalizeIncludePattern(pattern)));
 
     // If explicit files are provided, add them to include patterns
     if (explicitFiles) {
