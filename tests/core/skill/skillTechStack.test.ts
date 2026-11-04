@@ -415,7 +415,7 @@ tokio = { version = "1.0", features = ["full"] }`,
       expect(result.dependencies).toContainEqual({ name: 'torch', version: '2.1.0' });
     });
 
-    test('should parse quoted entries in the supported [project.dependencies] table of pyproject.toml', () => {
+    test('should parse quoted entries in a [project.dependencies] table of pyproject.toml', () => {
       const result = detectSingle(
         'pyproject.toml',
         `[project]
@@ -435,7 +435,80 @@ line-length = "88"`,
       expect(result.frameworks).toEqual(['Django', 'Flask', 'FastAPI']);
     });
 
-    test('should report no dependencies for a pyproject.toml without a [project.dependencies] section', () => {
+    test('should parse a PEP 621 multi-line dependencies array in the [project] table', () => {
+      const result = detectSingle(
+        'pyproject.toml',
+        `[project]
+name = "myproject"
+dependencies = [
+    "fastapi[all]>=0.100", # web framework
+    'Django>=4.2; python_version >= "3.10"',
+    "requests",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]`,
+      );
+
+      expect(result.dependencies.map((dep) => dep.name)).toEqual(['fastapi', 'Django', 'requests']);
+      expect(result.frameworks).toEqual(['FastAPI', 'Django']);
+    });
+
+    test('should parse a single-line PEP 621 dependencies array', () => {
+      const result = detectSingle('pyproject.toml', '[project]\ndependencies = ["flask>=3", "click"]\n');
+
+      expect(result.dependencies.map((dep) => dep.name)).toEqual(['flask', 'click']);
+      expect(result.frameworks).toEqual(['Flask']);
+    });
+
+    test('should not cut a [project.dependencies] table short at an extra such as fastapi[all]', () => {
+      const result = detectSingle(
+        'pyproject.toml',
+        `[project.dependencies]
+"fastapi[all]>=0.100"
+'django'`,
+      );
+
+      expect(result.dependencies.map((dep) => dep.name)).toEqual(['fastapi', 'django']);
+      expect(result.frameworks).toEqual(['FastAPI', 'Django']);
+    });
+
+    test('should parse Poetry [tool.poetry.dependencies] and skip the python constraint', () => {
+      const result = detectSingle(
+        'pyproject.toml',
+        `[tool.poetry]
+name = "myproject"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+django = "^4.2"
+fastapi = { version = "^0.100", extras = ["all"] }
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.0"`,
+      );
+
+      expect(result.dependencies.map((dep) => dep.name)).toEqual(['django', 'fastapi']);
+      expect(result.frameworks).toEqual(['Django', 'FastAPI']);
+    });
+
+    test('should list a package declared in both [project] and Poetry tables only once', () => {
+      const result = detectSingle(
+        'pyproject.toml',
+        `[project]
+dependencies = ["Django>=4.2", "typing_extensions"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+django = "^4.2"
+typing-extensions = "^4.0"`,
+      );
+
+      expect(result.dependencies.map((dep) => dep.name)).toEqual(['Django', 'typing_extensions']);
+      expect(result.frameworks).toEqual(['Django']);
+    });
+
+    test('should report no dependencies for a pyproject.toml without any dependency declarations', () => {
       const result = detectSingle('pyproject.toml', '[tool.ruff]\nline-length = 100\n');
 
       expect(result.languages).toEqual(['Python']);
@@ -580,6 +653,24 @@ gem 'puma'`,
 
       expect(result.languages).toEqual(['Kotlin']);
       expect(result.configFiles).toEqual(['build.gradle.kts']);
+    });
+
+    test('should parse Kotlin DSL implementation and compile dependencies in build.gradle.kts', () => {
+      const result = detectSingle(
+        'build.gradle.kts',
+        `dependencies {
+    implementation("org.springframework.boot:spring-boot-starter-web:3.1.0")
+    implementation( "io.ktor:ktor-server-core:2.3.0" )
+    compile("commons-lang")
+}`,
+      );
+
+      expect(result.dependencies).toEqual([
+        { name: 'spring-boot-starter-web' },
+        { name: 'ktor-server-core' },
+        { name: 'commons-lang' },
+      ]);
+      expect(result.frameworks).toEqual(['Spring', 'Ktor']);
     });
 
     test('should ignore files outside any package directory', () => {

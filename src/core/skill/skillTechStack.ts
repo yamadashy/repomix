@@ -120,29 +120,104 @@ function parseRequirementsTxt(content: string): Partial<TechStackInfo> {
   return { dependencies, frameworks: [...new Set(frameworks)] };
 }
 
+// Matches a TOML table header line such as `[project]` or `[[tool.foo]]`. Dependency strings
+// with extras like `"fastapi[all]"` start with a quote, so they are not mistaken for headers.
+const TOML_TABLE_HEADER = /^\s*\[\[?\s*([^\]]+?)\s*\]\]?\s*(?:#.*)?$/;
+
+// Returns the body lines of the TOML table named `tableName`, up to the next table header.
+function getTomlTableLines(content: string, tableName: string): string[] | undefined {
+  const lines = content.split(/\r?\n/);
+  const startIndex = lines.findIndex((line) => line.match(TOML_TABLE_HEADER)?.[1] === tableName);
+  if (startIndex === -1) return undefined;
+
+  const body: string[] = [];
+  for (const line of lines.slice(startIndex + 1)) {
+    if (TOML_TABLE_HEADER.test(line)) break;
+    body.push(line);
+  }
+  return body;
+}
+
+// Collects the string literals of the TOML array assigned to `key` (e.g. `dependencies = [...]`),
+// which may span multiple lines. Brackets inside strings (extras such as `fastapi[all]`) are ignored.
+function getTomlStringArray(lines: string[], key: string): string[] {
+  const text = lines.join('\n');
+  const keyMatch = new RegExp(`^\\s*${key}\\s*=\\s*\\[`, 'm').exec(text);
+  if (!keyMatch) return [];
+
+  const values: string[] = [];
+  let index = keyMatch.index + keyMatch[0].length;
+  while (index < text.length) {
+    const char = text[index];
+    if (char === ']') break;
+    if (char === '#') {
+      // Skip comments to the end of the line
+      const newline = text.indexOf('\n', index);
+      index = newline === -1 ? text.length : newline;
+      continue;
+    }
+    if (char === '"' || char === "'") {
+      const closing = text.indexOf(char, index + 1);
+      if (closing === -1) break;
+      values.push(text.slice(index + 1, closing));
+      index = closing + 1;
+      continue;
+    }
+    index++;
+  }
+  return values;
+}
+
+// Extracts the distribution name from a PEP 508 requirement such as `fastapi[all]>=0.1; python_version > "3.8"`
+function getPep508Name(requirement: string): string | undefined {
+  return requirement.trim().match(/^[A-Za-z0-9][A-Za-z0-9._-]*/)?.[0];
+}
+
 function parsePyprojectToml(content: string): Partial<TechStackInfo> {
+  const names: string[] = [];
+
+  // PEP 621: `dependencies = [...]` inside the [project] table
+  const projectLines = getTomlTableLines(content, 'project');
+  if (projectLines) {
+    names.push(
+      ...getTomlStringArray(projectLines, 'dependencies')
+        .map(getPep508Name)
+        .filter((name) => name !== undefined),
+    );
+  }
+
+  // Non-standard [project.dependencies] table holding one quoted requirement per line
+  const projectDepsLines = getTomlTableLines(content, 'project.dependencies');
+  if (projectDepsLines) {
+    for (const line of projectDepsLines) {
+      const requirement = line.match(/^\s*(['"])(.+?)\1/)?.[2];
+      const name = requirement && getPep508Name(requirement);
+      if (name) names.push(name);
+    }
+  }
+
+  // Poetry: `name = "^1.0"` or `name = { version = "^1.0", extras = [...] }`; `python` is the interpreter constraint
+  const poetryLines = getTomlTableLines(content, 'tool.poetry.dependencies');
+  if (poetryLines) {
+    for (const line of poetryLines) {
+      const name = line.match(/^\s*["']?([A-Za-z0-9][A-Za-z0-9._-]*)["']?\s*=/)?.[1];
+      if (name && name.toLowerCase() !== 'python') names.push(name);
+    }
+  }
+
   const dependencies: DependencyInfo[] = [];
   const frameworks: string[] = [];
-
-  // Simple TOML parsing for dependencies
-  const depsMatch = content.match(/\[project\.dependencies\]([\s\S]*?)(?=\[|$)/);
-  if (depsMatch) {
-    const depsSection = depsMatch[1];
-    const depLines = depsSection.match(/"([^"]+)"/g);
-    if (depLines) {
-      for (const dep of depLines) {
-        const name = dep
-          .replace(/"/g, '')
-          .split(/[=<>!~]/)[0]
-          .trim();
-        if (name) {
-          dependencies.push({ name });
-          if (name.toLowerCase() === 'django') frameworks.push('Django');
-          if (name.toLowerCase() === 'flask') frameworks.push('Flask');
-          if (name.toLowerCase() === 'fastapi') frameworks.push('FastAPI');
-        }
-      }
-    }
+  // Poetry 2.x projects may declare the same package in both [project] and [tool.poetry.dependencies];
+  // package names are case-insensitive (PEP 503), so keep only the first occurrence.
+  const seen = new Set<string>();
+  for (const name of names) {
+    const normalizedName = name.toLowerCase().replace(/[-_.]+/g, '-');
+    if (seen.has(normalizedName)) continue;
+    seen.add(normalizedName);
+    dependencies.push({ name });
+    if (name.toLowerCase() === 'django') frameworks.push('Django');
+    if (name.toLowerCase() === 'flask') frameworks.push('Flask');
+    if (name.toLowerCase() === 'fastapi') frameworks.push('FastAPI');
   }
 
   return { dependencies, frameworks: [...new Set(frameworks)] };
@@ -275,8 +350,9 @@ function parseBuildGradle(content: string): Partial<TechStackInfo> {
   const dependencies: DependencyInfo[] = [];
   const frameworks: string[] = [];
 
-  // Parse implementation/compile dependencies
-  const depMatches = content.matchAll(/(?:implementation|compile)\s*['"(]([^'"()]+)['"]/g);
+  // Parse implementation/compile dependencies in Groovy (`implementation 'g:a:v'`)
+  // and Kotlin DSL (`implementation("g:a:v")`) form
+  const depMatches = content.matchAll(/(?:implementation|compile)\s*(?:\(\s*)?['"]([^'"]+)['"]/g);
   for (const match of depMatches) {
     const dep = match[1];
     const parts = dep.split(':');
