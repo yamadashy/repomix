@@ -1,0 +1,6 @@
+package main
+⋮----
+// UserID is a true alias for int
+⋮----
+// Result is a defined map type
+type Result map[string]interface{}
