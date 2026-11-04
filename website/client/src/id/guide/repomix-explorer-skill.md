@@ -52,6 +52,12 @@ Setelah diinstal, Anda dapat menganalisis codebase dengan instruksi bahasa alami
 https://github.com/facebook/react"
 ```
 
+Skill ini mendukung GitHub, GitLab (termasuk instans yang dihosting sendiri dan grup bertingkat), Bitbucket, Azure DevOps, dan host Git lainnya. Gunakan URL clone HTTPS atau alamat SSH bergaya SCP seperti `git@gitlab.example.com:group/subgroup/project.git`, dengan mempertahankan namespace lengkap dan jalur clone khusus penyedia. Bentuk singkat `owner/repo` hanya berlaku untuk GitHub.
+
+Untuk URL web yang menunjuk ke branch, tag, commit, file, atau direktori, skill ini menggunakan URL clone dengan `--remote-branch <ref>` dan, jika diperlukan, `--include <path or glob>`. Jalur dalam URL web tidak membatasi file mana yang dikemas.
+
+Repository jarak jauh selain GitHub memerlukan Git yang sudah terinstal. Untuk repository privat, konfigurasikan kredensial Git atau kunci SSH di lingkungan Anda. Jika Repomix menolak suatu format alamat, gunakan URL clone yang didukung atau checkout lokal.
+
 #### Jelajahi codebase lokal
 
 ```text
