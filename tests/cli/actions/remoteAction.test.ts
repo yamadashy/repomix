@@ -1,5 +1,4 @@
 import * as fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { DefaultActionRunnerResult } from '../../../src/cli/actions/defaultAction.js';
@@ -12,6 +11,7 @@ import { OperationCancelledError } from '../../../src/shared/errorHandle.js';
 import { logger } from '../../../src/shared/logger.js';
 import { createMockSpinner } from '../../testing/cliDoubles.js';
 import { silenceLogger } from '../../testing/loggerDoubles.js';
+import { createTempDir } from '../../testing/tempDir.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 // Stand-ins for the copy-out step and the spinner. The copy is covered by the
@@ -970,11 +970,7 @@ describe('remoteAction functions', () => {
     let tempDir: string;
 
     beforeEach(async () => {
-      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-remote-copy-'));
-    });
-
-    afterEach(async () => {
-      await fs.rm(tempDir, { recursive: true, force: true });
+      tempDir = await createTempDir('repomix-remote-copy-');
     });
 
     test('should copy output file when source and target are different', async () => {

@@ -1,8 +1,8 @@
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { searchFiles } from '../../../src/core/file/fileSearch.js';
+import { createTempDir } from '../../testing/tempDir.js';
 import { createMockConfig, writeFixture } from '../../testing/testUtils.js';
 
 // Behavior-level regression tests for empty-directory preservation.
@@ -22,11 +22,7 @@ describe('empty directory preservation spec', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-emptydir-spec-'));
-  });
-
-  afterEach(async () => {
-    await fs.rm(tmpDir, { recursive: true, force: true });
+    tmpDir = await createTempDir('repomix-emptydir-spec-');
   });
 
   it('returns an empty directory in emptyDirPaths when `includeEmptyDirectories: true`', async () => {

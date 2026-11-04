@@ -1,8 +1,8 @@
 import fsp from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { beforeEach, describe, expect, test } from 'vitest';
 import { formatPackToolResponse, type McpToolMetrics } from '../../../src/mcp/tools/mcpToolRuntime.js';
+import { createTempDir } from '../../testing/tempDir.js';
 
 // Real modules (no path/fs mocks): exercises the sandbox virtualization branch of
 // formatPackToolResponse end to end — the host output path and the absolute
@@ -27,13 +27,9 @@ describe('formatPackToolResponse virtualization', () => {
   let outputFilePath = '';
 
   beforeEach(async () => {
-    root = await fsp.realpath(await fsp.mkdtemp(path.join(os.tmpdir(), 'fmt-scope-')));
+    root = await createTempDir('fmt-scope-', { realpath: true });
     outputFilePath = path.join(root, 'repomix-output.xml');
     await fsp.writeFile(outputFilePath, 'line1\nline2\n');
-  });
-
-  afterEach(async () => {
-    await fsp.rm(root, { recursive: true, force: true });
   });
 
   test('sandboxed: blanks the host output path and virtualizes the directory', async () => {

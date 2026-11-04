@@ -1,5 +1,4 @@
 import fsp from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
@@ -18,6 +17,7 @@ import { registerPackCodebaseTool } from '../../../src/mcp/tools/packCodebaseToo
 import { registerReadRepomixOutputTool } from '../../../src/mcp/tools/readRepomixOutputTool.js';
 import { logger, repomixLogLevels } from '../../../src/shared/logger.js';
 import { createMcpServerDouble, type ToolHandler } from '../../testing/mcpServerDoubles.js';
+import { createTempDir } from '../../testing/tempDir.js';
 // BLACKBOX CONTRACT for --sandbox. Drives the five tool handlers on a REAL temp
 // workspace (no path/fs mocks) and asserts only observable request→response
 // behavior. `runCli` is a test double ONLY to (a) prove the pattern/path guard rejects
@@ -103,16 +103,15 @@ describe('sandbox contract', () => {
   let pack: ToolHandler;
 
   beforeEach(async () => {
-    root = await fsp.realpath(await fsp.mkdtemp(path.join(os.tmpdir(), 'sbx-contract-')));
+    root = await createTempDir('sbx-contract-', { realpath: true });
     await fsp.mkdir(path.join(root, 'src'));
     await fsp.writeFile(path.join(root, 'src', 'a.ts'), 'const x = 1;\n');
     readFile = capture(registerFileSystemReadFileTool, root);
     readDir = capture(registerFileSystemReadDirectoryTool, root);
     pack = capture(registerPackWithCliDouble, root);
   });
-  afterEach(async () => {
+  afterEach(() => {
     vi.resetAllMocks();
-    await fsp.rm(root, { recursive: true, force: true });
   });
 
   // No response — success or error — may echo the host workspace root. (Echoing the
@@ -163,11 +162,8 @@ describe('sandbox contract', () => {
   describe('confinement: real symlink escapes are caught via realpath', () => {
     let outside = '';
     beforeEach(async () => {
-      outside = await fsp.realpath(await fsp.mkdtemp(path.join(os.tmpdir(), 'sbx-outside-')));
+      outside = await createTempDir('sbx-outside-', { realpath: true });
       await fsp.writeFile(path.join(outside, 'secret.txt'), 'TOP SECRET');
-    });
-    afterEach(async () => {
-      await fsp.rm(outside, { recursive: true, force: true });
     });
 
     test('read_file through an in-root symlink to an outside file is rejected and leaks nothing', async () => {

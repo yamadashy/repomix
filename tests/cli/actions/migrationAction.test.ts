@@ -1,9 +1,9 @@
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { runMigrationAction } from '../../../src/cli/actions/migrationAction.js';
 import { silenceLogger } from '../../testing/loggerDoubles.js';
+import { createTempDir } from '../../testing/tempDir.js';
 
 type MigrationDeps = NonNullable<Parameters<typeof runMigrationAction>[1]>;
 
@@ -48,7 +48,7 @@ describe('migrationAction', () => {
   };
 
   beforeEach(async () => {
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-migration-action-'));
+    tempDir = await createTempDir('repomix-migration-action-');
     rootDir = path.join(tempDir, 'project');
     // The old global config is resolved from $HOME, so point it inside the temp dir
     // to keep the test away from the developer's real ~/.config/repopack.
@@ -69,9 +69,8 @@ describe('migrationAction', () => {
     };
   });
 
-  afterEach(async () => {
+  afterEach(() => {
     vi.restoreAllMocks();
-    await fs.rm(tempDir, { recursive: true, force: true });
   });
 
   test('should migrate all files when they exist', async () => {

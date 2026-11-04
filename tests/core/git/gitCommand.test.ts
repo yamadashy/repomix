@@ -180,15 +180,11 @@ file2.ts
       await fs.mkdir(path.join(directory, '.git'), { recursive: true });
       await fs.writeFile(path.join(directory, '.git', 'config'), '[log]\n\tshowSignature = true\n');
 
-      try {
-        await execGitShallowClone('https://github.com/user/repo.git', directory, undefined, {
-          execFileAsync: mockFileExecAsync,
-        });
+      await execGitShallowClone('https://github.com/user/repo.git', directory, undefined, {
+        execFileAsync: mockFileExecAsync,
+      });
 
-        await expect(fs.access(path.join(directory, '.git'))).rejects.toThrow();
-      } finally {
-        await fs.rm(directory, { recursive: true, force: true });
-      }
+      await expect(fs.access(path.join(directory, '.git'))).rejects.toThrow();
     });
 
     test('should execute without branch option if not specified by user', async () => {

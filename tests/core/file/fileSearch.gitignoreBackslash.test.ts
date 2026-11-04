@@ -1,9 +1,9 @@
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import { globby } from 'globby';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { searchFiles } from '../../../src/core/file/fileSearch.js';
+import { createTempDir } from '../../testing/tempDir.js';
 import { createMockConfig, writeFixture } from '../../testing/testUtils.js';
 
 // Regression tests for #1765: repos in the wild carry junk backslash lines in
@@ -24,14 +24,10 @@ describe.each([{ withGit: false }, { withGit: true }])(
     let tmpDir: string;
 
     beforeEach(async () => {
-      tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-gitignore-backslash-'));
+      tmpDir = await createTempDir('repomix-gitignore-backslash-');
       if (withGit) {
         await fs.mkdir(path.join(tmpDir, '.git'));
       }
-    });
-
-    afterEach(async () => {
-      await fs.rm(tmpDir, { recursive: true, force: true });
     });
 
     it('survives a root .gitignore containing `\\.\\NUL` and still applies the other rules', async () => {

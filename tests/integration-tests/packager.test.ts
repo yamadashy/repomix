@@ -1,8 +1,7 @@
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
-import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { beforeEach, describe, expect, test } from 'vitest';
 
 // Mock globby worker for integration tests to avoid worker file loading issues
 
@@ -20,6 +19,7 @@ import { pack } from '../../src/core/packager.js';
 import { filterOutUntrustedFiles } from '../../src/core/security/filterOutUntrustedFiles.js';
 import { validateFileSafety } from '../../src/core/security/validateFileSafety.js';
 import { createMetricsTaskRunnerDouble } from '../testing/taskRunnerDoubles.js';
+import { createTempDir } from '../testing/tempDir.js';
 import { isWindows } from '../testing/testUtils.js';
 
 const fixturesDir = path.join(__dirname, 'fixtures', 'packager');
@@ -66,12 +66,7 @@ const outputsDir = path.join(fixturesDir, 'outputs');
 
   beforeEach(async () => {
     // Create a temporary directory for each test
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-test-'));
-  });
-
-  afterEach(async () => {
-    // Clean up the temporary directory after each test
-    await fs.rm(tempDir, { recursive: true, force: true });
+    tempDir = await createTempDir('repomix-test-');
   });
 
   for (const { desc, input, output, config } of testCases) {

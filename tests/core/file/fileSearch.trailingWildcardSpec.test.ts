@@ -1,8 +1,6 @@
-import fs from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { searchFiles } from '../../../src/core/file/fileSearch.js';
+import { createTempDir } from '../../testing/tempDir.js';
 import { createMockConfig, writeFixture } from '../../testing/testUtils.js';
 
 // Ignore patterns of the form `**/name*` (a wildcard in the last segment) used to
@@ -15,11 +13,7 @@ describe('trailing wildcard ignore patterns', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-trailing-wildcard-spec-'));
-  });
-
-  afterEach(async () => {
-    await fs.rm(tmpDir, { recursive: true, force: true });
+    tmpDir = await createTempDir('repomix-trailing-wildcard-spec-');
   });
 
   it('excludes files matched by built-in rules ending in a wildcard', async () => {

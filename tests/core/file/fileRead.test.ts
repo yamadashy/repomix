@@ -1,19 +1,18 @@
 import * as fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { readRawFile } from '../../../src/core/file/fileRead.js';
 import { silenceLogger } from '../../testing/loggerDoubles.js';
+import { createTempDir } from '../../testing/tempDir.js';
 
 describe('readRawFile', () => {
   let testDir: string;
 
   beforeEach(async () => {
-    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-fileRead-'));
+    testDir = await createTempDir('repomix-fileRead-');
   });
 
-  afterEach(async () => {
-    await fs.rm(testDir, { recursive: true, force: true });
+  afterEach(() => {
     vi.restoreAllMocks();
   });
 

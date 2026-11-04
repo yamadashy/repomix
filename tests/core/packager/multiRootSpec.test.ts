@@ -1,7 +1,6 @@
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { mergeConfigs } from '../../../src/config/configLoad.js';
 import type { RepomixConfigFile, RepomixConfigMerged, RepomixOutputStyle } from '../../../src/config/configSchema.js';
 import { collectFiles } from '../../../src/core/file/fileCollect.js';
@@ -15,6 +14,7 @@ import { pack } from '../../../src/core/packager.js';
 import { filterOutUntrustedFiles } from '../../../src/core/security/filterOutUntrustedFiles.js';
 import { validateFileSafety } from '../../../src/core/security/validateFileSafety.js';
 import { createMetricsTaskRunnerDouble } from '../../testing/taskRunnerDoubles.js';
+import { createTempDir } from '../../testing/tempDir.js';
 
 // Behavior-level regression tests for multi-root packing.
 //
@@ -111,11 +111,11 @@ describe('multi-root pack spec', () => {
   let outputPath: string;
 
   beforeEach(async () => {
-    rootAParent = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-multiroot-parent-a-'));
-    rootBParent = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-multiroot-parent-b-'));
+    rootAParent = await createTempDir('repomix-multiroot-parent-a-');
+    rootBParent = await createTempDir('repomix-multiroot-parent-b-');
     rootA = path.join(rootAParent, 'app');
     rootB = path.join(rootBParent, 'app');
-    outputDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-multiroot-out-'));
+    outputDir = await createTempDir('repomix-multiroot-out-');
     outputPath = path.join(outputDir, 'output.xml');
 
     // Same root basename and same relative paths, but unique content so a
@@ -129,12 +129,6 @@ describe('multi-root pack spec', () => {
     await fs.writeFile(path.join(rootB, 'README.md'), '# Root B (totally different)\nMARKER_FROM_ROOT_B\n');
     await fs.mkdir(path.join(rootB, 'src'));
     await fs.writeFile(path.join(rootB, 'src', 'index.ts'), 'export const fromB = "ROOT_B_SRC_MARKER";\n');
-  });
-
-  afterEach(async () => {
-    await fs.rm(rootAParent, { recursive: true, force: true });
-    await fs.rm(rootBParent, { recursive: true, force: true });
-    await fs.rm(outputDir, { recursive: true, force: true });
   });
 
   it('preserves both unique contents of a duplicate relative path when packing multiple roots (xml)', async () => {

@@ -1,11 +1,11 @@
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import type * as prompts from '@clack/prompts';
 import { group as realGroup } from '@clack/prompts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createConfigFile, createIgnoreFile, runInitAction } from '../../../src/cli/actions/initAction.js';
 import { silenceLogger } from '../../testing/loggerDoubles.js';
+import { createTempDir } from '../../testing/tempDir.js';
 
 const createMockPrompts = () => ({
   intro: vi.fn(),
@@ -32,7 +32,7 @@ describe('initAction', () => {
   let deps: { prompts: typeof prompts; getGlobalDirectory: () => string };
 
   beforeEach(async () => {
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-init-action-'));
+    const tempDir = await createTempDir('repomix-init-action-');
     rootDir = path.join(tempDir, 'project');
     globalDir = path.join(tempDir, 'global', 'repomix');
     await fs.mkdir(rootDir);
@@ -44,8 +44,7 @@ describe('initAction', () => {
     };
   });
 
-  afterEach(async () => {
-    await fs.rm(path.dirname(rootDir), { recursive: true, force: true });
+  afterEach(() => {
     vi.restoreAllMocks();
   });
 

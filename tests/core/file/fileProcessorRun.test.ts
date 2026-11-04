@@ -1,5 +1,4 @@
 import * as fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -9,6 +8,7 @@ import {
 } from '../../../src/core/file/fileProcessorRun.js';
 import type { RawFile } from '../../../src/core/file/fileTypes.js';
 import { logger } from '../../../src/shared/logger.js';
+import { createTempDir } from '../../testing/tempDir.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 describe('fileProcessorRun', () => {
@@ -434,57 +434,49 @@ describe('fileProcessorRun', () => {
 
   describe('runProcessorCommand', () => {
     it('writes content to the temp file, substitutes {file}, and returns stdout', async () => {
-      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-proc-test-'));
+      const tempDir = await createTempDir('repomix-proc-test-');
       const tempFilePath = path.join(tempDir, '0-a.json');
       const execFileAsyncMock = vi.fn().mockResolvedValue({ stdout: 'transformed output', stderr: '' });
       const deps = { execFileAsync: execFileAsyncMock } as unknown as Parameters<typeof runProcessorCommand>[1];
 
-      try {
-        const result = await runProcessorCommand(
-          {
-            command: 'toon {file}',
-            content: '{"a":1}',
-            tempFilePath,
-            timeout: 5000,
-            cwd: tempDir,
-          },
-          deps,
-        );
+      const result = await runProcessorCommand(
+        {
+          command: 'toon {file}',
+          content: '{"a":1}',
+          tempFilePath,
+          timeout: 5000,
+          cwd: tempDir,
+        },
+        deps,
+      );
 
-        expect(result).toBe('transformed output');
-        // The file content was actually written to the temp path
-        await expect(fs.readFile(tempFilePath, 'utf8')).resolves.toBe('{"a":1}');
+      expect(result).toBe('transformed output');
+      // The file content was actually written to the temp path
+      await expect(fs.readFile(tempFilePath, 'utf8')).resolves.toBe('{"a":1}');
 
-        // The command string passed to the shell must contain the substituted (quoted)
-        // temp path, not the literal placeholder.
-        const shellArgs = execFileAsyncMock.mock.calls[0][1] as string[];
-        const commandArg = shellArgs[shellArgs.length - 1];
-        expect(commandArg).not.toContain('{file}');
-        expect(commandArg).toContain('0-a.json');
-      } finally {
-        await fs.rm(tempDir, { recursive: true, force: true });
-      }
+      // The command string passed to the shell must contain the substituted (quoted)
+      // temp path, not the literal placeholder.
+      const shellArgs = execFileAsyncMock.mock.calls[0][1] as string[];
+      const commandArg = shellArgs[shellArgs.length - 1];
+      expect(commandArg).not.toContain('{file}');
+      expect(commandArg).toContain('0-a.json');
     });
 
     it('substitutes every {file} occurrence', async () => {
-      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-proc-test-'));
+      const tempDir = await createTempDir('repomix-proc-test-');
       const tempFilePath = path.join(tempDir, '0-a.json');
       const execFileAsyncMock = vi.fn().mockResolvedValue({ stdout: 'out', stderr: '' });
       const deps = { execFileAsync: execFileAsyncMock } as unknown as Parameters<typeof runProcessorCommand>[1];
 
-      try {
-        await runProcessorCommand(
-          { command: 'diff {file} {file}', content: 'x', tempFilePath, timeout: 5000, cwd: tempDir },
-          deps,
-        );
-        const shellArgs = execFileAsyncMock.mock.calls[0][1] as string[];
-        const commandArg = shellArgs[shellArgs.length - 1];
-        expect(commandArg).not.toContain('{file}');
-        // Both placeholders replaced with the temp path.
-        expect(commandArg.match(/0-a\.json/g)).toHaveLength(2);
-      } finally {
-        await fs.rm(tempDir, { recursive: true, force: true });
-      }
+      await runProcessorCommand(
+        { command: 'diff {file} {file}', content: 'x', tempFilePath, timeout: 5000, cwd: tempDir },
+        deps,
+      );
+      const shellArgs = execFileAsyncMock.mock.calls[0][1] as string[];
+      const commandArg = shellArgs[shellArgs.length - 1];
+      expect(commandArg).not.toContain('{file}');
+      // Both placeholders replaced with the temp path.
+      expect(commandArg.match(/0-a\.json/g)).toHaveLength(2);
     });
 
     // Real-shell tests exercise the execFile wiring the mocked tests can't (exit codes,
@@ -492,79 +484,63 @@ describe('fileProcessorRun', () => {
     const describePosix = process.platform === 'win32' ? describe.skip : describe;
     describePosix('real shell', () => {
       it('echoes the temp file back (cat), even when the temp dir path contains a space', async () => {
-        const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-proc test-'));
+        const tempDir = await createTempDir('repomix-proc test-');
         const tempFilePath = path.join(tempDir, '0-a.txt');
 
-        try {
-          const result = await runProcessorCommand({
-            command: 'cat {file}',
-            content: 'hello world',
-            tempFilePath,
-            timeout: 10000,
-            cwd: tempDir,
-          });
-          expect(result).toBe('hello world');
-        } finally {
-          await fs.rm(tempDir, { recursive: true, force: true });
-        }
+        const result = await runProcessorCommand({
+          command: 'cat {file}',
+          content: 'hello world',
+          tempFilePath,
+          timeout: 10000,
+          cwd: tempDir,
+        });
+        expect(result).toBe('hello world');
       });
 
       it('escapes a single quote in the temp path (quoteForShell)', async () => {
-        const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-proc-test-'));
+        const tempDir = await createTempDir('repomix-proc-test-');
         // A single quote in the path would break naive single-quoting; quoteForShell
         // must escape it so the real shell resolves the file.
         const tempFilePath = path.join(tempDir, "it's-0.txt");
 
-        try {
-          const result = await runProcessorCommand({
-            command: 'cat {file}',
-            content: 'quoted ok',
-            tempFilePath,
-            timeout: 10000,
-            cwd: tempDir,
-          });
-          expect(result).toBe('quoted ok');
-        } finally {
-          await fs.rm(tempDir, { recursive: true, force: true });
-        }
+        const result = await runProcessorCommand({
+          command: 'cat {file}',
+          content: 'quoted ok',
+          tempFilePath,
+          timeout: 10000,
+          cwd: tempDir,
+        });
+        expect(result).toBe('quoted ok');
       });
 
       it('rejects when the real command exits non-zero', async () => {
-        const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-proc-test-'));
+        const tempDir = await createTempDir('repomix-proc-test-');
         const tempFilePath = path.join(tempDir, '0-a.txt');
 
-        try {
-          await expect(
-            runProcessorCommand({
-              command: 'cat {file} && exit 3',
-              content: 'x',
-              tempFilePath,
-              timeout: 10000,
-              cwd: tempDir,
-            }),
-          ).rejects.toThrow();
-        } finally {
-          await fs.rm(tempDir, { recursive: true, force: true });
-        }
+        await expect(
+          runProcessorCommand({
+            command: 'cat {file} && exit 3',
+            content: 'x',
+            tempFilePath,
+            timeout: 10000,
+            cwd: tempDir,
+          }),
+        ).rejects.toThrow();
       });
 
       it('rejects (killed) when the real command exceeds its timeout', async () => {
-        const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-proc-test-'));
+        const tempDir = await createTempDir('repomix-proc-test-');
         const tempFilePath = path.join(tempDir, '0-a.txt');
 
-        try {
-          await expect(
-            runProcessorCommand({
-              command: 'sleep 5 # {file}',
-              content: 'x',
-              tempFilePath,
-              timeout: 100,
-              cwd: tempDir,
-            }),
-          ).rejects.toMatchObject({ killed: true });
-        } finally {
-          await fs.rm(tempDir, { recursive: true, force: true });
-        }
+        await expect(
+          runProcessorCommand({
+            command: 'sleep 5 # {file}',
+            content: 'x',
+            tempFilePath,
+            timeout: 100,
+            cwd: tempDir,
+          }),
+        ).rejects.toMatchObject({ killed: true });
       });
     });
   });

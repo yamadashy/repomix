@@ -1,7 +1,6 @@
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { runCli } from '../../../src/cli/cliRun.js';
 import type { CliOptions } from '../../../src/cli/types.js';
 import { PathScopeError } from '../../../src/mcp/pathScope.js';
@@ -29,6 +28,7 @@ import {
   runCliPreservingLogLevel,
   sandboxErrorReason,
 } from '../../../src/mcp/tools/mcpToolRuntime.js';
+import { createTempDir } from '../../testing/tempDir.js';
 import { structuredContentOf } from '../../testing/testUtils.js';
 
 describe('mcpToolRuntime', () => {
@@ -133,13 +133,9 @@ describe('mcpToolRuntime', () => {
     let outputFilePath: string;
 
     beforeEach(async () => {
-      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-mcp-runtime-'));
+      tempDir = await createTempDir('repomix-mcp-runtime-');
       outputFilePath = path.join(tempDir, 'output.xml');
       await fs.writeFile(outputFilePath, 'Line 1\nLine 2\nLine 3\nLine 4\nLine 5');
-    });
-
-    afterEach(async () => {
-      await fs.rm(tempDir, { recursive: true, force: true });
     });
 
     it('should format a tool response with directory context', async () => {
@@ -271,8 +267,8 @@ describe('mcpToolRuntime', () => {
     });
 
     it('sandboxed scope omits host paths from the pack response', async () => {
-      const root = await fs.mkdtemp(path.join(os.tmpdir(), 'iso-root-'));
-      const outDir = await fs.mkdtemp(path.join(os.tmpdir(), 'iso-out-'));
+      const root = await createTempDir('iso-root-');
+      const outDir = await createTempDir('iso-out-');
       const sandboxOutputFilePath = path.join(outDir, 'repomix-output.xml');
       await fs.writeFile(sandboxOutputFilePath, '<files>\n<file path="src/a.ts">x</file>\n</files>\n');
 
@@ -296,9 +292,6 @@ describe('mcpToolRuntime', () => {
       expect(text).not.toContain(outDir); // no host output path
       expect(structuredContentOf(result).outputFilePath).toBe('');
       expect(structuredContentOf(result).description).not.toContain('read the file directly using path');
-
-      await fs.rm(root, { recursive: true, force: true });
-      await fs.rm(outDir, { recursive: true, force: true });
     });
   });
 
