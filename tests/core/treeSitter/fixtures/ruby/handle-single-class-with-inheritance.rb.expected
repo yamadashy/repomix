@@ -1,0 +1,3 @@
+class Admin < User
+# Admin has higher privileges
+def admin?
