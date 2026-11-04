@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793706424366,
+  "lastUpdate": 1793803396986,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -16418,6 +16418,51 @@ window.BENCHMARK_DATA = {
             "range": "±26",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 829ms, Q3: 855ms\nAll times: 814, 818, 821, 821, 825, 829, 832, 833, 834, 837, 837, 839, 845, 848, 853, 855, 861, 867, 876, 908ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "29624be82c06ad3d4314e1f2ff0e54e1ea68fffd",
+          "message": "Merge pull request #1995 from yamadashy/fix/skill-manifest-parsing\n\nfix(skill): Parse Kotlin DSL and standard pyproject dependencies, reject empty --skill-output",
+          "timestamp": "2026-11-04T23:41:44+09:00",
+          "tree_id": "50c70a749b2ba852ff84b35e3716a1a24cf01048",
+          "url": "https://github.com/yamadashy/repomix/commit/29624be82c06ad3d4314e1f2ff0e54e1ea68fffd"
+        },
+        "date": 1793803395464,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 687,
+            "range": "±98",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 667ms, Q3: 765ms\nAll times: 591, 610, 617, 619, 625, 625, 641, 667, 667, 667, 667, 669, 672, 674, 685, 687, 696, 715, 734, 741, 751, 752, 765, 775, 779, 800, 805, 809, 821, 995ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 636,
+            "range": "±22",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 632ms, Q3: 654ms\nAll times: 615, 621, 623, 627, 632, 632, 633, 633, 634, 634, 636, 637, 643, 644, 651, 654, 657, 658, 661, 673ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1377,
+            "range": "±15",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1372ms, Q3: 1387ms\nAll times: 1349, 1350, 1353, 1357, 1365, 1372, 1372, 1372, 1373, 1377, 1377, 1378, 1379, 1380, 1386, 1387, 1388, 1388, 1411, 1412ms"
           }
         ]
       }
