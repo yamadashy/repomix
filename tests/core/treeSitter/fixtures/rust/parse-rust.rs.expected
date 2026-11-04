@@ -1,0 +1,24 @@
+// Module declaration
+mod greetings {
+// Trait definition
+pub trait Greeter {
+/// Says hello to someone
+        fn greet(&self, name: &str) -> String;
+⋮----
+// Struct definition
+⋮----
+pub struct SimpleGreeter {
+⋮----
+// Implementation block
+impl Greeter for SimpleGreeter {
+fn greet(&self, name: &str) -> String {
+format!("{}, {}!", self.prefix, name)
+⋮----
+// Enum definition
+⋮----
+pub enum Language {
+⋮----
+// Main function
+fn main() {
+⋮----
+println!("{}", greeter.greet("World"));
