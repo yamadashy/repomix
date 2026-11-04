@@ -22,6 +22,7 @@ import {
 import { getMarkdownTemplate } from './outputStyles/markdownStyle.js';
 import { getPlainTemplate } from './outputStyles/plainStyle.js';
 import { getXmlTemplate } from './outputStyles/xmlStyle.js';
+import { replaceInvalidXmlCharsInValue } from './xmlText.js';
 
 // Cache for compiled Handlebars templates to avoid recompilation on every call
 const compiledTemplateCache = new Map<string, Handlebars.TemplateDelegate>();
@@ -118,7 +119,13 @@ export const createRenderContext = (outputGeneratorContext: OutputGeneratorConte
 const generateParsableXmlOutput = async (renderContext: RenderContext): Promise<string> => {
   // Lazy-load fast-xml-builder (~3ms) — only used for parsable XML output (non-default)
   const FastXmlBuilder = (await import('fast-xml-builder')).default;
-  const xmlBuilder = new FastXmlBuilder({ ignoreAttributes: false });
+  const xmlBuilder = new FastXmlBuilder({
+    ignoreAttributes: false,
+    // Escaping alone can't make a control character legal in XML 1.0, so every text
+    // node and attribute (file contents and paths included) goes through this first.
+    tagValueProcessor: replaceInvalidXmlCharsInValue,
+    attributeValueProcessor: replaceInvalidXmlCharsInValue,
+  });
   const xmlDocument = {
     repomix: {
       file_summary: renderContext.fileSummaryEnabled
