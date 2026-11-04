@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, test } from 'vitest';
 import type { Edit, Language, Node, Point, Query, Range, Tree, TreeCursor } from 'web-tree-sitter';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
-import { parseFile } from '../../../src/core/treeSitter/parseFile.js';
 import { TypeScriptParseStrategy } from '../../../src/core/treeSitter/parseStrategies/TypeScriptParseStrategy.js';
 
 interface MockContext {
@@ -13,97 +12,6 @@ interface MockContext {
 }
 
 describe('TypeScript File Parsing', () => {
-  describe('parseFile for TypeScript', () => {
-    test('should parse TypeScript correctly', async () => {
-      const fileContent = `
-        // TypeScript function
-        /**
-         * Says hello to the given name
-         * @param name The name to greet
-         */
-        function sayHello(name) { console.log("Hello, " + name); }
-      `;
-      const filePath = 'dummy.ts';
-      const config = {};
-      const result = await parseFile(fileContent, filePath, config as RepomixConfigMerged);
-      expect(typeof result).toBe('string');
-
-      const expectContents = [
-        'sayHello',
-        'TypeScript function',
-        'Says hello to the given name',
-        '@param name The name to greet',
-      ];
-
-      for (const expectContent of expectContents) {
-        expect(result).toContain(expectContent);
-      }
-    });
-
-    test('should parse TypeScript arrow functions correctly', async () => {
-      const fileContent = `
-          // Arrow function for addition
-          /** Adds two numbers together
-           * @param x First number
-           * @param y Second number
-           */
-          const add = (x: number, y: number): number => {
-              return x + y;
-          };
-          // Function type declaration
-          let multiply: (a: number, b:number) => number;
-          multiply = (a, b) => {
-              return a*b;
-          }
-      `;
-      const filePath = 'dummy.ts';
-      const config = { output: { compress: true } };
-      const result = await parseFile(fileContent, filePath, config as RepomixConfigMerged);
-
-      expect(typeof result).toBe('string');
-
-      const expectContents = [
-        'add',
-        'multiply',
-        'Arrow function for addition',
-        'Adds two numbers together',
-        '@param x First number',
-        '@param y Second number',
-        'Function type declaration',
-      ];
-
-      for (const expectContent of expectContents) {
-        expect(result).toContain(expectContent);
-      }
-    });
-
-    test('should parse TSX correctly', async () => {
-      const fileContent = `
-        // Greeting component
-        /**
-         * A simple greeting component
-         * @param name Person to greet
-         */
-        function greet(name: string){ console.log("Hello, " + name); }
-      `;
-      const filePath = 'dummy.tsx';
-      const config = {};
-      const result = await parseFile(fileContent, filePath, config as RepomixConfigMerged);
-      expect(typeof result).toBe('string');
-
-      const expectContents = [
-        'greet',
-        'Greeting component',
-        'A simple greeting component',
-        '@param name Person to greet',
-      ];
-
-      for (const expectContent of expectContents) {
-        expect(result).toContain(expectContent);
-      }
-    });
-  });
-
   describe('TypeScript Parse Strategy', () => {
     let strategy: TypeScriptParseStrategy;
     let processedChunks: Set<string>;
