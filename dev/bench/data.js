@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793840492105,
+  "lastUpdate": 1793840965077,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -16508,6 +16508,51 @@ window.BENCHMARK_DATA = {
             "range": "±37",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 743ms, Q3: 780ms\nAll times: 734, 738, 738, 738, 740, 743, 747, 749, 751, 754, 758, 761, 761, 767, 779, 780, 784, 790, 863, 878ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "41f052b87fb80e07a90bcc974d3d2817bb8e4085",
+          "message": "Merge pull request #1998 from yamadashy/test/treesitter-golden\n\ntest(core): Move tree-sitter parseFile tests to golden fixture files",
+          "timestamp": "2026-11-05T10:07:58+09:00",
+          "tree_id": "c308491d2170d2096222ca2be9d82fec11872b46",
+          "url": "https://github.com/yamadashy/repomix/commit/41f052b87fb80e07a90bcc974d3d2817bb8e4085"
+        },
+        "date": 1793840963951,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 956,
+            "range": "±140",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 889ms, Q3: 1029ms\nAll times: 790, 821, 841, 853, 853, 885, 886, 889, 898, 902, 916, 935, 937, 946, 956, 956, 958, 978, 992, 1012, 1015, 1024, 1029, 1030, 1038, 1079, 1090, 1121, 1146, 1216ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 982,
+            "range": "±52",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 968ms, Q3: 1020ms\nAll times: 961, 964, 967, 967, 968, 968, 974, 976, 976, 981, 982, 1000, 1007, 1010, 1011, 1020, 1068, 1091, 1111, 1119ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 817,
+            "range": "±30",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 799ms, Q3: 829ms\nAll times: 786, 789, 792, 798, 798, 799, 803, 805, 813, 814, 817, 817, 818, 818, 819, 829, 834, 837, 857, 863ms"
           }
         ]
       }
