@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793803396986,
+  "lastUpdate": 1793840492105,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -16463,6 +16463,51 @@ window.BENCHMARK_DATA = {
             "range": "±15",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1372ms, Q3: 1387ms\nAll times: 1349, 1350, 1353, 1357, 1365, 1372, 1372, 1372, 1373, 1377, 1377, 1378, 1379, 1380, 1386, 1387, 1388, 1388, 1411, 1412ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d9a524a3545e0b2a2e283e3dc88c2179b1afb9cc",
+          "message": "Merge pull request #1997 from yamadashy/test/shared-temp-dir\n\ntest(testing): Add shared temp-dir helper and dedupe test config factories",
+          "timestamp": "2026-11-05T09:59:42+09:00",
+          "tree_id": "5a0059725080d53f820d2c350717537505b43f35",
+          "url": "https://github.com/yamadashy/repomix/commit/d9a524a3545e0b2a2e283e3dc88c2179b1afb9cc"
+        },
+        "date": 1793840491296,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 866,
+            "range": "±93",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 814ms, Q3: 907ms\nAll times: 684, 730, 760, 774, 792, 795, 813, 814, 822, 829, 829, 834, 837, 854, 865, 866, 882, 893, 900, 900, 903, 907, 907, 911, 945, 952, 966, 977, 985, 1166ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1046,
+            "range": "±27",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1030ms, Q3: 1057ms\nAll times: 1008, 1009, 1017, 1020, 1026, 1030, 1040, 1041, 1043, 1046, 1046, 1048, 1051, 1051, 1052, 1057, 1058, 1062, 1069, 1083ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 758,
+            "range": "±37",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 743ms, Q3: 780ms\nAll times: 734, 738, 738, 738, 740, 743, 747, 749, 751, 754, 758, 761, 761, 767, 779, 780, 784, 790, 863, 878ms"
           }
         ]
       }
