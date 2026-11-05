@@ -38,14 +38,6 @@ init(width: Double, height: Double) {
 ⋮----
 /// Access by index, where 0 is width and 1 is height
 subscript(index: Int) -> Double {
-    get {
-      switch index {
-      case 0: return width
-      case 1: return height
-      default: return 0
-      }
-    }
-  }
 ⋮----
 /// Calculate the total area of shapes
 func calculateTotalArea(shapes: [Shape]) -> Double {
