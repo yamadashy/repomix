@@ -7,4 +7,6 @@ body {
 /* Navigation styles */
 .nav {
 ⋮----
+@media (max-width: 768px) {
+⋮----
 .container {

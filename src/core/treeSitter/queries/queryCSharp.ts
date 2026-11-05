@@ -32,11 +32,17 @@ export const queryCSharp = `
   type: (identifier) @name.reference.class
 ) @reference.class
 
+(property_declaration
+  name: (identifier) @name.definition.property
+) @definition.property
+
 ; Only field declarations: local variables live inside method bodies
 (field_declaration
   (variable_declaration
-    type: (identifier) @name.reference.class)
-) @reference.class
+    (variable_declarator
+      .
+      (identifier) @name.definition.field))
+) @definition.field
 
 (namespace_declaration
   name: (identifier) @name.definition.module

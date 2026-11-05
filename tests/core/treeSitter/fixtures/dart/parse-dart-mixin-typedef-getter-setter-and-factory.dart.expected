@@ -8,6 +8,7 @@ void walk() {
 ⋮----
 /// Animal base class
 class Animal {
+final String _name;
 ⋮----
 Animal(this._name);
 ⋮----

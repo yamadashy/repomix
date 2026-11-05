@@ -5,6 +5,7 @@ public class Test {
 /**
      * JavaDoc for class field
      */
+private int field;
 ⋮----
 /**
      * JavaDoc for method

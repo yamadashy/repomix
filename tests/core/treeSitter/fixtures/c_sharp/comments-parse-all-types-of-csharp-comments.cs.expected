@@ -10,3 +10,4 @@ public class Test {
 /// Property documentation
 ⋮----
 /// <value>The value description</value>
+public int Property { get; set; }

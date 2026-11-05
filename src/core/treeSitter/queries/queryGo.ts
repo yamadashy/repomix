@@ -36,6 +36,9 @@ export const queryGo = `
 (type_spec
   name: (type_identifier) @name) @definition.type
 
+(type_alias
+  name: (type_identifier) @name) @definition.type
+
 (type_identifier) @name @reference.type
 
 (package_clause "package" (package_identifier) @name)
