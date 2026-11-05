@@ -13,7 +13,14 @@ export class DefaultParseStrategy extends BaseParseStrategy {
     const startRow = node.startPosition.row;
     const isNameCapture = name.includes('name');
     const isCommentCapture = name.includes('comment');
-    const endRow = isCommentCapture ? this.getCommentEndRow(lines, startRow, node) : getNodeEndRow(node);
+    const nodeEndRow = getNodeEndRow(node);
+    const endRow = isCommentCapture ? this.getCommentEndRow(lines, startRow, nodeEndRow) : nodeEndRow;
+
+    // Rows of an extended comment (see getCommentEndRow) that the grammar parsed
+    // as code; their captures would repeat lines the comment already emits
+    if (processedChunks.has(`default:comment-row:${startRow}`)) {
+      return null;
+    }
 
     const selectedLines = this.extractLines(lines, startRow, endRow);
     if (!selectedLines) {
@@ -37,6 +44,12 @@ export class DefaultParseStrategy extends BaseParseStrategy {
     }
     processedChunks.add(positionKey);
 
+    // Captures are processed in start-row order, so marking the extra rows here
+    // suppresses the code captures the grammar produced inside the comment
+    for (let row = nodeEndRow + 1; row <= endRow; row++) {
+      processedChunks.add(`default:comment-row:${row}`);
+    }
+
     return selectedLines.join('\n');
   }
 
@@ -46,8 +59,7 @@ export class DefaultParseStrategy extends BaseParseStrategy {
    * closing "=end" line as code. Extend such a comment to its closing line so
    * the block is emitted whole.
    */
-  private getCommentEndRow(lines: string[], startRow: number, node: Node): number {
-    const endRow = getNodeEndRow(node);
+  private getCommentEndRow(lines: string[], startRow: number, endRow: number): number {
     if (!lines[startRow]?.trimStart().startsWith('=begin') || /^\s*=end\b/.test(lines[endRow] ?? '')) {
       return endRow;
     }

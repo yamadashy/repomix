@@ -15,3 +15,17 @@ fn build() -> User {
     let user = User { id: 1, name: String::new(), email: None };
     user
 }
+
+pub struct Cache {
+    entries: std::collections::HashMap<
+        String,
+        Vec<u8>,
+    >,
+}
+
+pub trait Store {
+    fn get(
+        &self,
+        key: &str,
+    ) -> Option<Vec<u8>>;
+}

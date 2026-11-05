@@ -10,3 +10,15 @@ i: u32,
 f: f32,
 ⋮----
 fn build() -> User {
+⋮----
+pub struct Cache {
+entries: std::collections::HashMap<
+        String,
+        Vec<u8>,
+    >,
+⋮----
+pub trait Store {
+fn get(
+        &self,
+        key: &str,
+    ) -> Option<Vec<u8>>;
