@@ -9,8 +9,8 @@ const declarationCalls = [
   '(call !receiver arguments: (argument_list) @name.definition.declaration)',
 ];
 
-// ActiveSupport::Concern and refinement blocks whose body declares the class
-const structuralBlockPattern = '^(included|extended|prepended|class_methods|concerning|refine)$';
+// ActiveSupport::Concern, with_options and refinement blocks whose body declares the class
+const structuralBlockPattern = '^(included|extended|prepended|class_methods|concerning|refine|with_options)$';
 
 const classBodyDeclarations = ['class', 'module', 'singleton_class']
   .flatMap((scope) => [

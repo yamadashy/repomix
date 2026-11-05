@@ -45,12 +45,15 @@ export class CssParseStrategy extends BaseParseStrategy {
       return null;
     }
 
-    const chunk = selectedLines.join('\n');
-    if (!this.checkAndAddToProcessed(chunk, processedChunks)) {
+    // Dedupe by source position, not by text: identical rules or at-rules in
+    // different places of the stylesheet are separate declarations
+    const positionKey = `css:${node.startIndex}:${node.endIndex}`;
+    if (processedChunks.has(positionKey)) {
       return null;
     }
+    processedChunks.add(positionKey);
 
-    return chunk;
+    return selectedLines.join('\n');
   }
 
   private getAtRulePreludeLines(node: Node, lines: string[], startRow: number): string[] {

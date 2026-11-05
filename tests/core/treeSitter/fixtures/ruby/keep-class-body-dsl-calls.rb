@@ -26,3 +26,9 @@ class Order < ApplicationRecord
     notify_admin(self)
   end
 end
+
+class Account < ApplicationRecord
+  with_options presence: true do
+    validates :email
+  end
+end

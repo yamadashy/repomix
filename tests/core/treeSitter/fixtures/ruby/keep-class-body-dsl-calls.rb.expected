@@ -17,3 +17,7 @@ has_many :books,
 ⋮----
 class Order < ApplicationRecord
 before_save do
+⋮----
+class Account < ApplicationRecord
+with_options presence: true do
+validates :email

@@ -13,3 +13,7 @@
 .brace { color: red; }
 ⋮----
 @import url("a.css"); .after { color: blue; }
+⋮----
+.repeat { color: red; }
+.other { color: blue; }
+.repeat { color: red; }
