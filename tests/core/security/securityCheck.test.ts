@@ -2,7 +2,7 @@
 
 import { fileURLToPath } from 'node:url';
 import pc from 'picocolors';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RawFile } from '../../../src/core/file/fileTypes.js';
 import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
 import { runSecurityCheck } from '../../../src/core/security/securityCheck.js';
@@ -32,10 +32,6 @@ const mockInitTaskRunner = inlineInitTaskRunner(securityCheckWorker);
 describe('runSecurityCheck', () => {
   beforeEach(() => {
     silenceLogger();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   it('should identify files with security issues', async () => {

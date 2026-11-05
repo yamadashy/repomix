@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LanguageParser } from '../../../src/core/treeSitter/languageParser.js';
 import { cleanupLanguageParser, parseFile } from '../../../src/core/treeSitter/parseFile.js';
 import { logger } from '../../../src/shared/logger.js';
@@ -35,11 +35,9 @@ const config = createMockConfig({});
 
 describe('parseFile error handling', () => {
   beforeEach(async () => {
-    vi.clearAllMocks();
     // Reset the module singleton so each test starts from a clean init() state.
     mockParser.dispose.mockResolvedValue(undefined);
     await cleanupLanguageParser();
-    vi.clearAllMocks();
     // Working defaults; individual tests override one stage to make it fail.
     mockParser.init.mockResolvedValue(undefined);
     mockParser.guessTheLang.mockReturnValue('javascript');
@@ -47,10 +45,6 @@ describe('parseFile error handling', () => {
     mockParser.getParserForLang.mockResolvedValue(makeWorkingParser());
     mockParser.getStrategyForLang.mockResolvedValue(makeWorkingStrategy());
     silenceLogger();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   it('returns undefined (not an empty string) and warns when language preparation throws', async () => {

@@ -1,6 +1,6 @@
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test } from 'vitest';
 import { readRawFile } from '../../../src/core/file/fileRead.js';
 import { silenceLogger } from '../../testing/loggerDoubles.js';
 import { createTempDir } from '../../testing/tempDir.js';
@@ -10,10 +10,6 @@ describe('readRawFile', () => {
 
   beforeEach(async () => {
     testDir = await createTempDir('repomix-fileRead-');
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   test('should read normal text file successfully', async () => {

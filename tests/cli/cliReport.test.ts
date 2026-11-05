@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   getDisplayPath,
   reportCompletion,
@@ -19,10 +19,6 @@ describe('cliReport', () => {
   beforeEach(() => {
     silenceLogger();
     tagColors();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('getDisplayPath', () => {
@@ -432,10 +428,6 @@ describe('reportResults token count tree', () => {
 
   beforeEach(() => {
     silenceLogger();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   test('should show the tree for a zero threshold', () => {

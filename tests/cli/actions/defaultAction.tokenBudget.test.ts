@@ -27,8 +27,6 @@ describe('runDefaultAction token budget guard', () => {
   });
 
   beforeEach(() => {
-    vi.clearAllMocks();
-
     mockPack.mockResolvedValue({
       totalFiles: 3,
       totalCharacters: 1000,

@@ -150,7 +150,6 @@ describe('handleError', () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
     logger.setLogLevel(originalLevel);
   });
 

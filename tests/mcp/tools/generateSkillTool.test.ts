@@ -52,7 +52,6 @@ describe('GenerateSkillTool', () => {
   };
 
   beforeEach(async () => {
-    vi.resetAllMocks();
     tempDir = await createTempDir('repomix-mcp-skill-');
     projectDir = path.join(tempDir, 'project');
     await fs.mkdir(projectDir);

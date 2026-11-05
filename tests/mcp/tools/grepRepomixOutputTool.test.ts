@@ -1,5 +1,5 @@
 import type fs from 'node:fs/promises';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createRegexPattern,
   formatSearchResults,
@@ -441,7 +441,6 @@ describe('grepRepomixOutputTool', () => {
     let deps: MockedDeps<NonNullable<Parameters<typeof registerGrepRepomixOutputTool>[2]>>;
 
     beforeEach(() => {
-      vi.resetAllMocks();
       vi.spyOn(logger, 'trace').mockImplementation(() => {});
       vi.spyOn(logger, 'error').mockImplementation(() => {});
       deps = {
@@ -457,10 +456,6 @@ describe('grepRepomixOutputTool', () => {
       registerGrepRepomixOutputTool(mockMcpServer.server, undefined, deps);
 
       toolHandler = mockMcpServer.toolHandler<ToolHandlerType>();
-    });
-
-    afterEach(() => {
-      vi.restoreAllMocks();
     });
 
     it('should register the tool with correct parameters', () => {

@@ -1,5 +1,5 @@
 import type { Spinner as PicoSpinner } from 'picospinner';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Spinner } from '../../src/cli/cliSpinner.js';
 import type { CliOptions } from '../../src/cli/types.js';
 
@@ -26,12 +26,7 @@ const deps = { PicoSpinner: MockPicoSpinner as unknown as typeof PicoSpinner };
 
 describe('cliSpinner', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     mockPicoInstances.length = 0;
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   const getLastPicoInstance = () => mockPicoInstances[mockPicoInstances.length - 1];

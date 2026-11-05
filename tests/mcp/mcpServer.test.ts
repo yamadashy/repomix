@@ -39,13 +39,8 @@ describe('MCP Server', () => {
   const mockVersion = '1.0.0';
 
   beforeEach(() => {
-    vi.clearAllMocks();
     vi.spyOn(logger, 'trace').mockImplementation(() => {});
     vi.spyOn(logger, 'error').mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('createMcpServer', () => {

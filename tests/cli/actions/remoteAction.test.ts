@@ -1,6 +1,6 @@
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { DefaultActionRunnerResult } from '../../../src/cli/actions/defaultAction.js';
 import {
   cloneRepository,
@@ -42,12 +42,7 @@ describe('remoteAction functions', () => {
   let loggerSpies: ReturnType<typeof silenceLogger>;
 
   beforeEach(() => {
-    vi.resetAllMocks();
     loggerSpies = silenceLogger();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('runRemoteAction', () => {

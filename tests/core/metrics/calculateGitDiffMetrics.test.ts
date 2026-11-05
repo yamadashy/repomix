@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
 import { calculateGitDiffMetrics } from '../../../src/core/metrics/calculateGitDiffMetrics.js';
@@ -60,10 +60,6 @@ describe('calculateGitDiffMetrics', () => {
 
   beforeEach(() => {
     silenceLogger();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('when git diffs are disabled', () => {

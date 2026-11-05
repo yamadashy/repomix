@@ -26,10 +26,6 @@ describe('processConcurrency', () => {
     deps = { Tinypool: MockTinypool as unknown as typeof Tinypool };
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
   describe('getProcessConcurrency', () => {
     it('should use os.availableParallelism when available', () => {
       const mockAvailableParallelism = vi.fn().mockReturnValue(4);

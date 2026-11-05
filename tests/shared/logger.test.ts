@@ -25,10 +25,6 @@ describe('logger', () => {
     logger.init();
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
   describe('log levels', () => {
     it('should not log anything in SILENT mode', () => {
       logger.setLogLevel(repomixLogLevels.SILENT);

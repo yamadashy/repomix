@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { TokenCounter } from '../../../src/core/metrics/TokenCounter.js';
 import { logger } from '../../../src/shared/logger.js';
 import { silenceLogger } from '../../testing/loggerDoubles.js';
@@ -14,7 +14,6 @@ describe('TokenCounter', () => {
 
   afterEach(() => {
     tokenCounter.free();
-    vi.restoreAllMocks();
   });
 
   test('should correctly count tokens for simple text', () => {

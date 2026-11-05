@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getIgnorePatterns, searchFiles } from '../../../src/core/file/fileSearch.js';
 import { logger } from '../../../src/shared/logger.js';
 import { createTempDir } from '../../testing/tempDir.js';
@@ -13,10 +13,6 @@ describe('negated custom ignore patterns', () => {
 
   beforeEach(async () => {
     tmpDir = await createTempDir('repomix-negated-ignore-');
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   it('keeps the negated file packed instead of excluding it', async () => {

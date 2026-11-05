@@ -24,7 +24,6 @@ describe('AttachPackedOutputTool', () => {
   `;
 
   beforeEach(() => {
-    vi.resetAllMocks();
     deps = {
       stat: mockOverloaded<typeof fs.stat>(),
       access: vi.fn(),
