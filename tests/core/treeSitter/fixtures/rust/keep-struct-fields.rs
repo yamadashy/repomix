@@ -18,6 +18,7 @@ fn build() -> User {
 
 pub struct Cache {
     entries: std::collections::HashMap<
+        // cache key
         String,
         Vec<u8>,
     >,
@@ -26,6 +27,7 @@ pub struct Cache {
 pub trait Store {
     fn get(
         &self,
+        // lookup key
         key: &str,
     ) -> Option<Vec<u8>>;
 }

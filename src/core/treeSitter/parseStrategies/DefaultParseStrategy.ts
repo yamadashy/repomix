@@ -16,9 +16,10 @@ export class DefaultParseStrategy extends BaseParseStrategy {
     const nodeEndRow = getNodeEndRow(node);
     const endRow = isCommentCapture ? this.getCommentEndRow(lines, startRow, nodeEndRow) : nodeEndRow;
 
-    // Rows of an extended comment (see getCommentEndRow) that the grammar parsed
-    // as code; their captures would repeat lines the comment already emits
-    if (processedChunks.has(`default:comment-row:${startRow}`)) {
+    // A capture starting inside a multi-line chunk already emitted (e.g. a
+    // comment inside a multi-line field declaration, or code the grammar found
+    // inside an extended Ruby comment) would repeat those lines
+    if (processedChunks.has(`default:covered-row:${startRow}`)) {
       return null;
     }
 
@@ -44,10 +45,10 @@ export class DefaultParseStrategy extends BaseParseStrategy {
     }
     processedChunks.add(positionKey);
 
-    // Captures are processed in start-row order, so marking the extra rows here
-    // suppresses the code captures the grammar produced inside the comment
-    for (let row = nodeEndRow + 1; row <= endRow; row++) {
-      processedChunks.add(`default:comment-row:${row}`);
+    // Captures are processed in start-row order, so marking the rows after the
+    // first one suppresses later captures that start inside this chunk
+    for (let row = startRow + 1; row <= endRow; row++) {
+      processedChunks.add(`default:covered-row:${row}`);
     }
 
     return selectedLines.join('\n');
