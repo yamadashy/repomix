@@ -20,3 +20,9 @@ class Publisher < ApplicationRecord
            class_name: "Book",
            dependent: :destroy
 end
+
+class Order < ApplicationRecord
+  before_save do
+    notify_admin(self)
+  end
+end

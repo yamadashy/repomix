@@ -2,18 +2,22 @@
 // (e.g. Rails "has_many :books, dependent: :destroy"). The method name and the
 // argument list are emitted, a trailing do...end block is not. Method bodies are
 // also body_statement nodes, so the enclosing scope is matched explicitly. Calls
-// one level down in a do-block of such a declaration (e.g. "scope" inside
-// "included do") are declarations too.
+// one level down in a structural block (e.g. "scope" inside "included do") are
+// declarations too; other blocks such as "before_save do" are executable code.
 const declarationCalls = [
   '(call !receiver method: (identifier) @name.definition.declaration)',
   '(call !receiver arguments: (argument_list) @name.definition.declaration)',
 ];
 
+// ActiveSupport::Concern and refinement blocks whose body declares the class
+const structuralBlockPattern = '^(included|extended|prepended|class_methods|concerning|refine)$';
+
 const classBodyDeclarations = ['class', 'module', 'singleton_class']
   .flatMap((scope) => [
     ...declarationCalls.map((call) => `(${scope} body: (body_statement ${call}))`),
     ...declarationCalls.map(
-      (call) => `(${scope} body: (body_statement (call !receiver block: (do_block body: (body_statement ${call})))))`,
+      (call) =>
+        `(${scope} body: (body_statement (call !receiver method: (identifier) @_block_scope block: (do_block body: (body_statement ${call}))) (#match? @_block_scope "${structuralBlockPattern}")))`,
     ),
   ])
   .join('\n\n');

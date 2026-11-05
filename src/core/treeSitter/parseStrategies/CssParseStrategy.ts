@@ -55,19 +55,23 @@ export class CssParseStrategy extends BaseParseStrategy {
 
   private getAtRulePreludeLines(node: Node, lines: string[], startRow: number): string[] {
     const block = node.namedChildren.find((child) => child?.type === 'block' || child?.type === 'keyframe_block_list');
-    if (!block) {
-      return lines.slice(startRow, getNodeEndRow(node) + 1);
+    // Stop right after the opening brace (or at the end of a blockless
+    // statement) so rules on the same row are not repeated here; they are
+    // emitted by their own selector captures. Positions come from the AST, so a
+    // "{" inside a string in the prelude does not cut it short.
+    let endRow: number;
+    let endColumn: number | undefined;
+    if (block) {
+      endRow = block.startPosition.row;
+      endColumn = block.startPosition.column + 1;
+    } else {
+      endRow = getNodeEndRow(node);
+      endColumn = endRow === node.endPosition.row ? node.endPosition.column : undefined;
     }
 
-    // Stop right after the opening brace so rules on the same row are not
-    // repeated here; they are emitted by their own selector captures.
-    const blockRow = block.startPosition.row;
-    const preludeLines = lines.slice(startRow, blockRow + 1);
+    const preludeLines = lines.slice(startRow, endRow + 1);
     const lastIndex = preludeLines.length - 1;
-    const braceIndex = preludeLines[lastIndex].indexOf('{', blockRow === startRow ? node.startPosition.column : 0);
-    if (braceIndex >= 0) {
-      preludeLines[lastIndex] = preludeLines[lastIndex].slice(0, braceIndex + 1);
-    }
+    preludeLines[lastIndex] = preludeLines[lastIndex].slice(0, endColumn);
     return preludeLines;
   }
 }

@@ -7,3 +7,9 @@
 .grid {
 ⋮----
 @media print { .grid { display: block; } }
+⋮----
+@supports (font-family: "{") {
+⋮----
+.brace { color: red; }
+⋮----
+@import url("a.css"); .after { color: blue; }
