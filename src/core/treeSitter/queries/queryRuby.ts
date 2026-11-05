@@ -1,9 +1,22 @@
 export const queryRuby = `
 (comment) @comment
 
-; Import statements
+; Import, mixin, attribute and visibility statements.
+; Only receiver-less calls to these structural methods are kept; any other call
+; is part of an implementation body.
 (call
-  (identifier) @name.reference.module) @definition.import
+  !receiver
+  method: (identifier) @name.reference.module
+  (#match? @name.reference.module "^(require|require_relative|load|autoload|include|extend|prepend|attr_accessor|attr_reader|attr_writer|private|protected|public|module_function|private_constant)$")) @definition.import
+
+; Bare visibility modifiers (e.g. a lone "private" line inside a class)
+(body_statement
+  (identifier) @name.definition.visibility
+  (#match? @name.definition.visibility "^(private|protected|public|module_function)$"))
+
+; Constant assignments (e.g. "ACTIVE = 1")
+(assignment
+  left: (constant) @name.definition.constant)
 
 ; Method definitions
 
@@ -58,15 +71,5 @@ export const queryRuby = `
       (scope_resolution
         name: (_) @name.definition.module)
     ]) @definition.module
-)
-
-; Calls
-
-(call method: (identifier) @name.reference.call) @reference.call
-
-(
-  [(identifier) (constant)] @name.reference.call @reference.call
-  (#is-not? local)
-  (#not-match? @name.reference.call "^(lambda|load|require|require_relative|__FILE__|__LINE__)$")
 )
 `;

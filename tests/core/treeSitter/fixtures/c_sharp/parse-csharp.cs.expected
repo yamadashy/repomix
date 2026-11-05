@@ -8,4 +8,3 @@ class Program {
 /// Writes a greeting to the console
 ⋮----
 static void Main() {
-Console.WriteLine("Hello, world!");

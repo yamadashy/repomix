@@ -1,0 +1,3 @@
+public class Inventory {
+⋮----
+public void add(String item) {

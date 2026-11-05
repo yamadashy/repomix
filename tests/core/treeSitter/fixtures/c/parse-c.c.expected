@@ -12,6 +12,7 @@ struct Person {
 /**
  * Union for different number types
  */
+union Number {
 ⋮----
 /**
  * Enum for status codes
@@ -39,6 +40,5 @@ int main(int argc, char** argv) {
 // Print info
 ⋮----
 // Use union
-union Number num;
 ⋮----
 // Function pointer

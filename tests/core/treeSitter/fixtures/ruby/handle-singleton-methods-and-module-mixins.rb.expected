@@ -1,6 +1,5 @@
 module Loggable
 def log(message)
-puts "[LOG] #{message}"
 ⋮----
 class Service
 include Loggable
@@ -12,9 +11,7 @@ def self.fetch_data
 ⋮----
 # Instance method
 def process
-log("Processing...")
 ⋮----
 # Monkey patching an existing class
 class String
 def palindrome?
-self == self.reverse

@@ -3,7 +3,7 @@ export const queryC = `
 
 (struct_specifier name: (type_identifier) @name.definition.class body:(_)) @definition.class
 
-(declaration type: (union_specifier name: (type_identifier) @name.definition.class)) @definition.class
+(union_specifier name: (type_identifier) @name.definition.class body:(_)) @definition.class
 
 (function_declarator declarator: (identifier) @name.definition.function) @definition.function
 

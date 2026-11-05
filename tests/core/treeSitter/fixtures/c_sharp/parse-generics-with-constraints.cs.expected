@@ -7,4 +7,3 @@ where T : IComparable<T>
 where U : new() {
 ⋮----
 public void Method<V>(V item) where V : struct {
-Console.WriteLine(item);

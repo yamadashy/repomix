@@ -12,8 +12,6 @@ attr_accessor :name, :age
 # @param name [String] the person's name
 # @param age [Integer] the person's age
 def initialize(name, age)
-@name = name
-@age = age
 ⋮----
 # Return a greeting
 # @return [String] a personalized greeting
@@ -21,7 +19,6 @@ def greet
 ⋮----
 # A class method to create a Person
 def self.create(name, age)
-new(name, age)
 ⋮----
 # Create a module method
 def self.find_by_name(name)
@@ -32,5 +29,3 @@ require 'json'
 require_relative './helpers'
 ⋮----
 # Create a user and greet
-person = User::Person.new("John", 30)
-puts person.greet

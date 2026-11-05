@@ -1,0 +1,4 @@
+struct Inventory {
+⋮----
+impl Inventory {
+fn add(&mut self, item: String) {

@@ -52,18 +52,6 @@ export const queryRust = `
 (macro_definition
     name: (identifier) @name.definition.macro) @definition.macro
 
-; references
-
-(call_expression
-    function: (identifier) @name.reference.call) @reference.call
-
-(call_expression
-    function: (field_expression
-        field: (field_identifier) @name.reference.call)) @reference.call
-
-(macro_invocation
-    macro: (identifier) @name.reference.call) @reference.call
-
 ; implementations
 
 (impl_item

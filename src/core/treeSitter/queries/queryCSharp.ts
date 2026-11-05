@@ -24,10 +24,6 @@ export const queryCSharp = `
   name: (identifier) @name.definition.method
 ) @definition.method
 
-(object_creation_expression
-  type: (identifier) @name.reference.class
-) @reference.class
-
 (type_parameter_constraints_clause
   (identifier) @name.reference.class
 ) @reference.class
@@ -36,16 +32,11 @@ export const queryCSharp = `
   type: (identifier) @name.reference.class
 ) @reference.class
 
-(variable_declaration
-  type: (identifier) @name.reference.class
+; Only field declarations: local variables live inside method bodies
+(field_declaration
+  (variable_declaration
+    type: (identifier) @name.reference.class)
 ) @reference.class
-
-(invocation_expression
-  function:
-    (member_access_expression
-      name: (identifier) @name.reference.send
-    )
-) @reference.send
 
 (namespace_declaration
   name: (identifier) @name.definition.module

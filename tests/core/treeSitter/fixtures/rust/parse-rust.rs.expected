@@ -12,7 +12,6 @@ pub struct SimpleGreeter {
 // Implementation block
 impl Greeter for SimpleGreeter {
 fn greet(&self, name: &str) -> String {
-format!("{}, {}!", self.prefix, name)
 ⋮----
 // Enum definition
 ⋮----
@@ -20,5 +19,3 @@ pub enum Language {
 ⋮----
 // Main function
 fn main() {
-⋮----
-println!("{}", greeter.greet("World"));

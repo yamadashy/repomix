@@ -6,4 +6,3 @@ public class Person {
 ⋮----
 // Method
 public void Greet() {
-Console.WriteLine("Hello");
