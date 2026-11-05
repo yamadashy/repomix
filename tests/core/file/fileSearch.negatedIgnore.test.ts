@@ -1,9 +1,7 @@
-import fs from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getIgnorePatterns, searchFiles } from '../../../src/core/file/fileSearch.js';
 import { logger } from '../../../src/shared/logger.js';
+import { createTempDir } from '../../testing/tempDir.js';
 import { createMockConfig, writeFixture } from '../../testing/testUtils.js';
 
 // fast-glob does not support `!` re-inclusion in its ignore list and would exclude the
@@ -14,12 +12,11 @@ describe('negated custom ignore patterns', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-negated-ignore-'));
+    tmpDir = await createTempDir('repomix-negated-ignore-');
   });
 
-  afterEach(async () => {
+  afterEach(() => {
     vi.restoreAllMocks();
-    await fs.rm(tmpDir, { recursive: true, force: true });
   });
 
   it('keeps the negated file packed instead of excluding it', async () => {

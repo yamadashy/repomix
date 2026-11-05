@@ -2,57 +2,25 @@ import { describe, expect, test, vi } from 'vitest';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
 import { buildOutputGeneratorContext } from '../../../src/core/output/outputGenerate.js';
+import { createMockConfig } from '../../testing/testUtils.js';
 
-const createMockConfig = (overrides: Partial<RepomixConfigMerged> = {}): RepomixConfigMerged => ({
-  cwd: '/repo',
-  input: { maxFileSize: 1024 * 1024 },
-  output: {
-    filePath: 'repomix-output.json',
-    style: 'json',
-    filePathStyle: 'target-relative',
-    parsableStyle: false,
-    headerText: undefined,
-    instructionFilePath: undefined,
-    fileSummary: true,
-    directoryStructure: true,
-    files: true,
-    removeComments: false,
-    removeEmptyLines: false,
-    compress: false,
-    topFilesLength: 5,
-    showLineNumbers: false,
-    truncateBase64: false,
-    copyToClipboard: false,
-    includeEmptyDirectories: false,
-    includeFullDirectoryStructure: true,
-    tokenCountTree: false,
-    git: {
-      sortByChanges: false,
-      sortByChangesMaxCommits: 10,
-      includeDiffs: false,
-      includeLogs: false,
-      includeLogsCount: 5,
+// Only the fields these tests depend on differ from the shared defaults.
+const createFullTreeConfig = (overrides: Parameters<typeof createMockConfig>[0] = {}): RepomixConfigMerged =>
+  createMockConfig({
+    cwd: '/repo',
+    output: {
+      filePath: 'repomix-output.json',
+      style: 'json',
+      includeFullDirectoryStructure: true,
+      git: { sortByChanges: false },
     },
-  },
-  include: ['src/**/*.ts'],
-  ignore: {
-    useGitignore: true,
-    useDotIgnore: true,
-    useDefaultPatterns: true,
-    customPatterns: [],
-  },
-  security: {
-    enableSecurityCheck: true,
-  },
-  tokenCount: {
-    encoding: 'cl100k_base',
-  },
-  ...overrides,
-});
+    include: ['src/**/*.ts'],
+    ...overrides,
+  });
 
 describe('includeFullDirectoryStructure flag', () => {
   test('renders full repository tree including root-level files when flag is enabled and include patterns present', async () => {
-    const config = createMockConfig();
+    const config = createFullTreeConfig();
     const processedFiles: ProcessedFile[] = [{ path: 'src/a/index.ts', content: 'export const a = 1;\n' }];
     const allFilePaths = processedFiles.map((f) => f.path);
 
@@ -88,7 +56,7 @@ describe('includeFullDirectoryStructure flag', () => {
   });
 
   test('does not prefix single-root full-tree directories with the root basename', async () => {
-    const config = createMockConfig();
+    const config = createFullTreeConfig();
     const processedFiles: ProcessedFile[] = [{ path: 'src/a/index.ts', content: 'export const a = 1;\n' }];
     const allFilePaths = processedFiles.map((f) => f.path);
 
@@ -127,7 +95,7 @@ describe('includeFullDirectoryStructure flag', () => {
   test('keeps non-included files in the full tree when a realistic filePathsByRoot is provided', async () => {
     // pack() always passes filePathsByRoot for the default target-relative style, and it
     // only holds the included files. Full-tree mode must still surface the rest of the repo.
-    const config = createMockConfig();
+    const config = createFullTreeConfig();
     const processedFiles: ProcessedFile[] = [{ path: 'src/a/index.ts', content: 'export const a = 1;\n' }];
     const allFilePaths = processedFiles.map((f) => f.path);
 
@@ -162,7 +130,7 @@ describe('includeFullDirectoryStructure flag', () => {
   });
 
   test('does not render full tree when include is empty even if flag is enabled', async () => {
-    const config = createMockConfig({ include: [] });
+    const config = createFullTreeConfig({ include: [] });
     const processedFiles: ProcessedFile[] = [{ path: 'src/a/index.ts', content: 'export const a = 1;\n' }];
     const allFilePaths = processedFiles.map((f) => f.path);
 
@@ -196,48 +164,16 @@ describe('includeFullDirectoryStructure flag', () => {
 });
 
 describe('includeEmptyDirectories with pre-computed emptyDirPaths', () => {
-  const createEmptyDirConfig = (overrides: Partial<RepomixConfigMerged> = {}): RepomixConfigMerged => ({
-    cwd: '/repo',
-    input: { maxFileSize: 1024 * 1024 },
-    output: {
-      filePath: 'repomix-output.json',
-      style: 'json',
-      filePathStyle: 'target-relative',
-      parsableStyle: false,
-      headerText: undefined,
-      instructionFilePath: undefined,
-      fileSummary: true,
-      directoryStructure: true,
-      files: true,
-      removeComments: false,
-      removeEmptyLines: false,
-      compress: false,
-      topFilesLength: 5,
-      showLineNumbers: false,
-      truncateBase64: false,
-      copyToClipboard: false,
-      includeEmptyDirectories: true,
-      includeFullDirectoryStructure: false,
-      tokenCountTree: false,
-      git: {
-        sortByChanges: false,
-        sortByChangesMaxCommits: 10,
-        includeDiffs: false,
-        includeLogs: false,
-        includeLogsCount: 5,
+  const createEmptyDirConfig = (): RepomixConfigMerged =>
+    createMockConfig({
+      cwd: '/repo',
+      output: {
+        filePath: 'repomix-output.json',
+        style: 'json',
+        includeEmptyDirectories: true,
+        git: { sortByChanges: false },
       },
-    },
-    include: [],
-    ignore: {
-      useGitignore: true,
-      useDotIgnore: true,
-      useDefaultPatterns: true,
-      customPatterns: [],
-    },
-    security: { enableSecurityCheck: true },
-    tokenCount: { encoding: 'cl100k_base' },
-    ...overrides,
-  });
+    });
 
   test('uses pre-computed emptyDirPaths and skips searchFiles call', async () => {
     const config = createEmptyDirConfig();

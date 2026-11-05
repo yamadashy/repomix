@@ -1,11 +1,11 @@
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import type { CallToolResult } from '@modelcontextprotocol/server';
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { registerGenerateSkillTool } from '../../../src/mcp/tools/generateSkillTool.js';
 import type { runCliPreservingLogLevel } from '../../../src/mcp/tools/mcpToolRuntime.js';
 import { createMcpServerDouble, type McpServerDouble } from '../../testing/mcpServerDoubles.js';
+import { createTempDir } from '../../testing/tempDir.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 const exists = (target: string) =>
@@ -53,7 +53,7 @@ describe('GenerateSkillTool', () => {
 
   beforeEach(async () => {
     vi.resetAllMocks();
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-mcp-skill-'));
+    tempDir = await createTempDir('repomix-mcp-skill-');
     projectDir = path.join(tempDir, 'project');
     await fs.mkdir(projectDir);
 
@@ -70,10 +70,6 @@ describe('GenerateSkillTool', () => {
         skillGenerate: opts.skillGenerate,
       }),
     }));
-  });
-
-  afterEach(async () => {
-    await fs.rm(tempDir, { recursive: true, force: true });
   });
 
   test('should register tool with correct parameters', () => {
