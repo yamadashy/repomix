@@ -1,0 +1,19 @@
+// Single line comment
+/* Multi-line comment
+   spanning multiple lines */
+public class Test {
+    /**
+     * JavaDoc for class field
+     */
+    private int field;
+
+    /**
+     * JavaDoc for method
+     * @param name The name parameter
+     * @return A greeting message
+     * @throws Exception If something goes wrong
+     */
+    public String greet(String name) {
+        return "Hello";
+    }
+}

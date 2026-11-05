@@ -25,6 +25,7 @@
       "!**/browser/.wxt",
       "!**/browser/packages",
       "!.claude/worktrees",
+      "!**/tests/core/treeSitter/fixtures",
       "!**/*.svg"
     ]
   },

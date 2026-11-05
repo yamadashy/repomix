@@ -1,0 +1,15 @@
+/// A simple greeting class
+class Greeter {
+/// The name to greet
+⋮----
+/// Constructor
+Greeter(this.name);
+⋮----
+/// Prints a greeting message
+void greet() {
+⋮----
+/// Returns a greeting message
+String getMessage() {
+⋮----
+/// Main entry point
+void main() {

@@ -1,0 +1,9 @@
+// Class with properties
+public class Person {
+// Name property
+⋮----
+// Age property
+⋮----
+// Method
+public void Greet() {
+Console.WriteLine("Hello");

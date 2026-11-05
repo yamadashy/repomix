@@ -1,0 +1,5 @@
+// Generic class
+public class GenericClass<T> {
+⋮----
+// Multiple type parameters
+public class MultiGeneric<T, U> {

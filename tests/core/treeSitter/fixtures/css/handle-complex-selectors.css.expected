@@ -1,0 +1,6 @@
+/* Complex selectors */
+body.dark-theme .container > div:first-child {
+⋮----
+.sidebar ul li a:hover,
+⋮----
+#main-content h1 + p::first-line {

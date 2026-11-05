@@ -1,0 +1,20 @@
+module Loggable
+def log(message)
+puts "[LOG] #{message}"
+⋮----
+class Service
+include Loggable
+extend Comparable
+⋮----
+# Singleton method
+def self.fetch_data
+# Implementation
+⋮----
+# Instance method
+def process
+log("Processing...")
+⋮----
+# Monkey patching an existing class
+class String
+def palindrome?
+self == self.reverse

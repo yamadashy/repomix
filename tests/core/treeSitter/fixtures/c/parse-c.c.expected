@@ -1,0 +1,44 @@
+/**
+ * A simple C program demonstrating various language features
+ */
+⋮----
+/* Define a constant */
+⋮----
+/**
+ * Structure representing a person
+ */
+struct Person {
+⋮----
+/**
+ * Union for different number types
+ */
+⋮----
+/**
+ * Enum for status codes
+ */
+enum Status {
+⋮----
+/* Type definition for a pointer to function returning int */
+⋮----
+/**
+ * Add two integers
+ * @param a First integer
+ * @param b Second integer
+ * @return Sum of a and b
+ */
+int add(int a, int b) {
+// Add two numbers
+⋮----
+/**
+ * Main function
+ * @return Exit status
+ */
+int main(int argc, char** argv) {
+// Create a person
+⋮----
+// Print info
+⋮----
+// Use union
+union Number num;
+⋮----
+// Function pointer

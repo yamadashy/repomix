@@ -1,0 +1,13 @@
+/* Simple typedef */
+⋮----
+/* Struct typedef */
+⋮----
+} Point;
+⋮----
+/* Enum typedef */
+⋮----
+} Color;
+⋮----
+/* Function pointer typedef */
+⋮----
+/* Array typedef */

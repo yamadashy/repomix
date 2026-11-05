@@ -1,0 +1,47 @@
+<template>
+  <div class="hello">
+    <h1>{{ msg }}</h1>
+    <p>{{ greeting }}</p>
+  </div>
+</template>
+⋮----
+<h1>{{ msg }}</h1>
+<p>{{ greeting }}</p>
+⋮----
+<script>
+// Hello component
+/**
+ * Vue component that displays a greeting message
+ */
+export default {
+  name: 'HelloWorld',
+  props: {
+    msg: {
+      type: String,
+      required: true
+    }
+  },
+  data() {
+    return {
+      greeting: 'Welcome to Vue!'
+    };
+  },
+  methods: {
+    /**
+     * Updates the greeting message
+     * @param newGreeting The new greeting message
+     */
+    updateGreeting(newGreeting) {
+      this.greeting = newGreeting;
+    }
+  }
+};
+</script>
+⋮----
+<style scoped>
+.hello {
+  margin: 20px;
+  padding: 20px;
+  border: 1px solid #ccc;
+}
+</style>

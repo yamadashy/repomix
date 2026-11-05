@@ -1,0 +1,57 @@
+// Swift sample demonstrating various language features
+⋮----
+/// Protocol defining a shape
+protocol Shape {
+/// Calculate the area of the shape
+func area() -> Double
+⋮----
+/// The name of the shape
+⋮----
+/// A class representing a circle
+class Circle: Shape {
+/// The radius of the circle
+let radius: Double
+⋮----
+var name: String {
+⋮----
+/// Initialize with a radius
+init(radius: Double) {
+⋮----
+/// Calculate the area using πr²
+func area() -> Double {
+⋮----
+/// Deinitializer
+deinit {
+⋮----
+/// A class representing a rectangle
+class Rectangle: Shape {
+/// The width of the rectangle
+let width: Double
+⋮----
+/// The height of the rectangle
+let height: Double
+⋮----
+/// Initialize with width and height
+init(width: Double, height: Double) {
+⋮----
+/// Calculate the area using width × height
+⋮----
+/// Access by index, where 0 is width and 1 is height
+subscript(index: Int) -> Double {
+    get {
+      switch index {
+      case 0: return width
+      case 1: return height
+      default: return 0
+      }
+    }
+  }
+⋮----
+/// Calculate the total area of shapes
+func calculateTotalArea(shapes: [Shape]) -> Double {
+⋮----
+// Create shapes and calculate their areas
+let circle = Circle(radius: 5)
+let rectangle = Rectangle(width: 10, height: 20)
+let shapes: [Shape] = [circle, rectangle]
+let totalArea = calculateTotalArea(shapes: shapes)

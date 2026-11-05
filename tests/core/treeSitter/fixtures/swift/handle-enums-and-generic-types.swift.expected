@@ -1,0 +1,21 @@
+/// Represents a result with either a success value or an error
+enum Result<Success, Failure> where Failure: Error {
+/// The success case with associated value
+⋮----
+/// The failure case with associated error
+⋮----
+/// Returns the success value or throws the error
+func get() throws -> Success {
+⋮----
+/// Types of HTTP methods
+enum HTTPMethod: String {
+⋮----
+/// Generic stack implementation
+struct Stack<Element> {
+private var elements: [Element] = []
+⋮----
+/// Adds an element to the top of the stack
+mutating func push(_ element: Element) {
+⋮----
+/// Removes and returns the top element
+mutating func pop() -> Element? {

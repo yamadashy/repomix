@@ -1,0 +1,9 @@
+// This is a line comment
+package main
+
+/* This is a block comment
+   spanning multiple lines */
+func main() {
+  // Inside function comment
+  fmt.Println("Hello")
+}

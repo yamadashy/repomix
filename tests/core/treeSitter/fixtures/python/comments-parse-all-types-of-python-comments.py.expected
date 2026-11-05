@@ -1,0 +1,13 @@
+# Single line comment
+'''
+Multi-line docstring
+with multiple lines
+'''
+def func1(): pass
+⋮----
+"""
+Double quote docstring
+with indentation
+    indented line
+"""
+def func2(): pass

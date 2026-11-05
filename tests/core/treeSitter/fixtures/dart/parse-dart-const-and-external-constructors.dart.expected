@@ -1,0 +1,14 @@
+/// Point with const constructors
+class Point {
+⋮----
+/// Const plain constructor
+const Point(this.x, this.y);
+⋮----
+/// Const named constructor
+const Point.zero() : x = 0, y = 0;
+⋮----
+/// Const redirecting factory
+const factory Point.alias() = Point.zero;
+⋮----
+/// External factory
+external factory Point.native();
