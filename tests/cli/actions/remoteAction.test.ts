@@ -77,13 +77,14 @@ describe('remoteAction functions', () => {
       const progressCallback = vi.fn(() => {
         throw new Error('listener failed');
       });
+      const defaultActionResult = createMockDefaultActionResult();
 
       await expect(
         runRemoteAction('https://gitlab.com/owner/repo.git', {}, progressCallback, {
           isGitInstalled: async () => true,
           execGitShallowClone: vi.fn(async () => {}),
           getRemoteRefs: async () => ['main'],
-          runDefaultAction: vi.fn(async () => createMockDefaultActionResult()),
+          runDefaultAction: vi.fn(async () => defaultActionResult),
           downloadGitHubArchive: vi.fn(),
           isGitHubRepository: vi.fn().mockReturnValue(false),
           parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
@@ -92,7 +93,7 @@ describe('remoteAction functions', () => {
           copyOutputToCurrentDirectory: copyOutputToCurrentDirectoryMock,
           Spinner: MockSpinner,
         }),
-      ).resolves.toBeDefined();
+      ).resolves.toBe(defaultActionResult);
       expect(progressCallback).toHaveBeenCalled();
     });
 

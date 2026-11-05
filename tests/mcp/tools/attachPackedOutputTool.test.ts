@@ -160,7 +160,7 @@ describe('AttachPackedOutputTool', () => {
     await toolHandler({ path: testFilePath });
 
     const formatPackToolResponseCalls = deps.formatPackToolResponse.mock.calls;
-    expect(formatPackToolResponseCalls.length).toBeGreaterThan(0);
+    expect(formatPackToolResponseCalls).toHaveLength(1);
 
     // Check that the second argument (packResult) contains the expected file paths
     const packResult = formatPackToolResponseCalls[formatPackToolResponseCalls.length - 1][1];
@@ -178,7 +178,7 @@ describe('AttachPackedOutputTool', () => {
     await toolHandler({ path: testFilePath });
 
     const calls = deps.formatPackToolResponse.mock.calls;
-    expect(calls.length).toBeGreaterThan(0);
+    expect(calls).toHaveLength(1);
     // The requiresSecretScan flag (5th argument) must be true.
     expect(calls[calls.length - 1][4]).toBe(true);
   });

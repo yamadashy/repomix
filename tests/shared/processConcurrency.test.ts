@@ -124,7 +124,7 @@ describe('processConcurrency', () => {
           TERM: expect.any(String),
         }),
       });
-      expect(tinypool).toBeDefined();
+      expect(tinypool).toBe(MockTinypool.mock.instances[0]);
     });
 
     it('should initialize Tinypool with worker_threads runtime when specified', () => {
@@ -145,7 +145,7 @@ describe('processConcurrency', () => {
           logLevel: 2,
         },
       });
-      expect(tinypool).toBeDefined();
+      expect(tinypool).toBe(MockTinypool.mock.instances[0]);
     });
   });
 

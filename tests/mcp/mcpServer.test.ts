@@ -58,7 +58,7 @@ describe('MCP Server', () => {
           instructions: expect.stringContaining('Repomix MCP Server provides AI-optimized codebase analysis tools'),
         }),
       );
-      expect(server).toBeDefined();
+      expect(server).toBe(lastServer.server);
     });
 
     test('embeds icons as data URIs with a PNG fallback', () => {
