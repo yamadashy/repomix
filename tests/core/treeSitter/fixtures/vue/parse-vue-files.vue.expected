@@ -5,9 +5,6 @@
   </div>
 </template>
 ⋮----
-<h1>{{ msg }}</h1>
-<p>{{ greeting }}</p>
-⋮----
 <script>
 // Hello component
 /**

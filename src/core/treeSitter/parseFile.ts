@@ -23,7 +23,7 @@ import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 import type { SupportedLang } from './languageConfig.js';
 import { LanguageParser } from './languageParser.js';
-import type { ParseContext } from './parseStrategies/BaseParseStrategy.js';
+import { getNodeEndRow, type ParseContext } from './parseStrategies/BaseParseStrategy.js';
 
 interface CapturedChunk {
   content: string;
@@ -98,7 +98,7 @@ export const parseFile = async (
         capturedChunks.push({
           content: capturedChunkContent.trim(),
           startRow: capture.node.startPosition.row,
-          endRow: capture.node.endPosition.row,
+          endRow: getNodeEndRow(capture.node),
         });
       }
     }

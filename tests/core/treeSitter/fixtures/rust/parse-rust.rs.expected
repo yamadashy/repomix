@@ -3,7 +3,7 @@ mod greetings {
 // Trait definition
 pub trait Greeter {
 /// Says hello to someone
-        fn greet(&self, name: &str) -> String;
+fn greet(&self, name: &str) -> String;
 ⋮----
 // Struct definition
 ⋮----

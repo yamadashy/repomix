@@ -34,6 +34,11 @@ export const queryRust = `
     (function_item
         name: (identifier) @name.definition.method)) @definition.method
 
+; function signatures without a body (e.g. trait methods)
+
+(function_signature_item
+    name: (identifier) @name.definition.method) @definition.method
+
 ; function definitions
 
 (function_item

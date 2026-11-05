@@ -3,7 +3,6 @@ export const queryGo = `
 (comment) @comment
 (package_clause) @definition.package
 (import_declaration) @definition.import
-(import_spec) @definition.import
 (var_declaration) @definition.variable
 (const_declaration) @definition.constant
 

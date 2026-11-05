@@ -1,6 +1,6 @@
 import type { Node } from 'web-tree-sitter';
 import type { ParseContext } from './BaseParseStrategy.js';
-import { BaseParseStrategy } from './BaseParseStrategy.js';
+import { BaseParseStrategy, getNodeEndRow } from './BaseParseStrategy.js';
 
 export class DefaultParseStrategy extends BaseParseStrategy {
   parseCapture(
@@ -11,7 +11,7 @@ export class DefaultParseStrategy extends BaseParseStrategy {
   ): string | null {
     const { node, name } = capture;
     const startRow = node.startPosition.row;
-    const endRow = node.endPosition.row;
+    const endRow = getNodeEndRow(node);
 
     const selectedLines = this.extractLines(lines, startRow, endRow);
     if (!selectedLines) {

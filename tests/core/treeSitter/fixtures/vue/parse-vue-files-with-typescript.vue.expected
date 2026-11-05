@@ -5,8 +5,6 @@
   </div>
 </template>
 ⋮----
-<p>Count: {{ count }}</p>
-⋮----
 <script lang="ts">
 // Counter component
 import { defineComponent } from 'vue';
