@@ -23,6 +23,11 @@ export const queryRust = `
 (union_item
     name: (type_identifier) @name.definition.class) @definition.class
 
+; struct and union fields (named fields only, including pub fields)
+(field_declaration_list
+    (field_declaration
+        name: (field_identifier) @name.definition.field) @definition.field)
+
 ; type aliases
 
 (type_item

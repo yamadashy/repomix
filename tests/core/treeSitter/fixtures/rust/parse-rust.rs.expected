@@ -8,6 +8,7 @@ fn greet(&self, name: &str) -> String;
 // Struct definition
 ⋮----
 pub struct SimpleGreeter {
+prefix: String
 ⋮----
 // Implementation block
 impl Greeter for SimpleGreeter {

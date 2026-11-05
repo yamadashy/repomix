@@ -11,15 +11,15 @@ export class DefaultParseStrategy extends BaseParseStrategy {
   ): string | null {
     const { node, name } = capture;
     const startRow = node.startPosition.row;
-    const endRow = getNodeEndRow(node);
+    const isNameCapture = name.includes('name');
+    const isCommentCapture = name.includes('comment');
+    const endRow = isCommentCapture ? this.getCommentEndRow(lines, startRow, node) : getNodeEndRow(node);
 
     const selectedLines = this.extractLines(lines, startRow, endRow);
     if (!selectedLines) {
       return null;
     }
 
-    const isNameCapture = name.includes('name');
-    const isCommentCapture = name.includes('comment');
     const isImportCapture = name.includes('import') || name.includes('require');
     const shouldSelect = isNameCapture || isCommentCapture || isImportCapture;
 
@@ -38,5 +38,24 @@ export class DefaultParseStrategy extends BaseParseStrategy {
     processedChunks.add(positionKey);
 
     return selectedLines.join('\n');
+  }
+
+  /**
+   * tree-sitter-ruby ends a `=begin` block comment at the first "=end" it sees,
+   * even mid-line (e.g. "using =begin/=end syntax"), and parses the real
+   * closing "=end" line as code. Extend such a comment to its closing line so
+   * the block is emitted whole.
+   */
+  private getCommentEndRow(lines: string[], startRow: number, node: Node): number {
+    const endRow = getNodeEndRow(node);
+    if (!lines[startRow]?.trimStart().startsWith('=begin') || /^\s*=end\b/.test(lines[endRow] ?? '')) {
+      return endRow;
+    }
+    for (let row = endRow + 1; row < lines.length; row++) {
+      if (/^\s*=end\b/.test(lines[row])) {
+        return row;
+      }
+    }
+    return endRow;
   }
 }

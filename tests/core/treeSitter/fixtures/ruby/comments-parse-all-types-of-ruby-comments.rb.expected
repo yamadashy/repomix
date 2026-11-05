@@ -9,5 +9,5 @@ def func2(name)
 =begin
 Multi-line comment block
 using =begin/=end syntax
-⋮----
+=end
 def func3
