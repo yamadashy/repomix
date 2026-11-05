@@ -9,3 +9,10 @@ subscript(
 row: Int,
 column: Int
 ) -> Double {
+⋮----
+enum Board {
+⋮----
+subscript(
+row: Int,
+column: Int
+) -> Int {

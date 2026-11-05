@@ -35,7 +35,7 @@ export class CssParseStrategy extends BaseParseStrategy {
     } else if (isAtRuleCapture && !isSelectorCapture) {
       // At-rules keep their prelude up to the block (e.g. a multi-line @media
       // query), or the whole statement when it has no block (e.g. @import)
-      selectedLines = lines.slice(startRow, this.getAtRulePreludeEndRow(node) + 1);
+      selectedLines = this.getAtRulePreludeLines(node, lines, startRow);
     } else {
       // For selectors and at-rules, extract only the first line
       selectedLines = [lines[startRow]];
@@ -53,8 +53,21 @@ export class CssParseStrategy extends BaseParseStrategy {
     return chunk;
   }
 
-  private getAtRulePreludeEndRow(node: Node): number {
+  private getAtRulePreludeLines(node: Node, lines: string[], startRow: number): string[] {
     const block = node.namedChildren.find((child) => child?.type === 'block' || child?.type === 'keyframe_block_list');
-    return block ? block.startPosition.row : getNodeEndRow(node);
+    if (!block) {
+      return lines.slice(startRow, getNodeEndRow(node) + 1);
+    }
+
+    // Stop right after the opening brace so rules on the same row are not
+    // repeated here; they are emitted by their own selector captures.
+    const blockRow = block.startPosition.row;
+    const preludeLines = lines.slice(startRow, blockRow + 1);
+    const lastIndex = preludeLines.length - 1;
+    const braceIndex = preludeLines[lastIndex].indexOf('{', blockRow === startRow ? node.startPosition.column : 0);
+    if (braceIndex >= 0) {
+      preludeLines[lastIndex] = preludeLines[lastIndex].slice(0, braceIndex + 1);
+    }
+    return preludeLines;
   }
 }

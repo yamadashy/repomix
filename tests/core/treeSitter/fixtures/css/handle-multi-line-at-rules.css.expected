@@ -5,3 +5,5 @@
   print and (orientation: landscape) {
 ⋮----
 .grid {
+⋮----
+@media print { .grid { display: block; } }

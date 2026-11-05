@@ -14,3 +14,14 @@ class Matrix {
     set { }
   }
 }
+
+enum Board {
+  case empty
+
+  subscript(
+    row: Int,
+    column: Int
+  ) -> Int {
+    return 0
+  }
+}

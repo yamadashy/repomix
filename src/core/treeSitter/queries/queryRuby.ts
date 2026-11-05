@@ -1,3 +1,23 @@
+// Receiver-less calls directly in a class or module body are declarations
+// (e.g. Rails "has_many :books, dependent: :destroy"). The method name and the
+// argument list are emitted, a trailing do...end block is not. Method bodies are
+// also body_statement nodes, so the enclosing scope is matched explicitly. Calls
+// one level down in a do-block of such a declaration (e.g. "scope" inside
+// "included do") are declarations too.
+const declarationCalls = [
+  '(call !receiver method: (identifier) @name.definition.declaration)',
+  '(call !receiver arguments: (argument_list) @name.definition.declaration)',
+];
+
+const classBodyDeclarations = ['class', 'module', 'singleton_class']
+  .flatMap((scope) => [
+    ...declarationCalls.map((call) => `(${scope} body: (body_statement ${call}))`),
+    ...declarationCalls.map(
+      (call) => `(${scope} body: (body_statement (call !receiver block: (do_block body: (body_statement ${call})))))`,
+    ),
+  ])
+  .join('\n\n');
+
 export const queryRuby = `
 (comment) @comment
 
@@ -9,27 +29,7 @@ export const queryRuby = `
   method: (identifier) @name.reference.module
   (#match? @name.reference.module "^(require|require_relative|load|autoload|include|extend|prepend|attr_accessor|attr_reader|attr_writer|private|protected|public|module_function|private_constant)$")) @definition.import
 
-; Receiver-less calls directly in a class or module body are declarations
-; (e.g. Rails "has_many :books", "validates :name"). Method bodies are also
-; body_statement nodes, so the parent is matched explicitly. Only the line of
-; the method name is emitted, so a trailing do...end block is not kept.
-(class
-  body: (body_statement
-    (call
-      !receiver
-      method: (identifier) @name.definition.declaration)))
-
-(module
-  body: (body_statement
-    (call
-      !receiver
-      method: (identifier) @name.definition.declaration)))
-
-(singleton_class
-  body: (body_statement
-    (call
-      !receiver
-      method: (identifier) @name.definition.declaration)))
+${classBodyDeclarations}
 
 ; Bare visibility modifiers (e.g. a lone "private" line inside a class)
 (body_statement

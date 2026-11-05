@@ -14,3 +14,9 @@ class Author < ApplicationRecord
     format_name(name)
   end
 end
+
+class Publisher < ApplicationRecord
+  has_many :books,
+           class_name: "Book",
+           dependent: :destroy
+end

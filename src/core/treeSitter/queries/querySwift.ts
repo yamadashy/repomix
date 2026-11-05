@@ -12,7 +12,6 @@ export const querySwift = `
     (function_declaration
       name: (simple_identifier) @name
     ) @definition.method
-    (subscript_declaration "subscript" @name) @definition.method
     (init_declaration "init" @name) @definition.method
     (deinit_declaration "deinit" @name) @definition.method
   ]
@@ -23,7 +22,6 @@ export const querySwift = `
     (protocol_function_declaration
       name: (simple_identifier) @name
     ) @definition.method
-    (subscript_declaration "subscript" @name) @definition.method
     (init_declaration "init" @name) @definition.method
   ]
 )
@@ -53,9 +51,11 @@ export const querySwift = `
 (function_declaration
     name: (simple_identifier) @name) @definition.function
 
-; Subscript signatures can span several lines. Only the "subscript" keyword is
-; captured above (the node itself includes the accessor body), so also emit the
-; lines holding its parameters and return type.
+; Subscripts in class, protocol and enum bodies. Signatures can span several
+; lines, and the node itself includes the accessor body, so capture the
+; "subscript" keyword plus the lines holding its parameters and return type.
+(subscript_declaration "subscript" @name) @definition.method
+
 (subscript_declaration
   (parameter) @name.definition.method)
 

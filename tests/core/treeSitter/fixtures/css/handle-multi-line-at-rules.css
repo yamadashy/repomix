@@ -7,3 +7,5 @@
     display: grid;
   }
 }
+
+@media print { .grid { display: block; } }
