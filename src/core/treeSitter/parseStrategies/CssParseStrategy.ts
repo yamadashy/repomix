@@ -1,6 +1,6 @@
 import type { Node } from 'web-tree-sitter';
 import type { ParseContext } from './BaseParseStrategy.js';
-import { BaseParseStrategy } from './BaseParseStrategy.js';
+import { BaseParseStrategy, getNodeEndRow } from './BaseParseStrategy.js';
 
 export class CssParseStrategy extends BaseParseStrategy {
   parseCapture(
@@ -32,6 +32,10 @@ export class CssParseStrategy extends BaseParseStrategy {
     let selectedLines: string[];
     if (isCommentCapture) {
       selectedLines = lines.slice(startRow, endRow + 1);
+    } else if (isAtRuleCapture && !isSelectorCapture) {
+      // At-rules keep their prelude up to the block (e.g. a multi-line @media
+      // query), or the whole statement when it has no block (e.g. @import)
+      selectedLines = lines.slice(startRow, this.getAtRulePreludeEndRow(node) + 1);
     } else {
       // For selectors and at-rules, extract only the first line
       selectedLines = [lines[startRow]];
@@ -47,5 +51,10 @@ export class CssParseStrategy extends BaseParseStrategy {
     }
 
     return chunk;
+  }
+
+  private getAtRulePreludeEndRow(node: Node): number {
+    const block = node.namedChildren.find((child) => child?.type === 'block' || child?.type === 'keyframe_block_list');
+    return block ? block.startPosition.row : getNodeEndRow(node);
   }
 }

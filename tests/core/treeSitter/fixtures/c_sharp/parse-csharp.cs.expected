@@ -4,7 +4,7 @@
 /// </summary>
 class Program {
 // The main entry point
-⋮----
+/// <summary>
 /// Writes a greeting to the console
-⋮----
+/// </summary>
 static void Main() {

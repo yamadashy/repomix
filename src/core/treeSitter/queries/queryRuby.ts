@@ -9,6 +9,28 @@ export const queryRuby = `
   method: (identifier) @name.reference.module
   (#match? @name.reference.module "^(require|require_relative|load|autoload|include|extend|prepend|attr_accessor|attr_reader|attr_writer|private|protected|public|module_function|private_constant)$")) @definition.import
 
+; Receiver-less calls directly in a class or module body are declarations
+; (e.g. Rails "has_many :books", "validates :name"). Method bodies are also
+; body_statement nodes, so the parent is matched explicitly. Only the line of
+; the method name is emitted, so a trailing do...end block is not kept.
+(class
+  body: (body_statement
+    (call
+      !receiver
+      method: (identifier) @name.definition.declaration)))
+
+(module
+  body: (body_statement
+    (call
+      !receiver
+      method: (identifier) @name.definition.declaration)))
+
+(singleton_class
+  body: (body_statement
+    (call
+      !receiver
+      method: (identifier) @name.definition.declaration)))
+
 ; Bare visibility modifiers (e.g. a lone "private" line inside a class)
 (body_statement
   (identifier) @name.definition.visibility

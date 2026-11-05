@@ -18,3 +18,7 @@ class Store {
 const render = ({ title }: Props) => (
   `<h1>${title}</h1>`
 );
+
+export const first = () => 1, second = () => {
+  return 2;
+};

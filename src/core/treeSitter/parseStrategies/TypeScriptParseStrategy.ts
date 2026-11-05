@@ -131,7 +131,10 @@ export class TypeScriptParseStrategy extends BaseParseStrategy {
     let target: Node | null = node;
     // `const f = () => {}` is captured as the whole declaration in the TS query
     if (target.type === 'lexical_declaration' || target.type === 'variable_declaration') {
-      target = target.namedChildren.find((child) => child?.type === 'variable_declarator') ?? null;
+      const declarators = target.namedChildren.filter((child) => child?.type === 'variable_declarator');
+      // With several declarators (`const a = () => 1, b = () => 2;`) the capture
+      // does not tell which one matched, so keep the whole line via the fallback
+      target = declarators.length === 1 ? declarators[0] : null;
     }
     if (!target) {
       return null;

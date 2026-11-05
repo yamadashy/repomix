@@ -15,6 +15,7 @@ final class GreeterImpl implements Greeter {
 public function greet($name) {
 ⋮----
 trait GreeterTrait {
+public function greet($name) {
 ⋮----
 /**
  * Greeting function

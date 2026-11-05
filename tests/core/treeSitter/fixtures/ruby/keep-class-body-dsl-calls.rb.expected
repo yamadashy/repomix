@@ -1,0 +1,10 @@
+module Searchable
+extend ActiveSupport::Concern
+⋮----
+included do
+⋮----
+class Author < ApplicationRecord
+has_many :books
+validates :name, presence: true
+⋮----
+def display_name

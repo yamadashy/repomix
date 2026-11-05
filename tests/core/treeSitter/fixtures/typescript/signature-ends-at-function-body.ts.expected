@@ -10,3 +10,5 @@ class Store
 load(options: { force: boolean } = { force: false }): Promise<void>
 ⋮----
 const render = ({ title }: Props) =>
+⋮----
+export const first = () => 1, second = () =>

@@ -27,11 +27,16 @@ export class DefaultParseStrategy extends BaseParseStrategy {
       return null;
     }
 
-    const chunk = selectedLines.join('\n');
-    if (!this.checkAndAddToProcessed(chunk, processedChunks)) {
+    // Dedupe by source position, not by text: two captures of the same lines
+    // (e.g. a name and its definition) are duplicates, but an identical line
+    // elsewhere in the file (the same method signature or doc comment in
+    // another class) is a separate declaration and must be kept.
+    const positionKey = `default:${startRow}:${endRow}`;
+    if (processedChunks.has(positionKey)) {
       return null;
     }
+    processedChunks.add(positionKey);
 
-    return chunk;
+    return selectedLines.join('\n');
   }
 }
