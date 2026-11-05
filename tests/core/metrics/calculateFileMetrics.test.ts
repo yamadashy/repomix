@@ -91,8 +91,9 @@ describe('calculateFileMetrics', () => {
 
     expect(result).toHaveLength(fileCount);
     expect(result.map((r) => r.path)).toEqual(targetFilePaths);
+    expect(result.map((r) => r.charCount)).toEqual(processedFiles.map((_, i) => i + 1));
     for (const r of result) {
-      expect(r.charCount).toBeGreaterThan(0);
+      // Exact counts for 120 runs of 'x' would only restate the tokenizer, so a positive count is enough here
       expect(r.tokenCount).toBeGreaterThan(0);
     }
 
@@ -133,7 +134,8 @@ describe('calculateFileMetrics', () => {
         taskRunner,
       });
       expect(first).toHaveLength(2);
-      expect(runSpy.mock.calls.length).toBeGreaterThan(0);
+      // Both files fit in a single batch
+      expect(runSpy).toHaveBeenCalledTimes(1);
 
       // Second run with identical inputs: every file should hit the in-memory
       // cache populated by the first run, so taskRunner.run must not be

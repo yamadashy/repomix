@@ -241,8 +241,10 @@ describe('createMetricsTaskRunner', () => {
     expect(result.taskRunner).toHaveProperty('run');
     expect(result.taskRunner).toHaveProperty('cleanup');
 
-    // warmupPromise should resolve without error
-    await expect(result.warmupPromise).resolves.toBeDefined();
+    // warmupPromise resolves to one result per prewarm task; the task count follows the host's CPU count,
+    // so assert that there is at least one task and that every task returned the mocked 0
+    const warmupResults = await result.warmupPromise;
+    expect(new Set(warmupResults as number[])).toEqual(new Set([0]));
   });
 
   it('should fire a warmup task with empty content', async () => {

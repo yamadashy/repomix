@@ -41,7 +41,8 @@ describe('JSON Output Style', () => {
     expect(() => JSON.parse(result)).not.toThrow();
 
     const parsed = JSON.parse(result);
-    expect(parsed).toBeDefined();
+    expect(Object.keys(parsed)).toEqual(['fileSummary', 'directoryStructure', 'files']);
+    expect(parsed.directoryStructure).toBe('src/\n  index.ts\npackage.json');
   });
 
   test('should include fileSummary when enabled', async () => {
@@ -52,8 +53,18 @@ describe('JSON Output Style', () => {
     const result = await generateOutput(['/test'], config, processedFiles, allFilePaths);
     const parsed = JSON.parse(result);
 
-    expect(parsed.fileSummary).toBeDefined();
-    expect(parsed.fileSummary.purpose).toBeDefined();
+    expect(Object.keys(parsed.fileSummary)).toEqual([
+      'generationHeader',
+      'purpose',
+      'fileFormat',
+      'usageGuidelines',
+      'notes',
+    ]);
+    expect(parsed.fileSummary.purpose).toBe(
+      "This file contains a packed representation of the entire repository's contents.\n" +
+        'It is designed to be easily consumable by AI systems for analysis, code review,\n' +
+        'or other automated processes.',
+    );
   });
 
   test('should not include fileSummary when disabled', async () => {
@@ -75,9 +86,10 @@ describe('JSON Output Style', () => {
     const result = await generateOutput(['/test'], config, processedFiles, allFilePaths);
     const parsed = JSON.parse(result);
 
-    expect(parsed.files).toBeDefined();
-    expect(parsed.files['src/index.ts']).toBe('console.log("Hello");');
-    expect(parsed.files['package.json']).toBe('{"name": "test"}');
+    expect(parsed.files).toEqual({
+      'src/index.ts': 'console.log("Hello");',
+      'package.json': '{"name": "test"}',
+    });
   });
 
   test('should handle special characters in file content', async () => {

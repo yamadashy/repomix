@@ -182,8 +182,7 @@ describe('calculateGitLogMetrics', () => {
         taskRunner: mockTaskRunner,
       });
 
-      expect(result.gitLogTokenCount).toBeGreaterThan(0);
-      expect(typeof result.gitLogTokenCount).toBe('number');
+      expect(result).toEqual({ gitLogTokenCount: 1003 });
     });
 
     it('should handle complex git log with multiple commits', async () => {
@@ -216,8 +215,7 @@ Date: Sun Dec 31 18:30:00 2022 +0000
         taskRunner: mockTaskRunner,
       });
 
-      expect(result.gitLogTokenCount).toBeGreaterThan(0);
-      expect(typeof result.gitLogTokenCount).toBe('number');
+      expect(result).toEqual({ gitLogTokenCount: 127 });
     });
   });
 
@@ -390,8 +388,7 @@ Date: Sun Dec 31 18:30:00 2022 +0000
         taskRunner: mockTaskRunner,
       });
 
-      expect(result.gitLogTokenCount).toBeGreaterThan(0);
-      expect(typeof result.gitLogTokenCount).toBe('number');
+      expect(result).toEqual({ gitLogTokenCount: 25 });
     });
 
     it('should handle log content with only whitespace', async () => {

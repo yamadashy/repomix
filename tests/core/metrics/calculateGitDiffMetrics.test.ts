@@ -239,8 +239,8 @@ describe('calculateGitDiffMetrics', () => {
         taskRunner: mockTaskRunner,
       });
 
-      expect(result).toBeGreaterThan(0);
-      expect(typeof result).toBe('number');
+      // 1250 tokens for each of the work tree and staged diffs
+      expect(result).toBe(2500);
     });
   });
 

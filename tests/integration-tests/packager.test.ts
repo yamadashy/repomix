@@ -193,10 +193,40 @@ const outputsDir = path.join(fixturesDir, 'outputs');
         case 'json': {
           // Validate it's valid JSON
           const jsonOutput = JSON.parse(actualOutput);
-          expect(jsonOutput.fileSummary).toBeDefined();
-          expect(jsonOutput.userProvidedHeader).toBeDefined();
-          expect(jsonOutput.directoryStructure).toBeDefined();
-          expect(jsonOutput.files).toBeDefined();
+          expect(Object.keys(jsonOutput)).toEqual(['fileSummary', 'userProvidedHeader', 'directoryStructure', 'files']);
+          expect(Object.keys(jsonOutput.fileSummary)).toEqual([
+            'generationHeader',
+            'purpose',
+            'fileFormat',
+            'usageGuidelines',
+            'notes',
+          ]);
+          expect(jsonOutput.userProvidedHeader).toBe('This repository is simple-project');
+          expect(jsonOutput.directoryStructure).toBe(
+            [
+              'resources/',
+              '  .repomixignore',
+              '  data.txt',
+              'src/',
+              '  index.js',
+              '  utils.js',
+              '.repomixignore',
+              'package.json',
+              'README.md',
+              'repomix.config.json',
+            ].join('\n'),
+          );
+          // Compare packed paths as a set so the check does not depend on output ordering
+          expect(Object.keys(jsonOutput.files).sort()).toEqual([
+            '.repomixignore',
+            'README.md',
+            'package.json',
+            'repomix.config.json',
+            'resources/.repomixignore',
+            'resources/data.txt',
+            'src/index.js',
+            'src/utils.js',
+          ]);
           expect(jsonOutput.files['src/index.js']).toContain('function main() {');
           expect(jsonOutput.files['src/utils.js']).toContain('function greet(name) {');
           break;

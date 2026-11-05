@@ -47,12 +47,34 @@ describe('packSkill', () => {
       );
 
       expect(result.skillName).toBe('test-skill');
-      expect(result.projectName).toBeTruthy();
+      expect(result.projectName).toBe('Project');
       expect(result.skillDescription).toContain('Reference codebase');
       expect(result.totalFiles).toBe(3);
-      expect(result.references.summary).toBeTruthy();
-      expect(result.references.structure).toBeTruthy();
-      expect(result.references.files).toBeTruthy();
+      expect(result.references.summary).toContain('# Summary');
+      expect(result.references.summary).toContain('3 files | 3 lines');
+      expect(result.references.structure).toBe(
+        '# Directory Structure\n\n```\nsrc/\n  index.ts (1 lines)\n  utils.ts (1 lines)\npackage.json (1 lines)\n```',
+      );
+      expect(result.references.files).toBe(
+        [
+          '# Files',
+          '',
+          '## File: src/index.ts',
+          '```typescript',
+          'console.log("hello");',
+          '```',
+          '',
+          '## File: src/utils.ts',
+          '```typescript',
+          'export const add = (a, b) => a + b;',
+          '```',
+          '',
+          '## File: package.json',
+          '```json',
+          '{"name": "test", "dependencies": {"react": "^18.0.0"}}',
+          '```',
+        ].join('\n'),
+      );
     });
 
     test('should normalize skill name', async () => {
@@ -147,7 +169,29 @@ describe('packSkill', () => {
       );
 
       expect(result.hasTechStack).toBe(true);
-      expect(result.references.techStack).toBeTruthy();
+      expect(result.references.techStack).toBe(
+        [
+          '# Tech Stacks',
+          '',
+          '## Tech Stack: .',
+          '',
+          '### Languages',
+          '',
+          '- Node.js',
+          '',
+          '### Frameworks',
+          '',
+          '- React',
+          '',
+          '### Dependencies',
+          '',
+          '- react (^18.0.0)',
+          '',
+          '### Configuration Files',
+          '',
+          '- package.json',
+        ].join('\n'),
+      );
     });
 
     test('should handle empty processed files', async () => {

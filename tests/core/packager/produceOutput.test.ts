@@ -136,8 +136,9 @@ describe('produceOutput', () => {
       );
 
       expect(mockDeps.writeOutputToDisk).toHaveBeenCalled();
-      expect(result.outputFiles).toBeDefined();
-      expect(Array.isArray(result.outputForMetrics)).toBe(true);
+      // Both files fit under the 1MB limit, so a single numbered part is produced
+      expect(result.outputFiles).toEqual(['repomix-output.1.xml']);
+      expect(result.outputForMetrics).toEqual(['output for 2 files']);
     });
 
     it('calls progress callback for split output', async () => {

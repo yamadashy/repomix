@@ -79,8 +79,7 @@ describe('calculateOutputMetrics', () => {
       taskRunner: createInlineMetricsTaskRunner(),
     });
 
-    expect(result).toBeGreaterThan(0);
-    expect(typeof result).toBe('number');
+    expect(result).toBe(15);
   });
 
   it('should process large content in parallel', async () => {
