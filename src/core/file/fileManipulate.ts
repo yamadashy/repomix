@@ -6,7 +6,7 @@ export interface FileManipulator {
   removeEmptyLines(content: string): string;
 }
 
-const rtrimLines = (content: string): string =>
+export const rtrimLines = (content: string): string =>
   content
     .split('\n')
     .map((line) => line.trimEnd())
