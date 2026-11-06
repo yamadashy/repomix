@@ -1352,6 +1352,19 @@ Explore local codebases:
 
 This is useful not only for understanding codebases, but also when you want to implement features by referencing your other repositories.
 
+### Repomix Extractor Skill (Agent Skills)
+
+The **Repomix Extractor** skill rebuilds a real directory tree from a Repomix
+markdown export (`repomix --style markdown`), so an assistant can search and edit
+the files normally instead of working inside one large markdown file.
+
+```bash
+npx skills add yamadashy/repomix --skill repomix-extractor
+```
+
+Once installed, upload a `repomix-output.md` and ask the assistant to explore or
+modify the project. It extracts the files first, then works on the real tree.
+
 ## ⚙️ Configuration
 
 Repomix supports multiple configuration file formats for flexibility and ease of use.
