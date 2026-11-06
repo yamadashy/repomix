@@ -67,6 +67,13 @@ describe('removeCommentsWithTreeSitter', () => {
     expect(await removeCommentsWithTreeSitter(input, 'lines.ts')).toBe('\nconst a = 1;\n\n\n\nconst b = 2;\n');
   });
 
+  test('keeps the line count of CRLF input', async () => {
+    // rtrimLines trims each CR with the trailing whitespace, as for every
+    // manipulator, so the lines come out ending in LF.
+    const input = 'const a = 1; // trailing\r\n// whole line\r\n/* one\r\ntwo */\r\nconst b = 2;\r\n';
+    expect(await removeCommentsWithTreeSitter(input, 'crlf.ts')).toBe('const a = 1;\n\n\n\nconst b = 2;\n');
+  });
+
   test('keeps a space where deleting a comment would join two tokens', async () => {
     const input = 'export default/* a */function f(x) {\n  return/* b */typeof/* c */x + /* d */+x;\n}\n';
     expect(await removeCommentsWithTreeSitter(input, 'join.js')).toBe(
