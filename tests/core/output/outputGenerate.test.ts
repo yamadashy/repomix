@@ -135,6 +135,46 @@ describe('outputGenerate', () => {
     expect(fileElements[1].textContent).toBe(mockProcessedFiles[1].content);
   });
 
+  test('generateOutput (parsable xml) replaces characters XML 1.0 forbids with U+FFFD', async () => {
+    const mockConfig = createMockConfig({
+      output: {
+        filePath: 'output.xml',
+        style: 'xml',
+        parsableStyle: true,
+        headerText: 'ring the bell\u0007',
+      },
+    });
+    // A form feed (common in C and Emacs Lisp sources), ANSI colour escapes and a
+    // control character in a path: none may appear in XML 1.0, even escaped.
+    const mockProcessedFiles: ProcessedFile[] = [
+      { path: 'formfeed.c', content: 'int a;\n\f\nint b;\n' },
+      { path: 'colors.sh', content: 'echo "\u001b[31mred\u001b[0m"' },
+      { path: 'odd\u0001name.txt', content: 'tab\tand\r\nnewlines stay' },
+    ];
+
+    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
+
+    // xmldom accepts these characters, so check for them directly.
+    for (const forbidden of ['\u0001', '\u0007', '\f', '\u001b']) {
+      expect(output).not.toContain(forbidden);
+    }
+    // xmldom warns on any U+FFFD ("source encoding issues?"); only errors matter here.
+    const parser = new DOMParser({
+      onError: (level, msg) => {
+        if (level !== 'warning') throw new Error(msg);
+      },
+    });
+    const doc = parser.parseFromString(output, 'text/xml');
+    const repomix = doc.documentElement;
+    if (!repomix) throw new Error('documentElement is null');
+    expect(repomix.getElementsByTagName('user_provided_header')[0].textContent).toBe('ring the bell�');
+    const fileElements = repomix.getElementsByTagName('file');
+    expect(fileElements[0].textContent).toBe('int a;\n�\nint b;\n');
+    expect(fileElements[1].textContent).toBe('echo "�[31mred�[0m"');
+    expect(fileElements[2].getAttribute('path')).toBe('odd�name.txt');
+    expect(output).toContain('tab\tand\r\nnewlines stay');
+  });
+
   test('generateOutput should write correct content to file (parsable markdown style)', async () => {
     const mockConfig = createMockConfig({
       output: {
