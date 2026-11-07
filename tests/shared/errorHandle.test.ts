@@ -22,6 +22,10 @@ describe('getErrorMessage', () => {
     expect(getErrorMessage(undefined)).toBe('undefined');
     expect(getErrorMessage(null)).toBe('null');
   });
+
+  it('does not throw for a value that cannot be stringified', () => {
+    expect(getErrorMessage(Object.create(null))).toBe('Unknown error (value could not be converted to a string)');
+  });
 });
 
 describe('rethrowValidationErrorIfSchemaError', () => {
