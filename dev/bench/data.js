@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794037670593,
+  "lastUpdate": 1794038433040,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -16823,6 +16823,51 @@ window.BENCHMARK_DATA = {
             "range": "±31",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1296ms, Q3: 1327ms\nAll times: 1277, 1280, 1293, 1294, 1294, 1296, 1296, 1304, 1304, 1308, 1311, 1313, 1314, 1320, 1326, 1327, 1330, 1334, 1339, 1342ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f7a53ce539acd799cab188f25a041b596b481e38",
+          "message": "Merge pull request #2015 from yamadashy/test/fileread-jschardet-fixture\n\ntest(core): Keep the decode-error fixture detectable as UTF-8 with jschardet 4.1",
+          "timestamp": "2026-11-07T16:59:08+09:00",
+          "tree_id": "8e20d8bb16f7eff433e1b7efaa192032e9d12505",
+          "url": "https://github.com/yamadashy/repomix/commit/f7a53ce539acd799cab188f25a041b596b481e38"
+        },
+        "date": 1794038432090,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 573,
+            "range": "±70",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 558ms, Q3: 628ms\nAll times: 543, 547, 547, 552, 553, 555, 557, 558, 559, 560, 563, 565, 565, 567, 569, 573, 574, 577, 582, 617, 624, 627, 628, 638, 642, 644, 645, 647, 680, 760ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 1001,
+            "range": "±24",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 995ms, Q3: 1019ms\nAll times: 965, 973, 982, 986, 987, 995, 997, 998, 998, 999, 1001, 1007, 1008, 1012, 1017, 1019, 1022, 1026, 1052, 1064ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1321,
+            "range": "±30",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1309ms, Q3: 1339ms\nAll times: 1280, 1282, 1302, 1302, 1304, 1309, 1312, 1312, 1314, 1319, 1321, 1323, 1328, 1329, 1338, 1339, 1345, 1368, 1371, 1379ms"
           }
         ]
       }
