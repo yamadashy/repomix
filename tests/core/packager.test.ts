@@ -495,6 +495,10 @@ describe('packager', () => {
             { path: 'packages/b/logo.png', reason: 'binary-extension' },
           ],
           progressCallback,
+          filePathsByRoot: [
+            { rootLabel: 'packages/a', files: ['index.ts'] },
+            { rootLabel: 'packages/b', files: ['index.ts'] },
+          ],
         }),
       );
       expect(deps.produceOutput).not.toHaveBeenCalled();

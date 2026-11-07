@@ -1,5 +1,5 @@
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
-import { RepomixError } from '../../shared/errorHandle.js';
+import { getErrorMessage, RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { execGitLog } from './gitCommand.js';
 import { isGitRepository } from './gitRepositoryHandle.js';
@@ -75,7 +75,7 @@ export const getGitLog = async (
   try {
     return await deps.execGitLog(directory, maxCommits, GIT_LOG_FORMAT_SEPARATOR);
   } catch (error) {
-    logger.trace('Failed to get git log:', (error as Error).message);
+    logger.trace('Failed to get git log:', getErrorMessage(error));
     throw error;
   }
 };
@@ -106,7 +106,7 @@ export const getGitLogs = async (
         commits,
       };
     } catch (error) {
-      throw new RepomixError(`Failed to get git logs: ${(error as Error).message}`, { cause: error });
+      throw new RepomixError(`Failed to get git logs: ${getErrorMessage(error)}`, { cause: error });
     }
   }
 

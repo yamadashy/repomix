@@ -2,6 +2,7 @@ import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { withMemoryLogging } from '../../shared/memoryUtils.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { SkippedFileInfo } from '../file/fileCollect.js';
+import type { FilesByRoot } from '../file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
 import type { GitDiffResult } from '../git/gitDiffHandle.js';
 import type { GitLogResult } from '../git/gitLogHandle.js';
@@ -77,6 +78,7 @@ export const generateSkillReferences = async (
   gitLogResult: GitLogResult | undefined = undefined,
   skillProjectName?: string,
   skillSourceUrl?: string,
+  filePathsByRoot?: FilesByRoot[],
   deps = {
     buildOutputGeneratorContext,
     sortOutputFiles,
@@ -124,7 +126,7 @@ export const generateSkillReferences = async (
   // Generate each section separately
   const references: SkillReferences = {
     summary: generateSummarySection(renderContext, statisticsSection),
-    structure: generateStructureSection(renderContext),
+    structure: generateStructureSection(renderContext, filePathsByRoot),
     files: generateFilesSection(renderContext),
     techStack: techStackMd,
   };
@@ -181,6 +183,8 @@ export interface PackSkillParams {
   safeFilePaths: string[];
   skippedFiles: SkippedFileInfo[];
   progressCallback: RepomixProgressCallback;
+  // Per-root file lists for the multi-root directory tree (undefined when roots are unlabeled)
+  filePathsByRoot?: FilesByRoot[];
 }
 
 /**
@@ -202,6 +206,7 @@ export const packSkill = async (params: PackSkillParams, deps = defaultDeps): Pr
     safeFilePaths,
     skippedFiles,
     progressCallback,
+    filePathsByRoot,
   } = params;
 
   // Validate skillDir early to fail fast (before expensive operations)
@@ -227,6 +232,7 @@ export const packSkill = async (params: PackSkillParams, deps = defaultDeps): Pr
       gitLogResult,
       options.skillProjectName,
       options.skillSourceUrl,
+      filePathsByRoot,
       {
         buildOutputGeneratorContext: deps.buildOutputGeneratorContext,
         sortOutputFiles: deps.sortOutputFiles,

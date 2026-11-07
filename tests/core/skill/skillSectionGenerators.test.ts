@@ -77,6 +77,48 @@ describe('skillSectionGenerators', () => {
       expect(result).toContain('index.ts');
     });
 
+    test('keeps the flat tree for a single root even when root info is given', () => {
+      const context = createMockContext();
+      const result = generateStructureSection(context, [
+        { rootLabel: 'project', files: ['src/index.ts', 'src/utils.ts'] },
+      ]);
+
+      expect(result).toBe(generateStructureSection(context));
+    });
+
+    test('splits the tree into labeled sections for multiple roots', () => {
+      const context = createMockContext({
+        processedFiles: [
+          { path: 'app/README.md', content: 'a' },
+          { path: 'app/src/index.ts', content: 'b' },
+          { path: 'lib/README.md', content: 'c' },
+        ],
+        fileLineCounts: { 'app/README.md': 2, 'app/src/index.ts': 5, 'lib/README.md': 1 },
+      });
+
+      const result = generateStructureSection(context, [
+        // secret.env is not a processed file (e.g. dropped by the security check)
+        { rootLabel: 'app', files: ['README.md', 'secret.env', 'src/index.ts'] },
+        { rootLabel: 'lib', files: ['README.md'] },
+      ]);
+
+      expect(result).toBe(
+        [
+          '# Directory Structure',
+          '',
+          '```',
+          '[app]/',
+          '  src/',
+          '    index.ts (5 lines)',
+          '  README.md (2 lines)',
+          '',
+          '[lib]/',
+          '  README.md (1 lines)',
+          '```',
+        ].join('\n'),
+      );
+    });
+
     test('should return empty string when directory structure is disabled', () => {
       const context = createMockContext({ directoryStructureEnabled: false });
       const result = generateStructureSection(context);

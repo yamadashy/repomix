@@ -2,7 +2,9 @@ import { describe, expect, test } from 'vitest';
 import {
   type FilesByRoot,
   generateTreeString,
+  generateTreeStringWithLineCounts,
   generateTreeStringWithRoots,
+  generateTreeStringWithRootsAndLineCounts,
 } from '../../../src/core/file/fileTreeGenerate.js';
 
 describe('fileTreeGenerate', () => {
@@ -95,6 +97,40 @@ describe('fileTreeGenerate', () => {
 
       // Should be identical
       expect(singleRootResult).toBe(standardResult);
+    });
+  });
+
+  describe('generateTreeStringWithRootsAndLineCounts', () => {
+    test('matches generateTreeStringWithLineCounts for a single root', () => {
+      const files = ['src/index.ts', 'README.md'];
+      const lineCounts = { 'src/index.ts': 10, 'README.md': 3 };
+      const filesByRoot: FilesByRoot[] = [{ rootLabel: 'project', files }];
+
+      expect(generateTreeStringWithRootsAndLineCounts(filesByRoot, lineCounts)).toBe(
+        generateTreeStringWithLineCounts(files, lineCounts),
+      );
+    });
+
+    test('labels each root and looks up line counts by root-prefixed path', () => {
+      const filesByRoot: FilesByRoot[] = [
+        { rootLabel: 'app', files: ['README.md', 'src/index.ts'] },
+        { rootLabel: 'packages/lib', files: ['README.md'] },
+      ];
+      const lineCounts = { 'app/README.md': 3, 'app/src/index.ts': 10, 'packages/lib/README.md': 7 };
+
+      const result = generateTreeStringWithRootsAndLineCounts(filesByRoot, lineCounts);
+
+      expect(result).toBe(
+        [
+          '[app]/',
+          '  src/',
+          '    index.ts (10 lines)',
+          '  README.md (3 lines)',
+          '',
+          '[packages/lib]/',
+          '  README.md (7 lines)',
+        ].join('\n'),
+      );
     });
   });
 });

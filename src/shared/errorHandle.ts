@@ -25,6 +25,23 @@ export class OperationCancelledError extends RepomixError {
   }
 }
 
+/**
+ * Message of a caught value: an Error's `message`, otherwise the value stringified.
+ * Safer than `(error as Error).message`, which yields undefined for a non-Error
+ * throwable and throws for a thrown null or undefined. Never throws itself: a value
+ * that cannot be stringified (e.g. a null-prototype object) gets a fixed message.
+ */
+export const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  try {
+    return String(error);
+  } catch {
+    return 'Unknown error (value could not be converted to a string)';
+  }
+};
+
 // `--quiet` and `--stdout` both set the level to SILENT, which would otherwise let a fatal
 // failure exit non-zero without printing anything. Both flags are documented as keeping
 // errors ("Suppress all console output except errors"), so at that one level the message

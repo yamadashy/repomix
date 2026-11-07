@@ -8,9 +8,9 @@ import { defaultIgnoreList } from '../../config/defaultIgnore.js';
 import { mapWithConcurrency } from '../../shared/asyncMap.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
+import { toPosixPath } from '../../shared/pathUtils.js';
 import { redactUrl } from '../../shared/urlRedact.js';
 import { sortPaths } from './filePathSort.js';
-
 import { checkDirectoryPermissions, type PermissionCheckResult, PermissionError } from './permissionCheck.js';
 
 // A leading `!` marks a negation; `\!` is an escaped literal `!` and is not one. Like fast-glob,
@@ -44,7 +44,7 @@ const IGNORE_CONTROL_FILE_NAMES = new Set(['.gitignore', '.ignore', '.repomixign
 // Whether a path is an ignore-control file whose rules globby loads. Such files must stay
 // visible to the ignore machinery even when an ignore pattern also matches them.
 export const isIgnoreControlFile = (filePath: string): boolean =>
-  IGNORE_CONTROL_FILE_NAMES.has(path.posix.basename(filePath.replace(/\\/g, '/')));
+  IGNORE_CONTROL_FILE_NAMES.has(path.posix.basename(toPosixPath(filePath)));
 
 interface FileSearchDeps {
   stat: (filePath: string) => Promise<Stats>;
@@ -151,8 +151,6 @@ export const expandIgnorePattern = (pattern: string): string[] => {
   }
   return [normalized];
 };
-
-const toPosixPath = (value: string): string => value.replace(/\\/g, '/');
 
 // Canonical posix form of a deferred ignore pattern: forward slashes and no
 // trailing slash. Detection (isIgnoreControlFilePattern) and post-filtering
