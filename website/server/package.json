@@ -17,7 +17,7 @@
   "dependencies": {
     "@hono/node-server": "^2.1.5",
     "@upstash/ratelimit": "^2.2.0",
-    "@upstash/redis": "^1.39.0",
+    "@upstash/redis": "^1.40.0",
     "fflate": "^0.8.3",
     "hono": "^4.13.14",
     "isbot": "^5.2.2",
@@ -26,13 +26,13 @@
     "winston": "^3.19.0"
   },
   "devDependencies": {
-    "@swc/core": "^1.16.20",
-    "@types/node": "^26.6.5",
+    "@swc/core": "^1.16.21",
+    "@types/node": "^26.6.6",
     "rimraf": "^6.1.3",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vitest": "^5.0.5",
-    "rolldown": "^1.2.15",
+    "rolldown": "^1.2.16",
     "rollup-plugin-swc3": "^0.12.1"
   }
 }
