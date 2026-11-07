@@ -130,7 +130,7 @@ Example Path:
         }
         createdSkillDir = skillDir;
 
-        const cliOptions = {
+        const cliOptions: CliOptions = {
           skillGenerate: actualSkillName,
           skillName: actualSkillName,
           skillDir,
@@ -140,7 +140,7 @@ Example Path:
           securityCheck: true,
           quiet: true,
           signal,
-        } as CliOptions;
+        };
 
         const result = await withMcpProgress(ctx, { sandboxed: false }, (progressCallback) =>
           deps.runCliPreservingLogLevel(['.'], directory, cliOptions, progressCallback),

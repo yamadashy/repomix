@@ -99,10 +99,10 @@ export const registerPackRemoteRepositoryTool = (
 
       try {
         tempDir = await deps.createToolWorkspace();
-        const outputFileName = defaultFilePathMap[style as keyof typeof defaultFilePathMap];
+        const outputFileName = defaultFilePathMap[style];
         const outputFilePath = path.join(tempDir, outputFileName);
 
-        const cliOptions = {
+        const cliOptions: CliOptions = {
           remote,
           compress,
           include: includePatterns,
@@ -114,7 +114,7 @@ export const registerPackRemoteRepositoryTool = (
           topFilesLen: topFilesLength,
           quiet: true,
           signal,
-        } as CliOptions;
+        };
 
         const result = await withMcpProgress(ctx, { sandboxed: false }, (progressCallback) =>
           deps.runCliPreservingLogLevel(['.'], process.cwd(), cliOptions, progressCallback),
