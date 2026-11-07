@@ -356,6 +356,26 @@ describe('remoteConfigTrustPrompt', () => {
       expect(deps.readFile).not.toHaveBeenCalled();
     });
 
+    it('accepts a config inside a clone directory whose name starts with ".."', async () => {
+      // `..foo` is a child of the clone, not a parent traversal, so it must not be refused
+      // as resolving outside the repository.
+      const deps = makeDeps({
+        realpath: fakeRealpath((target) => (target === '/repo' ? '/repo' : '/repo/..foo/repomix.config.json')),
+      });
+      await expect(confirmRemoteConfigTrust(baseOptions, deps)).resolves.toBeUndefined();
+      expect(deps.readFile).toHaveBeenCalled();
+    });
+
+    it('refuses a config resolving to a sibling directory of the clone', async () => {
+      const deps = makeDeps({
+        realpath: fakeRealpath((target) => (target === '/repo' ? '/repo' : '/repo-evil/repomix.config.json')),
+      });
+      await expect(confirmRemoteConfigTrust({ ...baseOptions, force: true }, deps)).rejects.toThrow(
+        /resolves outside the cloned repository/,
+      );
+      expect(deps.readFile).not.toHaveBeenCalled();
+    });
+
     it('reports a readable error when the config cannot be read', async () => {
       const deps = makeDeps({ readFile: vi.fn().mockRejectedValue(new Error('EACCES: permission denied')) });
       await expect(confirmRemoteConfigTrust(baseOptions, deps)).rejects.toThrow(RepomixError);

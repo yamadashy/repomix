@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import pc from 'picocolors';
 import { OperationCancelledError, RepomixError } from '../../shared/errorHandle.js';
+import { isPathWithin } from '../../shared/pathUtils.js';
 import { getDisplayPath } from '../cliReport.js';
 
 export type SkillLocation = 'personal' | 'project';
@@ -153,9 +154,5 @@ export const resolveAndPrepareSkillDir = async (skillOutput: string, cwd: string
  */
 export const getSkillLocation = (skillDir: string): SkillLocation => {
   const personalSkillsBase = getSkillBaseDir('', 'personal');
-  const relativePath = path.relative(personalSkillsBase, skillDir);
-  const isPersonal =
-    relativePath === '' ||
-    (relativePath !== '..' && !relativePath.startsWith(`..${path.sep}`) && !path.isAbsolute(relativePath));
-  return isPersonal ? 'personal' : 'project';
+  return isPathWithin(personalSkillsBase, skillDir) ? 'personal' : 'project';
 };
