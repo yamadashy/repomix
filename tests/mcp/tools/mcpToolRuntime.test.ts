@@ -32,10 +32,6 @@ import { createTempDir } from '../../testing/tempDir.js';
 import { structuredContentOf } from '../../testing/testUtils.js';
 
 describe('mcpToolRuntime', () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-  });
-
   describe('sandboxErrorReason', () => {
     const errnoError = (code: string) => Object.assign(new Error(`${code}: /host/secret/path`), { code });
 

@@ -39,13 +39,8 @@ describe('MCP Server', () => {
   const mockVersion = '1.0.0';
 
   beforeEach(() => {
-    vi.clearAllMocks();
     vi.spyOn(logger, 'trace').mockImplementation(() => {});
     vi.spyOn(logger, 'error').mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('createMcpServer', () => {
@@ -63,7 +58,7 @@ describe('MCP Server', () => {
           instructions: expect.stringContaining('Repomix MCP Server provides AI-optimized codebase analysis tools'),
         }),
       );
-      expect(server).toBeDefined();
+      expect(server).toBe(lastServer.server);
     });
 
     test('embeds icons as data URIs with a PNG fallback', () => {

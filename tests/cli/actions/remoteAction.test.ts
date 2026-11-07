@@ -1,6 +1,6 @@
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { DefaultActionRunnerResult } from '../../../src/cli/actions/defaultAction.js';
 import {
   cloneRepository,
@@ -42,12 +42,7 @@ describe('remoteAction functions', () => {
   let loggerSpies: ReturnType<typeof silenceLogger>;
 
   beforeEach(() => {
-    vi.resetAllMocks();
     loggerSpies = silenceLogger();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('runRemoteAction', () => {
@@ -82,13 +77,14 @@ describe('remoteAction functions', () => {
       const progressCallback = vi.fn(() => {
         throw new Error('listener failed');
       });
+      const defaultActionResult = createMockDefaultActionResult();
 
       await expect(
         runRemoteAction('https://gitlab.com/owner/repo.git', {}, progressCallback, {
           isGitInstalled: async () => true,
           execGitShallowClone: vi.fn(async () => {}),
           getRemoteRefs: async () => ['main'],
-          runDefaultAction: vi.fn(async () => createMockDefaultActionResult()),
+          runDefaultAction: vi.fn(async () => defaultActionResult),
           downloadGitHubArchive: vi.fn(),
           isGitHubRepository: vi.fn().mockReturnValue(false),
           parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
@@ -97,7 +93,7 @@ describe('remoteAction functions', () => {
           copyOutputToCurrentDirectory: copyOutputToCurrentDirectoryMock,
           Spinner: MockSpinner,
         }),
-      ).resolves.toBeDefined();
+      ).resolves.toBe(defaultActionResult);
       expect(progressCallback).toHaveBeenCalled();
     });
 

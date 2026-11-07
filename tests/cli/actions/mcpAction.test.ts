@@ -1,14 +1,10 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { runMcpAction } from '../../../src/cli/actions/mcpAction.js';
 import { logger } from '../../../src/shared/logger.js';
 
 describe('mcpAction', () => {
   beforeEach(() => {
     vi.spyOn(logger, 'trace').mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   test('should start MCP server and log trace message', async () => {

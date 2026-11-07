@@ -6,7 +6,8 @@ import { logger } from '../../src/shared/logger.js';
  * still assert on calls such as `expect(logger.warn).toHaveBeenCalled()`.
  * Level and stream setters are stubbed too, so a test that passes `--verbose` or `--stdout`
  * cannot leak logger state into later tests. Call it after any `vi.resetAllMocks()` (which
- * would otherwise restore the real implementations) and pair it with `vi.restoreAllMocks()`.
+ * would otherwise restore the real implementations). The spies are restored before every test
+ * by `restoreMocks` in vitest.config.ts, so call it in each test's beforeEach.
  */
 export const silenceLogger = () => ({
   error: vi.spyOn(logger, 'error').mockImplementation(() => {}),

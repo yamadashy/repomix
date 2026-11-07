@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   getDisplayPath,
   reportCompletion,
@@ -19,10 +19,6 @@ describe('cliReport', () => {
   beforeEach(() => {
     silenceLogger();
     tagColors();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('getDisplayPath', () => {
@@ -208,8 +204,7 @@ describe('cliReport', () => {
       // separate logger.log calls — otherwise an unrelated line could satisfy each.
       const calls = (logger.log as ReturnType<typeof vi.fn>).mock.calls.map((c) => String(c[0]));
       const outputLine = calls.find((line) => line.includes('skill directory'));
-      expect(outputLine).toBeDefined();
-      expect(outputLine).toContain(expectedRelative);
+      expect(outputLine).toBe(`       Output: ${expectedRelative} DIM:(skill directory)`);
     });
 
     test('should print first…last paths and part count for split outputs', () => {
@@ -239,9 +234,7 @@ describe('cliReport', () => {
       // first … last (3 parts)
       const calls = (logger.log as ReturnType<typeof vi.fn>).mock.calls.map((c) => String(c[0]));
       const outputLine = calls.find((line) => line.includes('repomix-output.1.xml'));
-      expect(outputLine).toBeDefined();
-      expect(outputLine).toContain('repomix-output.3.xml');
-      expect(outputLine).toContain('3 parts');
+      expect(outputLine).toBe('       Output: repomix-output.1.xml DIM:… repomix-output.3.xml DIM:(3 parts)');
     });
 
     test('should print summary with security check disabled', () => {
@@ -432,10 +425,6 @@ describe('reportResults token count tree', () => {
 
   beforeEach(() => {
     silenceLogger();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   test('should show the tree for a zero threshold', () => {

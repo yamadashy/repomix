@@ -19,7 +19,6 @@ describe('remoteConfigTrustPrompt', () => {
   let stderrSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    vi.restoreAllMocks();
     // Silence the trust prompt's stderr output so test logs stay clean, while still
     // allowing assertions on what the user was told.
     stderrSpy = vi.spyOn(process.stderr, 'write').mockReturnValue(true);

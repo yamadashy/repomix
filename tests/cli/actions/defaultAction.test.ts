@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildCliConfig, buildMergedConfig, runDefaultAction } from '../../../src/cli/actions/defaultAction.js';
 import type { CliOptions } from '../../../src/cli/types.js';
 import type { readFilePathsFromStdin } from '../../../src/core/file/fileStdin.js';
@@ -97,10 +97,6 @@ describe('defaultAction', () => {
       gitLogTokenCount: 0,
       skippedFiles: [],
     });
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   it('should run the default command successfully', async () => {

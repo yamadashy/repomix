@@ -1,5 +1,5 @@
 import type { spawn } from 'node:child_process';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import { copyToClipboardIfEnabled } from '../../../src/core/packager/copyToClipboardIfEnabled.js';
 import type { RepomixProgressCallback } from '../../../src/shared/types.js';
@@ -19,10 +19,6 @@ describe('copyToClipboardIfEnabled', () => {
       // No WAYLAND_DISPLAY, so the tinyclip path is taken unless a test opts into Wayland.
       env: {},
     };
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   it('should copy output to clipboard if flag enabled in config', async () => {

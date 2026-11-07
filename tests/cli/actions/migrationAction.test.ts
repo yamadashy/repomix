@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { runMigrationAction } from '../../../src/cli/actions/migrationAction.js';
 import { silenceLogger } from '../../testing/loggerDoubles.js';
 import { createTempDir } from '../../testing/tempDir.js';
@@ -67,10 +67,6 @@ describe('migrationAction', () => {
         }) as unknown as Awaited<ReturnType<MigrationDeps['loadClack']>>,
       env: { HOME: homeDir },
     };
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   test('should migrate all files when they exist', async () => {

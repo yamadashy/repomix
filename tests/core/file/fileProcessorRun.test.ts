@@ -1,6 +1,6 @@
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   applyFileProcessors,
   logFileProcessorStatus,
@@ -17,10 +17,6 @@ describe('fileProcessorRun', () => {
     vi.spyOn(logger, 'note').mockImplementation(() => {});
     vi.spyOn(logger, 'log').mockImplementation(() => {});
     vi.spyOn(logger, 'trace').mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   const rawFiles: RawFile[] = [

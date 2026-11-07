@@ -28,8 +28,11 @@ describe('skillTechStack', () => {
       expect(result[0].frameworks).toContain('React');
       expect(result[0].frameworks).toContain('Express');
       expect(result[0].frameworks).toContain('TypeScript');
-      expect(result[0].dependencies.length).toBeGreaterThan(0);
-      expect(result[0].devDependencies.length).toBeGreaterThan(0);
+      expect(result[0].dependencies).toEqual([
+        { name: 'react', version: '^18.2.0' },
+        { name: 'express', version: '^4.18.0' },
+      ]);
+      expect(result[0].devDependencies).toEqual([{ name: 'typescript', version: '^5.0.0', isDev: true }]);
     });
 
     test('should detect Python from requirements.txt', () => {
@@ -140,15 +143,13 @@ tokio = { version = "1.0", features = ["full"] }`,
       expect(result).toHaveLength(2);
 
       const root = result.find((r) => r.path === '.');
-      expect(root).toBeDefined();
-      expect(root?.dependencies).toHaveLength(2);
-      expect(root?.dependencies.find((d) => d.name === 'lodash')).toBeDefined();
-      expect(root?.dependencies.find((d) => d.name === 'react')).toBeDefined();
+      expect(root?.dependencies).toEqual([
+        { name: 'lodash', version: '4.0.0' },
+        { name: 'react', version: '^18.2.0' },
+      ]);
 
       const api = result.find((r) => r.path === 'packages/api');
-      expect(api).toBeDefined();
-      expect(api?.dependencies).toHaveLength(1);
-      expect(api?.dependencies[0].name).toBe('express');
+      expect(api?.dependencies).toEqual([{ name: 'express', version: '^4.18.0' }]);
     });
 
     test('should detect package manager from packageManager field', () => {

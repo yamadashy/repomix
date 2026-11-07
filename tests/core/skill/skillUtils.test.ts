@@ -173,9 +173,10 @@ describe('skillUtils', () => {
     });
 
     test('should handle current directory', () => {
-      // This depends on the actual directory name, so we just check it returns something
+      // '.' resolves against the working directory, so it must match the absolute cwd's basename
       const result = generateProjectName(['.']);
-      expect(result).toBeTruthy();
+      expect(result).toBe(generateProjectName([process.cwd()]));
+      expect(result).not.toBe('');
     });
   });
 

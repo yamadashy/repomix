@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test } from 'vitest';
 import {
   isExplicitRemoteUrl,
   isGitHubRepository,
@@ -10,12 +10,7 @@ import { silenceLogger } from '../../testing/loggerDoubles.js';
 
 describe('remoteAction functions', () => {
   beforeEach(() => {
-    vi.resetAllMocks();
     silenceLogger();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('parseRemoteValue', () => {

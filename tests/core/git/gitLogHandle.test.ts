@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import {
   GIT_LOG_FORMAT_SEPARATOR,
@@ -12,12 +12,7 @@ import { silenceLogger } from '../../testing/loggerDoubles.js';
 
 describe('gitLogHandle', () => {
   beforeEach(() => {
-    vi.resetAllMocks();
     silenceLogger();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('getGitLog', () => {

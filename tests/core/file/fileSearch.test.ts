@@ -3,6 +3,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { minimatch } from 'minimatch';
 import { beforeEach, describe, expect, type MockedFunction, test, vi } from 'vitest';
+import { defaultIgnoreList } from '../../../src/config/defaultIgnore.js';
 import {
   escapeGlobPattern,
   expandIgnorePattern,
@@ -210,7 +211,8 @@ describe('fileSearch', () => {
 
       const patterns = await getIgnorePatterns(process.cwd(), mockConfig, deps);
 
-      expect(patterns.length).toBeGreaterThan(0);
+      // Default list first, then the default output file; .git/info/exclude is unreadable here
+      expect(patterns).toEqual([...defaultIgnoreList, 'repomix-output.xml']);
       expect(patterns).toContain('**/node_modules/**');
     });
 
@@ -323,7 +325,8 @@ nested/other.txt
       const patterns = await getIgnorePatterns('/mock/root', mockConfig, deps);
       const splitPartPattern = patterns.find((pattern) => minimatch('docs/mycustom.1.xml', pattern));
 
-      expect(splitPartPattern).toBeDefined();
+      expect(patterns).toEqual(['docs/mycustom.xml', 'docs/mycustom.[1-9]*([0-9]).xml']);
+      expect(splitPartPattern).toBe('docs/mycustom.[1-9]*([0-9]).xml');
       if (!splitPartPattern) return;
       expect(minimatch('docs/mycustom.notes.xml', splitPartPattern)).toBe(false);
       expect(minimatch('docs/mycustom.10.xml', splitPartPattern)).toBe(true);
@@ -1130,16 +1133,13 @@ node_modules
       // listDirectories calls globby once (onlyDirectories: true)
       // listFiles calls globby once (onlyFiles: true)
       const calls = deps.globby.mock.calls;
+      expect(calls).toHaveLength(3);
 
       // Verify all calls have consistent base options
       for (const call of calls) {
         const options = call[1];
 
-        // In our implementation globby is always called with an options object.
-        // Guard here to satisfy the type-checker and avoid undefined access.
-        expect(options).toBeDefined();
-        if (!options) continue;
-
+        // toMatchObject fails on a missing options object; the guard below only narrows the type.
         expect(options).toMatchObject({
           cwd: '/test/root',
           gitignore: true,
@@ -1148,6 +1148,7 @@ node_modules
           dot: true,
           followSymbolicLinks: false,
         });
+        if (!options) continue;
 
         // A call must target a recognised entry kind: onlyFiles, onlyDirectories,
         // or objectMode (the combined files+directories path). A call may not
@@ -1178,13 +1179,9 @@ node_modules
 
       // Verify all calls have gitignore: false
       const calls = deps.globby.mock.calls;
+      expect(calls).toHaveLength(3);
       for (const call of calls) {
         const options = call[1];
-
-        // In our implementation globby is always called with an options object.
-        // Guard here to satisfy the type-checker and avoid undefined access.
-        expect(options).toBeDefined();
-        if (!options) continue;
 
         expect(options).toMatchObject({
           gitignore: false,
@@ -1211,15 +1208,11 @@ node_modules
 
       // Verify all calls include custom patterns in ignore array
       const calls = deps.globby.mock.calls;
+      expect(calls).toHaveLength(3);
       for (const call of calls) {
         const options = call[1];
 
-        // In our implementation globby is always called with an options object.
-        // Guard here to satisfy the type-checker and avoid undefined access.
-        expect(options).toBeDefined();
-        if (!options) continue;
-
-        const ignorePatterns = options.ignore as string[];
+        const ignorePatterns = options?.ignore as string[];
         expect(ignorePatterns).toEqual(expect.arrayContaining(customPatterns));
       }
     });

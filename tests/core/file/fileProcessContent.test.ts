@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import type { FileManipulator } from '../../../src/core/file/fileManipulate.js';
 import { processContent } from '../../../src/core/file/fileProcessContent.js';
@@ -21,10 +21,6 @@ describe('processContent', () => {
     silenceLogger();
     getFileManipulator.mockReturnValue(mockManipulator as unknown as FileManipulator);
     parseFile.mockResolvedValue('parsed content');
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   it('should process content with default config', async () => {

@@ -7,7 +7,6 @@ const sha256 = (value: string): string => createHash('sha256').update(value).dig
 
 describe('remoteConfigTrustStore', () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
     // The store reports persistence problems on stderr; keep test logs clean.
     vi.spyOn(process.stderr, 'write').mockReturnValue(true);
   });

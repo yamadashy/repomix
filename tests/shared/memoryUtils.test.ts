@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, type MockInstance, test, vi } from 'vitest';
+import { beforeEach, describe, expect, type MockInstance, test, vi } from 'vitest';
 import { logger } from '../../src/shared/logger.js';
 import {
   getMemoryStats,
@@ -12,10 +12,6 @@ describe('memoryUtils', () => {
 
   beforeEach(() => {
     trace = vi.spyOn(logger, 'trace').mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   test('getMemoryStats returns numeric MB values and a heap percentage', () => {

@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type * as prompts from '@clack/prompts';
 import { group as realGroup } from '@clack/prompts';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createConfigFile, createIgnoreFile, runInitAction } from '../../../src/cli/actions/initAction.js';
 import { silenceLogger } from '../../testing/loggerDoubles.js';
 import { createTempDir } from '../../testing/tempDir.js';
@@ -42,10 +42,6 @@ describe('initAction', () => {
       prompts: mockPrompts as unknown as typeof prompts,
       getGlobalDirectory: () => globalDir,
     };
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('createConfigFile', () => {

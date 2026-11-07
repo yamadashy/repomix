@@ -27,8 +27,6 @@ describe('runDefaultAction token budget guard', () => {
   });
 
   beforeEach(() => {
-    vi.clearAllMocks();
-
     mockPack.mockResolvedValue({
       totalFiles: 3,
       totalCharacters: 1000,
@@ -46,13 +44,19 @@ describe('runDefaultAction token budget guard', () => {
   test('succeeds when packed tokens are within budget', async () => {
     mockBuildMergedConfig.mockResolvedValue(buildConfig(500));
 
-    await expect(runDefaultAction(['.'], '/test', { tokenBudget: 500 }, undefined, deps)).resolves.toBeDefined();
+    await expect(runDefaultAction(['.'], '/test', { tokenBudget: 500 }, undefined, deps)).resolves.toEqual({
+      packResult: expect.objectContaining({ totalTokens: 200 }),
+      config: buildConfig(500),
+    });
   });
 
   test('succeeds when no budget is configured', async () => {
     mockBuildMergedConfig.mockResolvedValue(buildConfig(undefined));
 
-    await expect(runDefaultAction(['.'], '/test', {}, undefined, deps)).resolves.toBeDefined();
+    await expect(runDefaultAction(['.'], '/test', {}, undefined, deps)).resolves.toEqual({
+      packResult: expect.objectContaining({ totalTokens: 200 }),
+      config: buildConfig(undefined),
+    });
   });
 
   test('throws when packed tokens exceed budget', async () => {
@@ -68,6 +72,9 @@ describe('runDefaultAction token budget guard', () => {
 
     await expect(
       runDefaultAction(['.'], '/test', { tokenBudget: 100, deferTokenBudgetCheck: true }, undefined, deps),
-    ).resolves.toBeDefined();
+    ).resolves.toEqual({
+      packResult: expect.objectContaining({ totalTokens: 200 }),
+      config: buildConfig(100),
+    });
   });
 });

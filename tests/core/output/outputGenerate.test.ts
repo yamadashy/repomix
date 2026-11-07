@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import process from 'node:process';
 import { DOMParser } from '@xmldom/xmldom';
-import { afterEach, describe, expect, test, vi } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
 import { buildOutputGeneratorContext, generateOutput } from '../../../src/core/output/outputGenerate.js';
 import { RepomixError } from '../../../src/shared/errorHandle.js';
@@ -358,10 +358,6 @@ describe('outputGenerate', () => {
 });
 
 describe('buildOutputGeneratorContext', () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
   const baseConfig = (overrides = {}) =>
     createMockConfig({
       cwd: '/repo',

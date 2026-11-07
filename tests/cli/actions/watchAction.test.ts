@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events';
 import path from 'node:path';
 import process from 'node:process';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WatchDeps } from '../../../src/cli/actions/watchAction.js';
 import type { CliOptions } from '../../../src/cli/types.js';
 import type { PackResult } from '../../../src/core/packager.js';
@@ -176,10 +176,6 @@ describe('watchAction', () => {
     );
 
     flowDeps.pack.mockResolvedValue(createMockPackResult());
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   it('should run initial pack on start', async () => {
