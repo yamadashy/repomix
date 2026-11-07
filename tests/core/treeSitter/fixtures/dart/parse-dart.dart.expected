@@ -1,6 +1,7 @@
 /// A simple greeting class
 class Greeter {
 /// The name to greet
+final String name;
 ⋮----
 /// Constructor
 Greeter(this.name);

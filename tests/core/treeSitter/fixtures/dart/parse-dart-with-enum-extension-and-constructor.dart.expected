@@ -8,6 +8,8 @@ String capitalize() {
 ⋮----
 /// User class
 class User {
+final String name;
+final Status status;
 ⋮----
 /// User constructor
 User(this.name, this.status);

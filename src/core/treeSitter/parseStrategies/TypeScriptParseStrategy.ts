@@ -35,7 +35,7 @@ export class TypeScriptParseStrategy extends BaseParseStrategy {
 
     // Function capture
     if (captureTypes.has(CaptureType.Function) || captureTypes.has(CaptureType.Method)) {
-      return this.parseFunctionDefinition(lines, startRow, endRow, processedChunks).content;
+      return this.parseFunctionDefinition(node, lines, startRow, endRow, processedChunks).content;
     }
 
     // Class capture
@@ -71,6 +71,7 @@ export class TypeScriptParseStrategy extends BaseParseStrategy {
   }
 
   private parseFunctionDefinition(
+    node: Node,
     lines: string[],
     startRow: number,
     endRow: number,
@@ -81,9 +82,9 @@ export class TypeScriptParseStrategy extends BaseParseStrategy {
       return this.createNullResult();
     }
 
-    const signatureEndRow = this.findSignatureEnd(lines, startRow, endRow);
-    const selectedLines = lines.slice(startRow, signatureEndRow + 1);
-    const cleanedSignature = this.cleanFunctionSignature(selectedLines);
+    const cleanedSignature =
+      this.getSignatureBeforeBody(node, lines, startRow) ??
+      this.cleanFunctionSignature(lines.slice(startRow, this.findSignatureEnd(lines, startRow, endRow) + 1));
 
     if (!this.checkAndAddToProcessed(cleanedSignature, processedChunks)) {
       return this.createNullResult();
@@ -94,6 +95,54 @@ export class TypeScriptParseStrategy extends BaseParseStrategy {
     }
 
     return this.createResult(cleanedSignature);
+  }
+
+  /**
+   * Returns the source text from the start of the capture up to the function body,
+   * using the AST instead of scanning for "{" or "=>". Text heuristics break on
+   * destructured parameters (`function f({ a }) {`), inline comments after the
+   * opening brace, and arrow functions whose body is a parenthesized JSX block.
+   * Returns null when the node has no body (e.g. overload signatures), so the
+   * caller can fall back to the line-based heuristic.
+   */
+  private getSignatureBeforeBody(node: Node, lines: string[], startRow: number): string | null {
+    const body = this.findFunctionBody(node);
+    if (!body) {
+      return null;
+    }
+
+    const bodyRow = body.startPosition.row;
+    if (bodyRow < startRow || lines[bodyRow] === undefined) {
+      return null;
+    }
+
+    const signatureLines = lines.slice(startRow, bodyRow + 1);
+    const lastIndex = signatureLines.length - 1;
+    signatureLines[lastIndex] = signatureLines[lastIndex].slice(0, body.startPosition.column);
+    return signatureLines.join('\n').trim() || null;
+  }
+
+  private findFunctionBody(node: Node): Node | null {
+    // Hand-built nodes in unit tests may not implement the tree-sitter Node API
+    if (typeof node.childForFieldName !== 'function') {
+      return null;
+    }
+
+    let target: Node | null = node;
+    // `const f = () => {}` is captured as the whole declaration in the TS query
+    if (target.type === 'lexical_declaration' || target.type === 'variable_declaration') {
+      const declarators = target.namedChildren.filter((child) => child?.type === 'variable_declarator');
+      // With several declarators (`const a = () => 1, b = () => 2;`) the capture
+      // does not tell which one matched, so keep the whole line via the fallback
+      target = declarators.length === 1 ? declarators[0] : null;
+    }
+    if (!target) {
+      return null;
+    }
+
+    // Declarators, assignments and object pairs hold the function in a field
+    const fn = target.childForFieldName('value') ?? target.childForFieldName('right') ?? target;
+    return fn.childForFieldName('body');
   }
 
   private findSignatureEnd(lines: string[], startRow: number, endRow: number): number {

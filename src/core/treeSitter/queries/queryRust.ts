@@ -23,6 +23,11 @@ export const queryRust = `
 (union_item
     name: (type_identifier) @name.definition.class) @definition.class
 
+; struct and union fields (named fields only, including pub fields)
+; The whole declaration is the name capture so multi-line field types are kept
+(field_declaration_list
+    (field_declaration) @name.definition.field)
+
 ; type aliases
 
 (type_item
@@ -33,6 +38,10 @@ export const queryRust = `
 (declaration_list
     (function_item
         name: (identifier) @name.definition.method)) @definition.method
+
+; function signatures without a body (e.g. trait methods)
+
+(function_signature_item) @name.definition.method
 
 ; function definitions
 
@@ -51,18 +60,6 @@ export const queryRust = `
 
 (macro_definition
     name: (identifier) @name.definition.macro) @definition.macro
-
-; references
-
-(call_expression
-    function: (identifier) @name.reference.call) @reference.call
-
-(call_expression
-    function: (field_expression
-        field: (field_identifier) @name.reference.call)) @reference.call
-
-(macro_invocation
-    macro: (identifier) @name.reference.call) @reference.call
 
 ; implementations
 

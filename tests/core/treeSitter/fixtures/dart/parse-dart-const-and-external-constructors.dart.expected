@@ -1,5 +1,7 @@
 /// Point with const constructors
 class Point {
+final int x;
+final int y;
 ⋮----
 /// Const plain constructor
 const Point(this.x, this.y);

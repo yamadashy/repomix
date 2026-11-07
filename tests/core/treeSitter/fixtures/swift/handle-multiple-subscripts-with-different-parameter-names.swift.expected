@@ -11,19 +11,11 @@ subscript(range: Range<Int>) -> [Value] { get }
 ⋮----
 /// A dictionary-like class with multiple subscripts
 class Dictionary {
-⋮----
+/// Access by string key
 subscript(key: String) -> Int? {
-    get { return nil }
-    set { }
-  }
 ⋮----
+/// Access by integer index
 subscript(index: Int) -> String? {
-    get { return nil }
-    set { }
-  }
 ⋮----
 /// Access by key and default value
 subscript(key: String, default defaultValue: Int) -> Int {
-    get { return defaultValue }
-    set { }
-  }

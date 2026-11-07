@@ -1,0 +1,14 @@
+export function createPoint({ x = 0, y = 0 }: { x?: number; y?: number }): { x: number; y: number }
+⋮----
+export function sum(
+  values: number[],
+  initial = 0,
+): number
+⋮----
+class Store
+⋮----
+load(options: { force: boolean } = { force: false }): Promise<void>
+⋮----
+const render = ({ title }: Props) =>
+⋮----
+export const first = () => 1, second = () =>

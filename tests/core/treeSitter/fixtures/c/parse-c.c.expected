@@ -1,8 +1,11 @@
 /**
  * A simple C program demonstrating various language features
  */
+#include <stdio.h>
+#include <stdlib.h>
 ⋮----
 /* Define a constant */
+#define MAX_SIZE 100
 ⋮----
 /**
  * Structure representing a person
@@ -12,6 +15,7 @@ struct Person {
 /**
  * Union for different number types
  */
+union Number {
 ⋮----
 /**
  * Enum for status codes
@@ -19,6 +23,7 @@ struct Person {
 enum Status {
 ⋮----
 /* Type definition for a pointer to function returning int */
+typedef int (*IntFunctionPtr)(int, int);
 ⋮----
 /**
  * Add two integers
@@ -39,6 +44,5 @@ int main(int argc, char** argv) {
 // Print info
 ⋮----
 // Use union
-union Number num;
 ⋮----
 // Function pointer

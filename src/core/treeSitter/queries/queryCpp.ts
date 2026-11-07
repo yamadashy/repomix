@@ -3,7 +3,7 @@ export const queryCpp = `
 
 (struct_specifier name: (type_identifier) @name.definition.class body:(_)) @definition.class
 
-(declaration type: (union_specifier name: (type_identifier) @name.definition.class)) @definition.class
+(union_specifier name: (type_identifier) @name.definition.class body:(_)) @definition.class
 
 (function_declarator declarator: (identifier) @name.definition.function) @definition.function
 
@@ -16,4 +16,12 @@ export const queryCpp = `
 (enum_specifier name: (type_identifier) @name.definition.type) @definition.type
 
 (class_specifier name: (type_identifier) @name.definition.class) @definition.class
+
+(type_definition "typedef" @name.definition.type) @definition.type
+
+(preproc_include) @definition.import
+
+(preproc_def name: (identifier) @name.definition.macro) @definition.macro
+
+(preproc_function_def name: (identifier) @name.definition.macro) @definition.macro
 `;

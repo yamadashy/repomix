@@ -1,0 +1,8 @@
+=begin
+Example text
+using =begin/=end syntax
+def example
+end
+=end
+def real_method
+end

@@ -5,5 +5,13 @@ export const queryCss = `
   (selectors) @name.definition.selector
 ) @definition.selector
 
-(at_rule) @definition.at_rule
+[
+  (at_rule)
+  (charset_statement)
+  (import_statement)
+  (keyframes_statement)
+  (media_statement)
+  (namespace_statement)
+  (supports_statement)
+] @definition.at_rule
 `;

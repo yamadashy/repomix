@@ -3,11 +3,7 @@
  * Renders a greeting
  * @param {string} name - The name to display
  */
-function Greeting(
+function Greeting({ name })
 ⋮----
 // Arrow component with a fragment
-const List = ({ items }) => (
-  <>
-    {items.map((item) => <li key={item}>{item}</li>)}
-  </>
-);
+const List = ({ items }) =>

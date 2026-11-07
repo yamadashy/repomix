@@ -4,11 +4,9 @@ class Example
 # with multiple lines
 def method_with_comment
 # In-method comment
-puts "Hello"
 ⋮----
 =begin
   This is a multi-line comment block
   that can span multiple lines
   =end
 def another_method
-puts "World"

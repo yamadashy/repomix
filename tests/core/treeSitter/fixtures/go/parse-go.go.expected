@@ -6,9 +6,6 @@ import (
   "os"
 )
 ⋮----
-"fmt"
-"os"
-⋮----
 // User represents a person
 type User struct {
   Name string

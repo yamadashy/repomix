@@ -6,7 +6,8 @@
 /// XML documentation for class
 /// </summary>
 public class Test {
-⋮----
+/// <summary>
 /// Property documentation
-⋮----
+/// </summary>
 /// <value>The value description</value>
+public int Property { get; set; }

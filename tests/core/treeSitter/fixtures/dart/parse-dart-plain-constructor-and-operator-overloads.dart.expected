@@ -1,5 +1,7 @@
 /// Vector class with operators
 class Vector {
+final double x;
+final double y;
 ⋮----
 /// Plain constructor
 Vector(this.x, this.y);

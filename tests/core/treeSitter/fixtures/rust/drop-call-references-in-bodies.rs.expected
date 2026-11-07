@@ -1,0 +1,5 @@
+struct Inventory {
+items: Vec<String>,
+⋮----
+impl Inventory {
+fn add(&mut self, item: String) {

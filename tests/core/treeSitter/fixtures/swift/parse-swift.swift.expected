@@ -12,6 +12,7 @@ class Circle: Shape {
 /// The radius of the circle
 let radius: Double
 ⋮----
+/// The name of the shape
 var name: String {
 ⋮----
 /// Initialize with a radius
@@ -31,21 +32,17 @@ let width: Double
 /// The height of the rectangle
 let height: Double
 ⋮----
+/// The name of the shape
+var name: String {
+⋮----
 /// Initialize with width and height
 init(width: Double, height: Double) {
 ⋮----
 /// Calculate the area using width × height
+func area() -> Double {
 ⋮----
 /// Access by index, where 0 is width and 1 is height
 subscript(index: Int) -> Double {
-    get {
-      switch index {
-      case 0: return width
-      case 1: return height
-      default: return 0
-      }
-    }
-  }
 ⋮----
 /// Calculate the total area of shapes
 func calculateTotalArea(shapes: [Shape]) -> Double {

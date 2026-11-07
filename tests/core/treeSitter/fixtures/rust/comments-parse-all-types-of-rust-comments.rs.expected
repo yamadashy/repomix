@@ -3,9 +3,8 @@
    spanning multiple lines */
 ⋮----
 //! Module documentation
+⋮----
 /// Documentation for struct
 struct Test {
-⋮----
-struct Test {
 /// Field documentation
-    field: i32
+field: i32

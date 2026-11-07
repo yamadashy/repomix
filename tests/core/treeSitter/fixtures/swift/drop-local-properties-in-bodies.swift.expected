@@ -1,0 +1,8 @@
+let defaultTimeout = 30
+⋮----
+class Downloader {
+var retries: Int = 3
+⋮----
+func download(url: String) -> Data? {
+⋮----
+func makeRequest(_ url: String) -> Request {

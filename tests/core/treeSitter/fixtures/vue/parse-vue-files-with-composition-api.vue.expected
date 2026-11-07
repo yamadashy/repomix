@@ -5,8 +5,6 @@
   </div>
 </template>
 ⋮----
-<p>Message: {{ message }}</p>
-⋮----
 <script setup>
 // Composition API example
 import { ref } from 'vue';
