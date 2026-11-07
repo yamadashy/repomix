@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794020486426,
+  "lastUpdate": 1794034707596,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -16598,6 +16598,51 @@ window.BENCHMARK_DATA = {
             "range": "±97",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1115ms, Q3: 1212ms\nAll times: 1098, 1102, 1104, 1112, 1113, 1115, 1119, 1129, 1157, 1159, 1169, 1177, 1181, 1189, 1197, 1212, 1217, 1254, 1464, 1490ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "de9d9d7f6f00417ad82833a13f4898d1176b6f84",
+          "message": "Merge pull request #2004 from yamadashy/test/mock-hygiene\n\ntest: Centralise mock cleanup in Vitest config and tighten weak assertions",
+          "timestamp": "2026-11-07T15:56:36+09:00",
+          "tree_id": "12ab9cf05ec24a88c49be7e7529fd97b5fcdb4a4",
+          "url": "https://github.com/yamadashy/repomix/commit/de9d9d7f6f00417ad82833a13f4898d1176b6f84"
+        },
+        "date": 1794034706723,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 963,
+            "range": "±175",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 921ms, Q3: 1096ms\nAll times: 647, 799, 835, 871, 900, 906, 908, 921, 933, 945, 955, 955, 955, 958, 958, 963, 982, 997, 1036, 1050, 1053, 1061, 1096, 1097, 1119, 1128, 1175, 1177, 1210, 1539ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 656,
+            "range": "±33",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 634ms, Q3: 667ms\nAll times: 621, 624, 625, 631, 633, 634, 635, 638, 638, 649, 656, 659, 662, 663, 665, 667, 670, 674, 679, 683ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 820,
+            "range": "±19",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 815ms, Q3: 834ms\nAll times: 788, 801, 802, 813, 813, 815, 816, 816, 817, 820, 820, 822, 829, 832, 833, 834, 854, 888, 922, 954ms"
           }
         ]
       }
