@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1793840965077,
+  "lastUpdate": 1794020486426,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -16553,6 +16553,51 @@ window.BENCHMARK_DATA = {
             "range": "±30",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 799ms, Q3: 829ms\nAll times: 786, 789, 792, 798, 798, 799, 803, 805, 813, 814, 817, 817, 818, 818, 819, 829, 834, 837, 857, 863ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8c7165c3173de130c302f9345c8c371e2691b418",
+          "message": "Merge pull request #2003 from yamadashy/fix/treesitter-compress\n\nfix(core): Fix --compress output bugs surfaced by golden fixtures",
+          "timestamp": "2026-11-07T11:59:55+09:00",
+          "tree_id": "02f4ce7280e4f3cbbc93c2795c5efcdda0609505",
+          "url": "https://github.com/yamadashy/repomix/commit/8c7165c3173de130c302f9345c8c371e2691b418"
+        },
+        "date": 1794020485293,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 604,
+            "range": "±60",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 575ms, Q3: 635ms\nAll times: 562, 564, 566, 568, 570, 570, 572, 575, 581, 583, 593, 595, 596, 601, 601, 604, 605, 610, 611, 615, 616, 634, 635, 641, 643, 650, 656, 672, 715, 751ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 620,
+            "range": "±27",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 604ms, Q3: 631ms\nAll times: 588, 595, 598, 599, 599, 604, 605, 607, 609, 613, 620, 620, 621, 622, 630, 631, 634, 655, 659, 699ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1169,
+            "range": "±97",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1115ms, Q3: 1212ms\nAll times: 1098, 1102, 1104, 1112, 1113, 1115, 1119, 1129, 1157, 1159, 1169, 1177, 1181, 1189, 1197, 1212, 1217, 1254, 1464, 1490ms"
           }
         ]
       }
