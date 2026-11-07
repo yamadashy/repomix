@@ -1,6 +1,7 @@
 import * as v from 'valibot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  getErrorMessage,
   handleError,
   OperationCancelledError,
   RepomixConfigValidationError,
@@ -8,6 +9,20 @@ import {
   rethrowValidationErrorIfSchemaError,
 } from '../../src/shared/errorHandle.js';
 import { logger, repomixLogLevels } from '../../src/shared/logger.js';
+
+describe('getErrorMessage', () => {
+  it('returns the message of an Error, including subclasses', () => {
+    expect(getErrorMessage(new Error('boom'))).toBe('boom');
+    expect(getErrorMessage(new RepomixError('repomix boom'))).toBe('repomix boom');
+  });
+
+  it('stringifies non-Error throwables', () => {
+    expect(getErrorMessage('plain string')).toBe('plain string');
+    expect(getErrorMessage(42)).toBe('42');
+    expect(getErrorMessage(undefined)).toBe('undefined');
+    expect(getErrorMessage(null)).toBe('null');
+  });
+});
 
 describe('rethrowValidationErrorIfSchemaError', () => {
   it('rethrows ValiError as RepomixConfigValidationError with formatted message', () => {

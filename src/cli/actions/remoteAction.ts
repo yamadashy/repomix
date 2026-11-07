@@ -8,7 +8,7 @@ import { getRemoteRefs } from '../../core/git/gitRemoteHandle.js';
 import { type ParsedRemoteValue, parseGitHubRepoInfo, parseRemoteValue } from '../../core/git/gitRemoteParse.js';
 import { isGitInstalled } from '../../core/git/gitRepositoryHandle.js';
 import { generateDefaultSkillNameFromUrl, generateProjectNameFromUrl } from '../../core/skill/skillUtils.js';
-import { RepomixError } from '../../shared/errorHandle.js';
+import { getErrorMessage, RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { createSafeProgressCallback } from '../../shared/progressCallback.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
@@ -105,7 +105,7 @@ export const runRemoteAction = async (
           const archiveRefs = repoInfoWithBranch.ref ? [repoInfoWithBranch.ref] : [];
           warnIgnoredRemoteSubpath(parseRemoteValue(repoUrl, archiveRefs), archiveRefs);
         } catch (error) {
-          logger.trace('Failed to check the remote URL for a path:', (error as Error).message);
+          logger.trace('Failed to check the remote URL for a path:', getErrorMessage(error));
         }
       } catch (archiveError) {
         // A cancelled download must not fall back to cloning.
@@ -114,7 +114,7 @@ export const runRemoteAction = async (
           throw signal.reason;
         }
         spinner.fail('Archive download failed, trying git clone...');
-        logger.trace('Archive download error:', (archiveError as Error).message);
+        logger.trace('Archive download error:', getErrorMessage(archiveError));
 
         // Clear the temp directory for git clone attempt
         await cleanupTempDirectory(tempDirPath);
@@ -398,7 +398,7 @@ Please try one of the following:
       );
     }
 
-    throw new RepomixError(`Failed to copy output file: ${(error as Error).message}`);
+    throw new RepomixError(`Failed to copy output file: ${getErrorMessage(error)}`);
   }
 };
 
