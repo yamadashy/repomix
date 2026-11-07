@@ -52,6 +52,12 @@ Hermes Agentでリポジトリ分析を主目的にする場合は、Repomixを�
 https://github.com/facebook/react"
 ```
 
+このスキルは、GitHub、GitLab（セルフホスト環境とネストしたグループを含む）、Bitbucket、Azure DevOps、およびその他のGitホストに対応しています。HTTPSのクローンURL、または `git@gitlab.example.com:group/subgroup/project.git` のようなSCP形式のSSHアドレスを使用し、名前空間全体とプロバイダー固有のクローンパスを保持してください。`owner/repo` の省略記法はGitHub専用です。
+
+ブランチ、タグ、コミット、ファイル、ディレクトリのWeb URLに対しては、このスキルはクローンURLと `--remote-branch <ref>` を使用し、必要に応じて `--include <path or glob>` を指定します。Web URLに含まれるパスによって、パックするファイルの範囲が制限されることはありません。
+
+GitHub以外のリモートリポジトリを利用するには、Gitがインストールされている必要があります。プライベートリポジトリの場合は、実行環境にGitの認証情報またはSSHキーを設定してください。Repomixがアドレス形式を受け付けない場合は、対応しているクローンURLまたはローカルにチェックアウトしたリポジトリを使用してください。
+
 #### ローカルコードベースを探索
 
 ```text

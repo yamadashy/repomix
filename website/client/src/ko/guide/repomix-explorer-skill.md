@@ -52,6 +52,12 @@ Hermes Agent를 주로 저장소 분석에 사용한다면 Repomix를 직접 MCP
 https://github.com/facebook/react"
 ```
 
+이 스킬은 GitHub, GitLab(자체 호스팅 인스턴스 및 중첩 그룹 포함), Bitbucket, Azure DevOps 및 기타 Git 호스트를 지원합니다. HTTPS 클론 URL이나 `git@gitlab.example.com:group/subgroup/project.git`과 같은 SCP 형식의 SSH 주소를 사용하고, 전체 네임스페이스와 호스팅 서비스별 클론 경로를 그대로 유지하세요. `owner/repo` 단축 표기는 GitHub 전용입니다.
+
+브랜치, 태그, 커밋, 파일 또는 디렉터리의 웹 URL을 처리할 때는 클론 URL과 함께 `--remote-branch <ref>`를 사용하고, 필요한 경우 `--include <path or glob>`도 사용합니다. 웹 URL에 포함된 경로는 패킹할 파일의 범위를 제한하지 않습니다.
+
+GitHub 이외의 원격 저장소를 사용하려면 Git이 설치되어 있어야 합니다. 비공개 저장소의 경우 실행 환경에 Git 인증 정보나 SSH 키를 설정하세요. Repomix가 주소 형식을 거부하면 지원되는 클론 URL이나 로컬 체크아웃을 사용하세요.
+
 #### 로컬 코드베이스 탐색
 
 ```text
