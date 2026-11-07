@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794034707596,
+  "lastUpdate": 1794036474770,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -16643,6 +16643,51 @@ window.BENCHMARK_DATA = {
             "range": "±19",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 815ms, Q3: 834ms\nAll times: 788, 801, 802, 813, 813, 815, 816, 816, 817, 820, 820, 822, 829, 832, 833, 834, 854, 888, 922, 954ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dd664d68a3523ec7b06ae1dcb5d7a3c45caa75ce",
+          "message": "Merge pull request #2013 from yamadashy/test/output-diffs-isolation\n\ntest(core): Isolate config and deps per test in outputGenerateDiffs",
+          "timestamp": "2026-11-07T16:25:38+09:00",
+          "tree_id": "087dec68731f69c1ed53d805fd5c53fec2540917",
+          "url": "https://github.com/yamadashy/repomix/commit/dd664d68a3523ec7b06ae1dcb5d7a3c45caa75ce"
+        },
+        "date": 1794036473793,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 781,
+            "range": "±219",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 682ms, Q3: 901ms\nAll times: 616, 622, 642, 642, 646, 657, 657, 682, 695, 695, 708, 742, 744, 772, 775, 781, 795, 836, 847, 851, 881, 895, 901, 911, 926, 1004, 1027, 1042, 1199, 1199ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 985,
+            "range": "±17",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 979ms, Q3: 996ms\nAll times: 956, 971, 974, 974, 976, 979, 980, 982, 984, 985, 985, 986, 991, 992, 992, 996, 998, 1001, 1006, 1029ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 754,
+            "range": "±35",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 748ms, Q3: 783ms\nAll times: 736, 742, 743, 745, 748, 748, 749, 751, 752, 753, 754, 754, 755, 765, 770, 783, 784, 824, 854, 855ms"
           }
         ]
       }
