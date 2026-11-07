@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
 import { generateOutput } from '../../../src/core/output/outputGenerate.js';
@@ -30,32 +30,17 @@ describe('Output Generation with Diffs', () => {
   const allFilePaths = ['file1.ts'];
   const rootDirs = ['/test/repo'];
 
-  // Create a mock config for testing
-  const mockConfig: RepomixConfigMerged = createMockConfig({
-    cwd: '/test',
-    output: {
-      files: true,
-      directoryStructure: true,
-      fileSummary: true,
-      style: 'xml',
-      git: {
-        includeDiffs: true,
-      },
-    },
-  });
-
   const gitDiffResult: GitDiffResult = {
     workTreeDiffContent: sampleDiff,
     stagedDiffContent: '',
   };
 
-  // Mock dependencies
-  const mockDeps = {
+  const createDeps = (config: RepomixConfigMerged) => ({
     buildOutputGeneratorContext: vi.fn().mockImplementation(async () => ({
       generationDate: '2025-05-05T12:00:00Z',
       treeString: 'mock-tree',
       processedFiles: mockProcessedFiles,
-      config: mockConfig,
+      config,
       instruction: '',
       gitDiffResult,
     })),
@@ -63,7 +48,28 @@ describe('Output Generation with Diffs', () => {
     generateParsableXmlOutput: vi.fn(),
     generateParsableJsonOutput: vi.fn(),
     sortOutputFiles: vi.fn().mockResolvedValue(mockProcessedFiles),
-  };
+  });
+
+  // Tests mutate the config and the deps, so build fresh ones per test to keep them order independent.
+  let mockConfig: RepomixConfigMerged;
+  let mockDeps: ReturnType<typeof createDeps>;
+
+  beforeEach(() => {
+    mockConfig = createMockConfig({
+      cwd: '/test',
+      output: {
+        files: true,
+        directoryStructure: true,
+        fileSummary: true,
+        style: 'xml',
+        git: {
+          includeDiffs: true,
+        },
+      },
+    });
+
+    mockDeps = createDeps(mockConfig);
+  });
 
   test('XML style output should include diffs section when includeDiffs is enabled', async () => {
     // Explicitly set XML style and parsable to false to use the template
