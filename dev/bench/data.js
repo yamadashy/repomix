@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794036720879,
+  "lastUpdate": 1794037670593,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -16778,6 +16778,51 @@ window.BENCHMARK_DATA = {
             "range": "±25",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1412ms, Q3: 1437ms\nAll times: 1380, 1396, 1400, 1406, 1410, 1412, 1415, 1415, 1416, 1423, 1426, 1426, 1427, 1430, 1431, 1437, 1440, 1442, 1442, 1456ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1c9fe1951e3efe1943bccbfa300b98511dfb15cf",
+          "message": "Merge pull request #2014 from yamadashy/refactor/src-cleanups\n\nrefactor: Small src cleanups (multi-root skill tree, path and error helpers, MCP option typing)",
+          "timestamp": "2026-11-07T16:45:25+09:00",
+          "tree_id": "33370186c5cd8a06e816c78855c4066c70484394",
+          "url": "https://github.com/yamadashy/repomix/commit/1c9fe1951e3efe1943bccbfa300b98511dfb15cf"
+        },
+        "date": 1794037669818,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1296,
+            "range": "±137",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 1246ms, Q3: 1383ms\nAll times: 1011, 1140, 1159, 1184, 1191, 1193, 1232, 1246, 1255, 1259, 1262, 1265, 1275, 1281, 1285, 1296, 1312, 1324, 1328, 1331, 1334, 1335, 1383, 1395, 1408, 1437, 1470, 1522, 1550, 1854ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 852,
+            "range": "±13",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 847ms, Q3: 860ms\nAll times: 834, 835, 837, 838, 847, 847, 850, 850, 850, 851, 852, 853, 855, 857, 858, 860, 860, 861, 865, 882ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1311,
+            "range": "±31",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1296ms, Q3: 1327ms\nAll times: 1277, 1280, 1293, 1294, 1294, 1296, 1296, 1304, 1304, 1308, 1311, 1313, 1314, 1320, 1326, 1327, 1330, 1334, 1339, 1342ms"
           }
         ]
       }
