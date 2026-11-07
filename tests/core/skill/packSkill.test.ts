@@ -43,6 +43,7 @@ describe('packSkill', () => {
         undefined,
         undefined,
         undefined,
+        undefined,
         mockDeps,
       );
 
@@ -102,6 +103,7 @@ describe('packSkill', () => {
         undefined,
         undefined,
         undefined,
+        undefined,
         mockDeps,
       );
 
@@ -133,6 +135,7 @@ describe('packSkill', () => {
         undefined,
         'Vite', // Provided skillProjectName
         undefined,
+        undefined,
         mockDeps,
       );
 
@@ -161,6 +164,7 @@ describe('packSkill', () => {
         mockConfig,
         mockFiles,
         ['package.json'],
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -215,6 +219,7 @@ describe('packSkill', () => {
         mockConfig,
         mockFiles,
         [],
+        undefined,
         undefined,
         undefined,
         undefined,

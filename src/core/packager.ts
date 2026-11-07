@@ -273,6 +273,14 @@ export const pack = async (
 
     progressCallback('Generating output...');
 
+    // Build filePathsByRoot for multi-root tree generation
+    const filePathsByRoot: FilesByRoot[] | undefined = usesRootLabels(filePathStyle)
+      ? sortedFilePathsByDir.map(({ rootDir, filePaths }, index) => ({
+          rootLabel: rootLabels?.[index] ?? (path.basename(rootDir) || rootDir),
+          files: filePaths,
+        }))
+      : undefined;
+
     // Skill generation path — metrics not needed, return early (worker pool cleaned up by finally)
     if (config.skillGenerate !== undefined && options.skillDir) {
       const result = await deps.packSkill({
@@ -289,20 +297,13 @@ export const pack = async (
         safeFilePaths,
         skippedFiles: allSkippedFiles,
         progressCallback,
+        filePathsByRoot,
       });
       signal?.throwIfAborted();
 
       logMemoryUsage('Pack - End');
       return result;
     }
-
-    // Build filePathsByRoot for multi-root tree generation
-    const filePathsByRoot: FilesByRoot[] | undefined = usesRootLabels(filePathStyle)
-      ? sortedFilePathsByDir.map(({ rootDir, filePaths }, index) => ({
-          rootLabel: rootLabels?.[index] ?? (path.basename(rootDir) || rootDir),
-          files: filePaths,
-        }))
-      : undefined;
 
     // Ensure warm-up task completes before metrics calculation
     await metricsWarmupPromise;

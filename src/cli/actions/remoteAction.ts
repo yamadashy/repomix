@@ -5,12 +5,7 @@ import pc from 'picocolors';
 import { execGitShallowClone } from '../../core/git/gitCommand.js';
 import { downloadGitHubArchive, isArchiveDownloadSupported } from '../../core/git/gitHubArchive.js';
 import { getRemoteRefs } from '../../core/git/gitRemoteHandle.js';
-import {
-  isGitHubRepository,
-  type ParsedRemoteValue,
-  parseGitHubRepoInfo,
-  parseRemoteValue,
-} from '../../core/git/gitRemoteParse.js';
+import { type ParsedRemoteValue, parseGitHubRepoInfo, parseRemoteValue } from '../../core/git/gitRemoteParse.js';
 import { isGitInstalled } from '../../core/git/gitRepositoryHandle.js';
 import { generateDefaultSkillNameFromUrl, generateProjectNameFromUrl } from '../../core/skill/skillUtils.js';
 import { RepomixError } from '../../shared/errorHandle.js';
@@ -415,7 +410,6 @@ const defaultDeps = {
   getRemoteRefs,
   runDefaultAction,
   downloadGitHubArchive,
-  isGitHubRepository,
   parseGitHubRepoInfo,
   isArchiveDownloadSupported,
   confirmRemoteConfigTrust,
