@@ -1,0 +1,15 @@
+import { useState } from 'react';
+⋮----
+type CounterProps = { initial: number; label: string };
+⋮----
+/**
+ * A counter with a link to its docs
+ */
+export function Counter(
+⋮----
+// Doubles a value
+export const double = (value: number): number
+⋮----
+export class Store
+⋮----
+add(item: string): void

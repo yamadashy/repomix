@@ -23,6 +23,7 @@ const mockInitTaskRunner = inlineInitTaskRunner(async ({ rawFile, config, level 
   const content = await processContent(rawFile, config, level, {
     getFileManipulator: mockGetFileManipulator,
     parseFile,
+    removeCommentsWithTreeSitter: async () => undefined,
   });
   return { path: rawFile.path, content };
 });
