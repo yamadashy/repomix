@@ -18,7 +18,7 @@ describe('replaceInvalidXmlChars', () => {
   });
 
   test('keeps characters XML 1.0 allows', () => {
-    const allowed = 'plain <&> "quoted" \u007F\u0085  中文 😀  �';
+    const allowed = 'plain <&> "quoted" \u007F\u0085\u00A0 中文 😀 \uE000 �';
     expect(replaceInvalidXmlChars(allowed)).toBe(allowed);
   });
 });
