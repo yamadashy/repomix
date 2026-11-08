@@ -1,5 +1,6 @@
 import type fs from 'node:fs/promises';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ZodType } from 'zod';
 import { registerReadRepomixOutputTool } from '../../../src/mcp/tools/readRepomixOutputTool.js';
 import { logger } from '../../../src/shared/logger.js';
 import { type MockedDeps, mockOverloaded } from '../../testing/depsDoubles.js';
@@ -14,6 +15,7 @@ describe('readRepomixOutputTool', () => {
   }) => Promise<{
     isError?: boolean;
     content: Array<{ type: string; text: string }>;
+    structuredContent?: Record<string, unknown>;
   }>;
 
   let mockMcpServer: McpServerDouble;
@@ -161,6 +163,35 @@ describe('readRepomixOutputTool', () => {
 
     expect(result.content).toHaveLength(1);
     // The structured content is handled internally by the MCP framework
+  });
+
+  it.each([
+    { startLine: 2, endLine: 100, expectedStart: 2, expectedEnd: 3, expectedContent: 'Line 2\nLine 3' },
+    { endLine: 100, expectedStart: 1, expectedEnd: 3, expectedContent: 'Line 1\nLine 2\nLine 3' },
+    { startLine: '2', endLine: '100', expectedStart: 2, expectedEnd: 3, expectedContent: 'Line 2\nLine 3' },
+    { startLine: 2, endLine: 3, expectedStart: 2, expectedEnd: 3, expectedContent: 'Line 2\nLine 3' },
+    { startLine: 2, expectedStart: 2, expectedEnd: 3, expectedContent: 'Line 2\nLine 3' },
+    { startLine: 1, endLine: 2, expectedStart: 1, expectedEnd: 2, expectedContent: 'Line 1\nLine 2' },
+  ])('reports the actual range for %j', async ({ startLine, endLine, expectedStart, expectedEnd, expectedContent }) => {
+    deps.getOutputFilePath.mockReturnValue('/path/to/file.xml');
+    deps.access.mockResolvedValue(undefined);
+    deps.readFile.mockResolvedValue('Line 1\nLine 2\nLine 3');
+
+    const inputSchema = mockMcpServer.registerTool.mock.calls[0][1].inputSchema as ZodType<
+      Parameters<ToolHandlerType>[0]
+    >;
+    const result = await toolHandler(inputSchema.parse({ outputId: 'test-id', startLine, endLine }));
+    expect(result.isError).toBeUndefined();
+    const response = JSON.parse(result.content[0].text);
+    expect(response).toEqual({
+      content: expectedContent,
+      totalLines: 3,
+      linesRead: expectedEnd - expectedStart + 1,
+      startLine: expectedStart,
+      endLine: expectedEnd,
+    });
+    expect(response.endLine - response.startLine + 1).toBe(response.linesRead);
+    expect(result.structuredContent).toEqual(response);
   });
 
   it('should return an error if startLine exceeds total lines', async () => {

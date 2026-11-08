@@ -157,7 +157,7 @@ export const registerReadRepomixOutputTool = (
           totalLines,
           linesRead,
           startLine: startLine || actualStartLine,
-          endLine: endLine || actualEndLine,
+          endLine: actualEndLine,
         } satisfies z.infer<typeof readRepomixOutputOutputSchema>);
       } catch (error) {
         logger.error(`Error reading Repomix output: ${error}`);
