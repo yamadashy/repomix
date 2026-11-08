@@ -5,7 +5,7 @@
 /* oxlint-disable no-control-regex -- see the biome-ignore comment below */
 const INVALID_XML_CHARS_RE =
   // biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point of this sanitizer
-  /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uD800-\uDFFF￾￿]/gu;
+  /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uD800-\uDFFF\uFFFE\uFFFF]/gu;
 /* oxlint-enable no-control-regex */
 
 /**
@@ -14,7 +14,7 @@ const INVALID_XML_CHARS_RE =
  * an ANSI escape sequence. Replacing rather than dropping keeps the gap visible
  * and leaves the surrounding text where it was.
  */
-export const replaceInvalidXmlChars = (text: string): string => text.replace(INVALID_XML_CHARS_RE, '�');
+export const replaceInvalidXmlChars = (text: string): string => text.replace(INVALID_XML_CHARS_RE, '\uFFFD');
 
 // fast-xml-builder value hook: values are strings except for the odd number or Date.
 export const replaceInvalidXmlCharsInValue = (_name: string, value: unknown): unknown =>

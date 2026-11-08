@@ -14,7 +14,7 @@ describe('replaceInvalidXmlChars', () => {
     expect(replaceInvalidXmlChars('a\uD800b')).toBe('a�b');
     expect(replaceInvalidXmlChars('a\uDC00b')).toBe('a�b');
     expect(replaceInvalidXmlChars('\uDE00\uD83D')).toBe('��');
-    expect(replaceInvalidXmlChars('a￾b￿')).toBe('a�b�');
+    expect(replaceInvalidXmlChars('a\uFFFEb\uFFFF')).toBe('a�b�');
   });
 
   test('keeps characters XML 1.0 allows', () => {
