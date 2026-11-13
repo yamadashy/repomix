@@ -15,7 +15,7 @@
     "cloud-deploy": "gcloud builds submit --config=cloudbuild.yaml ."
   },
   "dependencies": {
-    "@hono/node-server": "^2.1.5",
+    "@hono/node-server": "^2.1.8",
     "@upstash/ratelimit": "^2.2.0",
     "@upstash/redis": "^1.40.0",
     "fflate": "^0.8.3",
