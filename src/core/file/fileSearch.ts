@@ -1,7 +1,7 @@
 import type { Stats } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { type Options as GlobbyOptions, type GlobEntry, globby } from 'globby';
+import { convertPathToPattern, type Options as GlobbyOptions, type GlobEntry, globby } from 'globby';
 import { minimatch } from 'minimatch';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { defaultIgnoreList } from '../../config/defaultIgnore.js';
@@ -568,14 +568,20 @@ export const getIgnorePatterns = async (
 
     logger.trace('Adding output file to ignore patterns:', relativeToTargetPath);
 
-    ignorePatterns.add(relativeToTargetPath);
+    // The output path is a literal filesystem path, but globby reads it as a
+    // pattern: `--output 'context{a,b}.xml'` would brace-expand into
+    // `contexta.xml` and `contextb.xml` and ignore those source files instead
+    // of the output. `convertPathToPattern` escapes it so it matches only
+    // itself. (escapeGlobPattern above leaves `{}` alone, and is for patterns.)
+    ignorePatterns.add(convertPathToPattern(relativeToTargetPath));
 
     if (config.output.splitOutput) {
       const extension = path.posix.extname(relativeToTargetPath);
       const outputBasePath = extension ? relativeToTargetPath.slice(0, -extension.length) : relativeToTargetPath;
       // Part numbers start at 1 with no zero padding (buildSplitOutputFilePath), so names
-      // such as `out.0.xml` or `out.01.xml` are user files and must stay packed.
-      const splitOutputPattern = `${escapeGlobPattern(outputBasePath)}.[1-9]*([0-9])${escapeGlobPattern(extension)}`;
+      // such as `out.0.xml` or `out.01.xml` are user files and must stay packed. The base
+      // and the extension are literal too, so they take the same escaping.
+      const splitOutputPattern = `${convertPathToPattern(outputBasePath)}.[1-9]*([0-9])${convertPathToPattern(extension)}`;
       ignorePatterns.add(splitOutputPattern);
     }
   }
