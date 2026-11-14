@@ -18,16 +18,22 @@ const grepRepomixOutputInputSchema = z.object({
   pattern: z.string().describe('Search pattern (JavaScript RegExp regular expression syntax)'),
   contextLines: z.coerce
     .number()
+    .int()
+    .nonnegative()
     .default(0)
     .describe(
       'Number of context lines to show before and after each match (default: 0). Overridden by beforeLines/afterLines if specified.',
     ),
   beforeLines: z.coerce
     .number()
+    .int()
+    .nonnegative()
     .optional()
     .describe('Number of context lines to show before each match (like grep -B). Takes precedence over contextLines.'),
   afterLines: z.coerce
     .number()
+    .int()
+    .nonnegative()
     .optional()
     .describe('Number of context lines to show after each match (like grep -A). Takes precedence over contextLines.'),
   ignoreCase: z.boolean().default(false).describe('Perform case-insensitive matching (default: false)'),
