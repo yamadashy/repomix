@@ -40,6 +40,7 @@ export type SupportedLang =
   | 'rust'
   | 'solidity'
   | 'swift'
+  | 'tsx'
   | 'typescript'
   | 'vue';
 
@@ -70,7 +71,16 @@ export const LANGUAGE_CONFIGS: readonly LanguageConfig[] = [
   },
   {
     name: 'typescript',
-    extensions: ['ts', 'tsx', 'mts', 'mtsx', 'cts'],
+    extensions: ['ts', 'mts', 'cts'],
+    query: queryTypescript,
+    createStrategy: () => new TypeScriptParseStrategy(),
+  },
+  {
+    // TSX has a grammar of its own: tree-sitter-typescript cannot parse JSX, and
+    // the tsx grammar cannot parse `<T>value` type assertions, so the extension
+    // decides between them, as it does for the TypeScript compiler.
+    name: 'tsx',
+    extensions: ['tsx', 'mtsx'],
     query: queryTypescript,
     createStrategy: () => new TypeScriptParseStrategy(),
   },

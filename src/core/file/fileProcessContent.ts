@@ -4,6 +4,7 @@ import { parseFile } from '../treeSitter/parseFile.js';
 import { type FileInclusionLevel, resolveFileLevel } from './fileLevelResolve.js';
 import { getFileManipulator } from './fileManipulate.js';
 import type { RawFile } from './fileTypes.js';
+import { removeCommentsWithTreeSitter } from './treeSitterCommentRemove.js';
 
 /**
  * Process the content of a file for CPU-intensive operations.
@@ -21,6 +22,7 @@ export const processContent = async (
   deps = {
     getFileManipulator,
     parseFile,
+    removeCommentsWithTreeSitter,
   },
 ): Promise<string> => {
   const processStartAt = process.hrtime.bigint();
@@ -30,7 +32,11 @@ export const processContent = async (
   logger.trace(`Processing file: ${rawFile.path}`);
 
   if (manipulator && config.output.removeComments) {
-    processedContent = manipulator.removeComments(processedContent);
+    // JavaScript and TypeScript comments are located with tree-sitter; other
+    // files, and any file tree-sitter fails on, go through the manipulator.
+    processedContent =
+      (await deps.removeCommentsWithTreeSitter(processedContent, rawFile.path)) ??
+      manipulator.removeComments(processedContent);
   }
 
   // Compress when this file resolves to the 'compress' level. The level is

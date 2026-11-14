@@ -133,7 +133,8 @@ export const parseFile = async (
   }
 };
 
-const getLanguageParserSingleton = async (createLanguageParser: () => LanguageParser) => {
+// Shared with comment removal, so a worker loads each grammar once for both.
+export const getLanguageParserSingleton = async (createLanguageParser: () => LanguageParser) => {
   if (!languageParserSingleton) {
     // Assign only after init() succeeds. Otherwise a failed init would leave an
     // uninitialized parser cached for the rest of the worker's lifetime, so

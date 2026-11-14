@@ -3,6 +3,7 @@ import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import type { FileManipulator } from '../../../src/core/file/fileManipulate.js';
 import { processContent } from '../../../src/core/file/fileProcessContent.js';
 import type { RawFile } from '../../../src/core/file/fileTypes.js';
+import type { removeCommentsWithTreeSitter as removeCommentsWithTreeSitterType } from '../../../src/core/file/treeSitterCommentRemove.js';
 import type { parseFile as parseFileType } from '../../../src/core/treeSitter/parseFile.js';
 import { silenceLogger } from '../../testing/loggerDoubles.js';
 
@@ -14,13 +15,15 @@ describe('processContent', () => {
 
   const getFileManipulator = vi.fn<(filePath: string) => FileManipulator | null>();
   const parseFile = vi.fn<typeof parseFileType>();
-  const deps = { getFileManipulator, parseFile };
+  const removeCommentsWithTreeSitter = vi.fn<typeof removeCommentsWithTreeSitterType>();
+  const deps = { getFileManipulator, parseFile, removeCommentsWithTreeSitter };
 
   beforeEach(() => {
     vi.resetAllMocks();
     silenceLogger();
     getFileManipulator.mockReturnValue(mockManipulator as unknown as FileManipulator);
     parseFile.mockResolvedValue('parsed content');
+    removeCommentsWithTreeSitter.mockResolvedValue(undefined);
   });
 
   it('should process content with default config', async () => {
@@ -57,8 +60,30 @@ describe('processContent', () => {
     } as RepomixConfigMerged;
 
     const result = await processContent(rawFile, config, undefined, deps);
+    expect(removeCommentsWithTreeSitter).toHaveBeenCalledWith(rawFile.content, rawFile.path);
     expect(mockManipulator.removeComments).toHaveBeenCalledWith(rawFile.content);
     expect(result).toBe('const x = 1; \nconst y = 2;');
+  });
+
+  it('should use the tree-sitter comment removal for the files it handles', async () => {
+    const rawFile: RawFile = {
+      path: 'test.ts',
+      content: 'const url = "https://example.com"; // comment',
+    };
+    const config: RepomixConfigMerged = {
+      output: {
+        removeComments: true,
+        removeEmptyLines: false,
+        compress: false,
+        showLineNumbers: false,
+      },
+    } as RepomixConfigMerged;
+
+    removeCommentsWithTreeSitter.mockResolvedValue('const url = "https://example.com";');
+
+    const result = await processContent(rawFile, config, undefined, deps);
+    expect(result).toBe('const url = "https://example.com";');
+    expect(mockManipulator.removeComments).not.toHaveBeenCalled();
   });
 
   it('should compress content using Tree-sitter when configured', async () => {
