@@ -1436,7 +1436,7 @@ Here's an explanation of the configuration options:
 
 | Option                           | Description                                                                                                                  | Default                |
 |----------------------------------|------------------------------------------------------------------------------------------------------------------------------|------------------------|
-| `input.maxFileSize`              | Maximum file size in bytes to process. Files larger than this will be skipped                                                | `50000000`            |
+| `input.maxFileSize`              | Maximum file size in bytes to process. Files larger than this will be skipped                                                | `52428800`            |
 | `input.processors`               | Ordered array of `{ pattern, command, timeout?, onError? }` entries that run an external command to transform matching files before packing (e.g. JSON→TOON). First matching glob wins. Runs arbitrary commands, so it runs only for local CLI runs (and remote repos with `--remote-trust-config`). See [File Processors](#file-processors) | Not set |
 | `output.filePath`                | The name of the output file                                                                                                  | `"repomix-output.xml"` |
 | `output.style`                   | The style of the output (`xml`, `markdown`, `json`, `plain`)                                                                 | `"xml"`                |
@@ -1503,7 +1503,7 @@ Example configuration:
 {
   "$schema": "https://repomix.com/schemas/latest/schema.json",
   "input": {
-    "maxFileSize": 50000000,
+    "maxFileSize": 52428800,
     // Optional: transform matching files with an external command before packing (local CLI only)
     // "processors": [
     //   { "pattern": "**/*.json", "command": "npx @toon-format/cli {file}" }
