@@ -35,7 +35,7 @@
   "devDependencies": {
     "@types/chrome": "^0.3.7",
     "@types/node": "^26.6.6",
-    "jsdom": "^30.1.3",
+    "jsdom": "^31.0.0",
     "sharp": "^0.35.5",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
