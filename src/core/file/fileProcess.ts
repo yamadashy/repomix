@@ -1,7 +1,7 @@
 import pc from 'picocolors';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
-import { initTaskRunner } from '../../shared/processConcurrency.js';
+import { getProcessConcurrency, initTaskRunner } from '../../shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import { type FileInclusionLevel, resolveFileLevel } from './fileLevelResolve.js';
 import { type FileManipulator, getFileManipulator } from './fileManipulate.js';
@@ -10,6 +10,42 @@ import { truncateBase64Content } from './truncateBase64.js';
 import type { FileProcessTask } from './workers/fileProcessWorker.js';
 
 type GetFileManipulator = (filePath: string) => FileManipulator | null;
+
+// JavaScriptCore (Bun) compiles the tree-sitter WASM separately in every worker, while V8
+// shares the compiled code across threads. Each extra worker therefore pays a fixed JIT
+// warm-up cost on Bun, so wall time behaves like `work / n + warmup * n`, which is minimized
+// at n = sqrt(work / warmup). The divisor is fitted to measurements on macOS and Linux:
+// ~400 files ran fastest with 3-4 workers, ~1,200 with 3-6 and ~8,200 with 9-11.
+const BUN_COMPRESS_TASKS_PER_SQUARED_THREAD = 75;
+
+// The JIT compiler threads need cores of their own. On Linux, once the workers occupy most
+// of the cores they starve the compiler and stay in the slow WASM interpreter: 8 workers on
+// 8 cores ran ~6x slower than 4. Half the cores was at or near the optimum on 3-18 cores.
+// On 2 cores a second worker only pays off for large repositories (it was slower up to
+// ~1,300 files and faster from ~2,000), which is where the square-root rule asks for 6+.
+const BUN_COMPRESS_DUAL_CORE_SECOND_THREAD_MIN = 6;
+
+/**
+ * Upper bound for the fileProcess worker pool, or undefined to use the default sizing.
+ * Only compression loads WASM, so removeComments-only runs keep the default.
+ */
+export const getFileProcessMaxWorkerThreads = (
+  needsCompression: boolean,
+  numOfTasks: number,
+  isBun = Boolean(process.versions.bun),
+  processConcurrency = getProcessConcurrency(),
+): number | undefined => {
+  if (!needsCompression || !isBun) {
+    return undefined;
+  }
+
+  const threadsForTasks = Math.ceil(Math.sqrt(numOfTasks / BUN_COMPRESS_TASKS_PER_SQUARED_THREAD));
+  if (processConcurrency <= 2) {
+    return threadsForTasks >= BUN_COMPRESS_DUAL_CORE_SECOND_THREAD_MIN ? Math.max(1, processConcurrency) : 1;
+  }
+
+  return Math.max(1, Math.min(threadsForTasks, Math.ceil(processConcurrency / 2)));
+};
 
 /**
  * Apply lightweight transforms on the main thread after worker processing.
@@ -123,6 +159,7 @@ export const processFiles = async (
       numOfTasks: leveledFiles.length,
       workerType: 'fileProcess',
       runtime: 'worker_threads',
+      maxWorkerThreads: getFileProcessMaxWorkerThreads(needsCompression, leveledFiles.length),
       signal,
     });
 
