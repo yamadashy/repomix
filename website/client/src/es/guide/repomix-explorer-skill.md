@@ -52,6 +52,12 @@ Una vez instalado, puedes analizar bases de código con instrucciones en lenguaj
 https://github.com/facebook/react"
 ```
 
+El skill admite GitHub, GitLab (incluidas las instancias autohospedadas y los grupos anidados), Bitbucket, Azure DevOps y otros servicios de alojamiento Git. Usa URLs de clonación HTTPS o direcciones SSH de tipo SCP como `git@gitlab.example.com:group/subgroup/project.git` y conserva el espacio de nombres completo y la ruta de clonación específica del proveedor. La forma abreviada `owner/repo` es exclusiva de GitHub.
+
+Para URLs web de ramas, etiquetas, commits, archivos o directorios, el skill utiliza la URL de clonación con `--remote-branch <ref>` y, cuando sea necesario, `--include <path or glob>`. Una ruta en una URL web no restringe qué archivos se empaquetan.
+
+Los repositorios remotos que no estén en GitHub requieren que Git esté instalado. Para repositorios privados, configura las credenciales de Git o las claves SSH en el entorno. Si Repomix rechaza un formato de dirección, usa una URL de clonación compatible o una copia local del repositorio.
+
 #### Explorar bases de código locales
 
 ```text

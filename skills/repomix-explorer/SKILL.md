@@ -7,7 +7,7 @@ description: |
   - Structure/overview: "analyze this repo", "what's the structure", "explain this codebase", "what's in vercel/next.js"
   - Pattern discovery across many files: "find all auth code", "where are the API endpoints", "show me all React components"
   - Metrics: "how many files/tokens", "largest files", "TypeScript vs JavaScript ratio"
-  - Remote repos: any github.com URL or "owner/repo" the user wants explored
+  - Remote repos: Git URLs (GitHub, GitLab, Bitbucket, Azure DevOps, self-hosted servers), SSH addresses, or GitHub "owner/repo" shorthand
 
   DO NOT trigger for:
   - Editing, refactoring, or writing code in the current project
@@ -26,6 +26,7 @@ The user might ask in various ways:
 - "Analyze the yamadashy/repomix repository"
 - "What's the structure of facebook/react?"
 - "Explore https://github.com/microsoft/vscode"
+- "Explore https://gitlab.example.com/group/subgroup/project"
 - "Find all TypeScript files in the Next.js repo"
 - "Show me the main components of vercel/next.js"
 
@@ -72,6 +73,12 @@ npx repomix@latest --remote <repo> --output /tmp/<repo-name>-analysis.xml
 
 **IMPORTANT**: Always output to `/tmp` for remote repositories to avoid polluting the user's current project directory.
 
+**Remote Repository Addresses:**
+- Use full HTTPS clone URLs or SCP-style SSH addresses (`git@host:group/repo.git`) for GitLab (including self-hosted instances), Bitbucket, Azure DevOps, and other Git hosts. Preserve the hostname, full namespace (including nested groups), and provider-specific clone path.
+- Treat `owner/repo` shorthand as GitHub only. GitLab SSH URLs like `ssh://git@host/group/repo.git` without an explicit port are also supported through normalization to SCP-style SSH. If Repomix rejects a URL format, use a supported clone URL or pack a local checkout.
+- For branch, tag, commit, file, or directory web URLs, use the repository's clone URL with `--remote-branch <ref>`. Add `--include <path or glob>` when only a file or subdirectory is requested; paths in web URLs do not limit packing.
+- Ensure Git is installed for non-GitHub remotes and the repository is reachable. Configure Git credentials or SSH keys before accessing private repositories.
+
 **For Local Directories:**
 ```bash
 npx repomix@latest [directory] [options]
@@ -89,6 +96,12 @@ npx repomix@latest [directory] [options]
 ```bash
 # Basic remote pack (always use /tmp)
 npx repomix@latest --remote yamadashy/repomix --output /tmp/repomix-analysis.xml
+
+# GitLab HTTPS with nested groups
+npx repomix@latest --remote https://gitlab.com/group/subgroup/project.git --output /tmp/project-analysis.xml
+
+# Self-hosted GitLab over SSH, selecting a branch and subdirectory
+npx repomix@latest --remote git@gitlab.example.com:group/subgroup/project.git --remote-branch main --include "src/**" --output /tmp/project-src-analysis.xml
 
 # Basic local pack
 npx repomix@latest

@@ -52,6 +52,12 @@ hermes skills install https://raw.githubusercontent.com/yamadashy/repomix/main/s
 https://github.com/facebook/react"
 ```
 
+該技能支援 GitHub、GitLab（包括自行架設的執行個體和巢狀群組）、Bitbucket、Azure DevOps 及其他 Git 託管平台。請使用 HTTPS 克隆 URL 或 `git@gitlab.example.com:group/subgroup/project.git` 這類 SCP 風格的 SSH 位址，並保留完整的命名空間及託管平台特有的克隆路徑。`owner/repo` 簡寫僅適用於 GitHub。
+
+對於指向分支、標籤、提交、檔案或目錄的網頁 URL，該技能會使用克隆 URL，搭配 `--remote-branch <ref>`，並在需要時使用 `--include <path or glob>`。網頁 URL 中的路徑不會限制要打包的檔案範圍。
+
+使用 GitHub 以外的遠端倉庫需要安裝 Git。對於私有倉庫，請在環境中設定 Git 認證資訊或 SSH 金鑰。如果 Repomix 拒絕某種位址格式，請使用支援的克隆 URL 或本機簽出的倉庫。
+
 #### 探索本地程式碼庫
 
 ```text

@@ -52,6 +52,12 @@ Kurulduktan sonra doğal dil talimatlarıyla kod tabanlarını analiz edebilirsi
 https://github.com/facebook/react"
 ```
 
+Bu beceri GitHub, GitLab (kendi sunucunuzda barındırılan kurulumlar ve iç içe gruplar dahil), Bitbucket, Azure DevOps ve diğer Git barındırma hizmetlerini destekler. Tam ad alanını ve sağlayıcıya özgü klonlama yolunu koruyarak HTTPS klonlama URL'lerini veya `git@gitlab.example.com:group/subgroup/project.git` gibi SCP biçimindeki SSH adreslerini kullanın. `owner/repo` kısaltması yalnızca GitHub için geçerlidir.
+
+Dal, etiket, commit, dosya veya dizine ait web URL'leri için beceri, klonlama URL'sini `--remote-branch <ref>` ve gerektiğinde `--include <path or glob>` ile kullanır. Web URL'sindeki bir yol, paketlenecek dosyaları sınırlamaz.
+
+GitHub dışındaki uzak depolar için Git'in kurulu olması gerekir. Özel depolar için ortamda Git kimlik bilgilerini veya SSH anahtarlarını yapılandırın. Repomix bir adres biçimini reddederse desteklenen bir klonlama URL'si veya yerel bir çalışma kopyası kullanın.
+
 ### Yerel kod tabanlarını keşfetme
 
 ```text
