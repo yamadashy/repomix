@@ -19,7 +19,7 @@
     "@upstash/ratelimit": "^2.2.0",
     "@upstash/redis": "^1.41.0",
     "fflate": "^0.8.3",
-    "hono": "^4.13.16",
+    "hono": "^4.13.17",
     "isbot": "^5.2.2",
     "repomix": "github:yamadashy/repomix#main",
     "valibot": "^1.5.0",
