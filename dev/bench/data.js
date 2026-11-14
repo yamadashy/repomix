@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794630516664,
+  "lastUpdate": 1794670582805,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -17228,6 +17228,51 @@ window.BENCHMARK_DATA = {
             "range": "±31",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1446ms, Q3: 1477ms\nAll times: 1425, 1432, 1439, 1441, 1442, 1446, 1449, 1451, 1454, 1457, 1457, 1458, 1459, 1460, 1463, 1477, 1482, 1483, 1496, 1502ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f574c686c8c90349b92c573192095cda84fd4caf",
+          "message": "Merge pull request #2038 from yamadashy/perf/bun-compress-worker-cap\n\nperf(core): Cap tree-sitter worker count on Bun when compressing",
+          "timestamp": "2026-11-15T00:34:58+09:00",
+          "tree_id": "c7d3af210dadfb0348c5ed217f7e6172cd94d6a0",
+          "url": "https://github.com/yamadashy/repomix/commit/f574c686c8c90349b92c573192095cda84fd4caf"
+        },
+        "date": 1794670581765,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1003,
+            "range": "±308",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 844ms, Q3: 1152ms\nAll times: 720, 749, 749, 769, 825, 826, 831, 844, 906, 920, 936, 947, 955, 964, 988, 1003, 1009, 1018, 1043, 1055, 1128, 1149, 1152, 1153, 1163, 1222, 1263, 1331, 1428, 1499ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 911,
+            "range": "±24",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 897ms, Q3: 921ms\nAll times: 877, 879, 890, 894, 895, 897, 904, 904, 905, 908, 911, 914, 915, 919, 920, 921, 921, 922, 926, 946ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1098,
+            "range": "±18",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1089ms, Q3: 1107ms\nAll times: 1079, 1081, 1087, 1088, 1088, 1089, 1091, 1092, 1095, 1097, 1098, 1100, 1101, 1101, 1106, 1107, 1114, 1114, 1124, 1132ms"
           }
         ]
       }
