@@ -1,46 +1,7 @@
 import { describe, expect, test } from 'vitest';
-import { generateSkillMd, getSkillTemplate } from '../../../src/core/skill/skillStyle.js';
+import { generateSkillMd } from '../../../src/core/skill/skillStyle.js';
 
 describe('skillStyle', () => {
-  describe('getSkillTemplate', () => {
-    test('should return valid SKILL.md template', () => {
-      const template = getSkillTemplate();
-      expect(template).toContain('---');
-      expect(template).toContain('name:');
-      expect(template).toContain('description:');
-      expect(template).toContain('# ');
-      expect(template).toContain('references/');
-    });
-
-    test('should include files table with contents column', () => {
-      const template = getSkillTemplate();
-      expect(template).toContain('## Files');
-      expect(template).toContain('| File | Contents |');
-    });
-
-    test('should include how to use section with numbered steps', () => {
-      const template = getSkillTemplate();
-      expect(template).toContain('## How to Use');
-      expect(template).toContain('### 1. Find file locations');
-      expect(template).toContain('### 2. Read file contents');
-      expect(template).toContain('### 3. Search for code');
-    });
-
-    test('should include overview and common use cases', () => {
-      const template = getSkillTemplate();
-      expect(template).toContain('## Overview');
-      expect(template).toContain('## Common Use Cases');
-      expect(template).toContain('## Tips');
-    });
-
-    test('should reference multiple files', () => {
-      const template = getSkillTemplate();
-      expect(template).toContain('references/summary.md');
-      expect(template).toContain('references/project-structure.md');
-      expect(template).toContain('references/files.md');
-    });
-  });
-
   describe('generateSkillMd', () => {
     const createTestContext = (overrides = {}) => ({
       skillName: 'test-skill',
@@ -74,6 +35,51 @@ describe('skillStyle', () => {
       expect(result).toContain('# My Project Codebase Reference');
       expect(result).toContain('42 files');
       expect(result).toContain('12345 tokens');
+    });
+
+    test('should include the static sections and files table', () => {
+      const result = generateSkillMd(createTestContext());
+      expect(result.startsWith('---\nname: test-skill\ndescription: Test description\n---\n')).toBe(true);
+      expect(result).toContain('## Overview');
+      expect(result).toContain('## Files\n\n| File | Contents |');
+      expect(result).toContain('## How to Use');
+      expect(result).toContain('### 1. Find file locations');
+      expect(result).toContain('### 2. Read file contents');
+      expect(result).toContain('### 3. Search for code');
+      expect(result).toContain('## Common Use Cases');
+      expect(result).toContain('## Tips');
+    });
+
+    test('should render tech-stack lines in place without leaving blank lines when absent', () => {
+      const withTech = generateSkillMd(createTestContext({ hasTechStack: true }));
+      expect(withTech).toContain(
+        '| `references/files.md` | All file contents (search with `## File: <path>`) |\n| `references/tech-stacks.md` |',
+      );
+      expect(withTech).toContain('file statistics\n- Check `tech-stacks.md`');
+
+      const withoutTech = generateSkillMd(createTestContext({ hasTechStack: false }));
+      expect(withoutTech).toContain(
+        '| `references/files.md` | All file contents (search with `## File: <path>`) |\n\n## How to Use',
+      );
+      expect(withoutTech).toContain('file statistics\n\n---');
+    });
+
+    test('should link the source URL only when provided', () => {
+      const withSource = generateSkillMd(createTestContext({ sourceUrl: 'https://github.com/o/r' }));
+      expect(
+        withSource.endsWith(
+          '[Repomix](https://github.com/yamadashy/repomix) from [Test Project](https://github.com/o/r)\n',
+        ),
+      ).toBe(true);
+
+      const withoutSource = generateSkillMd(createTestContext());
+      expect(withoutSource.endsWith('[Repomix](https://github.com/yamadashy/repomix)\n')).toBe(true);
+    });
+
+    test('should insert values verbatim without escaping', () => {
+      const result = generateSkillMd(createTestContext({ projectName: 'A & <B> "c"', totalFiles: 0 }));
+      expect(result).toContain('# A & <B> "c" Codebase Reference');
+      expect(result).toContain('0 files | 100 lines | 100 tokens');
     });
 
     test('should end with newline', () => {

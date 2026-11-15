@@ -54,8 +54,8 @@ const defaultDeps = {
   getGitDiffs,
   getGitLogs,
   // Lazy-load packSkill to defer importing the skill module chain
-  // (skillSectionGenerators, skillStyle → Handlebars), which adds ~25ms
-  // to module loading. Only used when --skill-generate is active (non-default).
+  // (skillSectionGenerators, skillStyle, skillTechStack, writeSkillOutput).
+  // Only used when --skill-generate is active (non-default).
   packSkill: async (params: PackSkillParams) => {
     const { packSkill } = await import('./skill/packSkill.js');
     return packSkill(params);

@@ -1,251 +1,121 @@
-import Handlebars from 'handlebars';
 import { describe, expect, test } from 'vitest';
-import { getMarkdownTemplate } from '../../../../src/core/output/outputStyles/markdownStyle.js';
+import { renderMarkdownFile, renderMarkdownStyle } from '../../../../src/core/output/outputStyles/markdownStyle.js';
+import { createMockRenderContext } from '../../../testing/testUtils.js';
 
 describe('markdownStyle', () => {
-  describe('getMarkdownTemplate', () => {
-    test('should return valid markdown template', () => {
-      const template = getMarkdownTemplate();
-      expect(template).toContain('# File Summary');
-      expect(template).toContain('# Directory Structure');
-      expect(template).toContain('# Files');
-      expect(template).toContain('{{#if instruction}}');
-      expect(template).toContain('# Instruction');
-    });
-
-    test('should correctly render template with basic data', () => {
-      const template = getMarkdownTemplate();
-      const compiledTemplate = Handlebars.compile(template);
-      const data = {
-        generationHeader: 'Generated Test Header',
-        summaryPurpose: 'Test Purpose',
-        summaryFileFormat: 'Test Format',
-        summaryUsageGuidelines: 'Test Guidelines',
-        summaryNotes: 'Test Notes',
-        treeString: 'src/\n  index.ts',
-        processedFiles: [
-          {
-            path: 'src/index.ts',
-            content: 'console.log("Hello");',
-          },
-        ],
-        fileSummaryEnabled: true,
-        directoryStructureEnabled: true,
-        filesEnabled: true,
-        markdownCodeBlockDelimiter: '```',
-      };
-
-      const result = compiledTemplate(data);
+  describe('renderMarkdownStyle', () => {
+    test('should render all main sections with basic data', () => {
+      const result = renderMarkdownStyle(
+        createMockRenderContext({
+          generationHeader: 'Generated Test Header',
+          summaryPurpose: 'Test Purpose',
+          summaryFileFormat: 'Test Format',
+          summaryUsageGuidelines: 'Test Guidelines',
+          summaryNotes: 'Test Notes',
+          treeString: 'src/\n  index.ts',
+          processedFiles: [{ path: 'src/index.ts', content: 'console.log("Hello");' }],
+          fileSummaryEnabled: true,
+          directoryStructureEnabled: true,
+          filesEnabled: true,
+        }),
+      );
 
       expect(result).toContain('Generated Test Header');
+      expect(result).toContain('# File Summary');
       expect(result).toContain('Test Purpose');
       expect(result).toContain('Test Format');
       expect(result).toContain('Test Guidelines');
       expect(result).toContain('Test Notes');
-      expect(result).toContain('src/\n  index.ts');
-      expect(result).toContain('## File: src/index.ts');
-      expect(result).toContain('console.log("Hello");');
+      expect(result).toContain('# Directory Structure\n```\nsrc/\n  index.ts\n```\n');
+      expect(result).toContain('# Files\n\n## File: src/index.ts\n```typescript\nconsole.log("Hello");\n```\n');
     });
 
     test('should render optional header text when provided', () => {
-      const template = getMarkdownTemplate();
-      const compiledTemplate = Handlebars.compile(template);
-      const data = {
-        headerText: 'Custom Header Text',
-        processedFiles: [],
-        fileSummaryEnabled: true,
-        directoryStructureEnabled: true,
-      };
-
-      const result = compiledTemplate(data);
-
-      expect(result).toContain('# User Provided Header');
-      expect(result).toContain('Custom Header Text');
+      const result = renderMarkdownStyle(createMockRenderContext({ headerText: 'Custom Header Text' }));
+      expect(result).toContain('# User Provided Header\nCustom Header Text\n');
     });
 
-    test('should not render header section when headerText is not provided', () => {
-      const template = getMarkdownTemplate();
-      const compiledTemplate = Handlebars.compile(template);
-      const data = {
-        processedFiles: [],
-        fileSummaryEnabled: true,
-        directoryStructureEnabled: true,
-      };
-
-      const result = compiledTemplate(data);
-
-      expect(result).not.toContain('# User Provided Header');
+    test('should not render header section when headerText is empty or missing', () => {
+      expect(renderMarkdownStyle(createMockRenderContext({ headerText: undefined }))).not.toContain(
+        '# User Provided Header',
+      );
+      expect(renderMarkdownStyle(createMockRenderContext({ headerText: '' }))).not.toContain('# User Provided Header');
     });
 
-    test('should render instruction section when provided', () => {
-      const template = getMarkdownTemplate();
-      const compiledTemplate = Handlebars.compile(template);
-      const data = {
-        instruction: 'Custom Instruction Text',
-        processedFiles: [],
-        fileSummaryEnabled: true,
-        directoryStructureEnabled: true,
-      };
-
-      const result = compiledTemplate(data);
-
-      expect(result).toContain('# Instruction');
-      expect(result).toContain('Custom Instruction Text');
+    test('should render instruction section only when provided', () => {
+      const result = renderMarkdownStyle(createMockRenderContext({ instruction: 'Custom Instruction Text' }));
+      expect(result).toContain('# Instruction\nCustom Instruction Text\n');
+      expect(renderMarkdownStyle(createMockRenderContext())).not.toContain('# Instruction');
     });
 
-    test('should display headerText if specified even if fileSummary is disabled', () => {
-      const template = getMarkdownTemplate();
-      const compiledTemplate = Handlebars.compile(template);
-      const data = {
-        headerText: 'MARKDOWN HEADER',
-        fileSummaryEnabled: false,
-        directoryStructureEnabled: true,
-        processedFiles: [],
-      };
-      const result = compiledTemplate(data);
-      expect(result).not.toContain('This file is a merged representation');
+    test('should display headerText even if fileSummary is disabled', () => {
+      const result = renderMarkdownStyle(
+        createMockRenderContext({ headerText: 'MARKDOWN HEADER', fileSummaryEnabled: false }),
+      );
+      expect(result).not.toContain('GENERATION_HEADER');
       expect(result).toContain('MARKDOWN HEADER');
     });
 
     test('should not display generationHeader if fileSummary is disabled', () => {
-      const template = getMarkdownTemplate();
-      const compiledTemplate = Handlebars.compile(template);
-      const data = {
-        generationHeader: 'Generated Test Header',
-        fileSummaryEnabled: false,
-        directoryStructureEnabled: true,
-        processedFiles: [],
-      };
-      const result = compiledTemplate(data);
-      expect(result).not.toContain('This file is a merged representation');
-      expect(result).not.toContain('Generated Test Header');
+      const result = renderMarkdownStyle(
+        createMockRenderContext({ fileSummaryEnabled: false, directoryStructureEnabled: true }),
+      );
+      expect(result).not.toContain('GENERATION_HEADER');
       expect(result).toContain('# Directory Structure');
+    });
+
+    test('should keep the fixed separator newlines when every section is disabled', () => {
+      expect(renderMarkdownStyle(createMockRenderContext())).toBe('\n\n\n');
+    });
+
+    test('should render git diffs, treating missing diff content as empty', () => {
+      const result = renderMarkdownStyle(
+        createMockRenderContext({ gitDiffEnabled: true, gitDiffWorkTree: '+added', gitDiffStaged: undefined }),
+      );
+      expect(result).toBe(
+        '\n# Git Diffs\n## Git Diffs Working Tree\n```diff\n+added\n```\n\n## Git Diffs Staged\n```diff\n\n```\n\n\n\n',
+      );
+    });
+
+    test('should render git log commits, including commits without files', () => {
+      const result = renderMarkdownStyle(
+        createMockRenderContext({
+          gitLogEnabled: true,
+          gitLogCommits: [
+            { date: '2024-01-01', message: 'first', files: ['a.ts', 'b.ts'] },
+            { date: '2024-01-02', message: 'empty', files: [] },
+          ],
+        }),
+      );
+      expect(result).toBe(
+        '\n\n# Git Logs\n\n' +
+          '## Commit: 2024-01-01\n**Message:** first\n\n**Files:**\n- a.ts\n- b.ts\n\n' +
+          '## Commit: 2024-01-02\n**Message:** empty\n\n**Files:**\n\n' +
+          '\n',
+      );
+    });
+
+    test('should insert values verbatim without escaping', () => {
+      const raw = '& < > " \' ` = {{x}}';
+      const result = renderMarkdownStyle(
+        createMockRenderContext({ headerText: raw, filesEnabled: true, processedFiles: [{ path: raw, content: raw }] }),
+      );
+      expect(result).toContain(`# User Provided Header\n${raw}\n`);
+      expect(result).toContain(`## File: ${raw}\n\`\`\`\n${raw}\n\`\`\``);
     });
   });
 
-  describe('getFileExtension helper', () => {
-    // Helper to get extension mapping result
-    const getExtension = (filePath: string): string => {
-      const helper = Handlebars.helpers.getFileExtension as Handlebars.HelperDelegate;
-      return helper(filePath) as string;
-    };
-
-    // JavaScript variants
-    test('should handle JavaScript related extensions', () => {
-      expect(getExtension('file.js')).toBe('javascript');
-      expect(getExtension('file.jsx')).toBe('javascript');
-      expect(getExtension('file.ts')).toBe('typescript');
-      expect(getExtension('file.tsx')).toBe('typescript');
+  describe('renderMarkdownFile', () => {
+    test('should render a file entry with its language hint and delimiter', () => {
+      expect(renderMarkdownFile({ path: 'docker/Dockerfile', content: 'FROM node' }, '````')).toBe(
+        '## File: docker/Dockerfile\n````dockerfile\nFROM node\n````\n\n',
+      );
     });
 
-    // Web technologies
-    test('should handle web technology extensions', () => {
-      expect(getExtension('file.html')).toBe('html');
-      expect(getExtension('file.css')).toBe('css');
-      expect(getExtension('file.scss')).toBe('scss');
-      expect(getExtension('file.sass')).toBe('sass');
-      expect(getExtension('file.vue')).toBe('vue');
-    });
-
-    // Backend languages
-    test('should handle backend language extensions', () => {
-      expect(getExtension('file.py')).toBe('python');
-      expect(getExtension('file.rb')).toBe('ruby');
-      expect(getExtension('file.php')).toBe('php');
-      expect(getExtension('file.java')).toBe('java');
-      expect(getExtension('file.go')).toBe('go');
-    });
-
-    // System programming languages
-    test('should handle system programming language extensions', () => {
-      expect(getExtension('file.c')).toBe('c');
-      expect(getExtension('file.cpp')).toBe('cpp');
-      expect(getExtension('file.rs')).toBe('rust');
-      expect(getExtension('file.swift')).toBe('swift');
-      expect(getExtension('file.kt')).toBe('kotlin');
-    });
-
-    // Configuration and data format files
-    test('should handle configuration and data format extensions', () => {
-      expect(getExtension('file.json')).toBe('json');
-      expect(getExtension('file.json5')).toBe('json5');
-      expect(getExtension('file.xml')).toBe('xml');
-      expect(getExtension('file.yaml')).toBe('yaml');
-      expect(getExtension('file.yml')).toBe('yaml');
-      expect(getExtension('file.toml')).toBe('toml');
-    });
-
-    // Shell and scripting
-    test('should handle shell and scripting extensions', () => {
-      expect(getExtension('file.sh')).toBe('bash');
-      expect(getExtension('file.bash')).toBe('bash');
-      expect(getExtension('file.ps1')).toBe('powershell');
-    });
-
-    // Database and query languages
-    test('should handle database related extensions', () => {
-      expect(getExtension('file.sql')).toBe('sql');
-      expect(getExtension('file.graphql')).toBe('graphql');
-      expect(getExtension('file.gql')).toBe('graphql');
-    });
-
-    // Functional programming languages
-    test('should handle functional programming language extensions', () => {
-      expect(getExtension('file.fs')).toBe('fsharp');
-      expect(getExtension('file.fsx')).toBe('fsharp');
-      expect(getExtension('file.hs')).toBe('haskell');
-      expect(getExtension('file.clj')).toBe('clojure');
-      expect(getExtension('file.cljs')).toBe('clojure');
-    });
-
-    // Other languages and tools
-    test('should handle other programming language extensions', () => {
-      expect(getExtension('file.scala')).toBe('scala');
-      expect(getExtension('file.dart')).toBe('dart');
-      expect(getExtension('file.ex')).toBe('elixir');
-      expect(getExtension('file.exs')).toBe('elixir');
-      expect(getExtension('file.erl')).toBe('erlang');
-      expect(getExtension('file.coffee')).toBe('coffeescript');
-    });
-
-    // Infrastructure and templating
-    test('should handle infrastructure and templating extensions', () => {
-      expect(getExtension('file.tf')).toBe('hcl');
-      expect(getExtension('file.tfvars')).toBe('hcl');
-      expect(getExtension('file.dockerfile')).toBe('dockerfile');
-      expect(getExtension('file.pug')).toBe('pug');
-      expect(getExtension('file.proto')).toBe('protobuf');
-    });
-
-    // Miscellaneous
-    test('should handle miscellaneous file extensions', () => {
-      expect(getExtension('file.md')).toBe('markdown');
-      expect(getExtension('file.r')).toBe('r');
-      expect(getExtension('file.pl')).toBe('perl');
-      expect(getExtension('file.pm')).toBe('perl');
-      expect(getExtension('file.lua')).toBe('lua');
-      expect(getExtension('file.groovy')).toBe('groovy');
-      expect(getExtension('file.vb')).toBe('vb');
-    });
-
-    // Edge cases
-    test('should handle edge cases', () => {
-      expect(getExtension('file')).toBe(''); // No extension
-      expect(getExtension('.gitignore')).toBe(''); // Dotfile
-      expect(getExtension('file.unknown')).toBe(''); // Unknown extension
-      expect(getExtension('path/to/file.js')).toBe('javascript'); // Path with directory
-    });
-
-    // Extensionless whole-filename keys (Dockerfile, Makefile) must resolve in
-    // subdirectories too, not only at the repo root.
-    test('should handle extensionless filenames regardless of directory depth', () => {
-      expect(getExtension('Dockerfile')).toBe('dockerfile');
-      expect(getExtension('docker/Dockerfile')).toBe('dockerfile');
-      expect(getExtension('services/api/Dockerfile')).toBe('dockerfile');
-      expect(getExtension('Makefile')).toBe('makefile');
-      expect(getExtension('src/Makefile')).toBe('makefile');
-      expect(getExtension('my.dir/Dockerfile')).toBe('dockerfile'); // dot in a directory segment
-      expect(getExtension('path\\to\\Dockerfile')).toBe('dockerfile'); // Windows separator
+    test('should omit the language hint for unknown extensions', () => {
+      expect(renderMarkdownFile({ path: 'notes.unknown', content: '' }, '```')).toBe(
+        '## File: notes.unknown\n```\n\n```\n\n',
+      );
     });
   });
 });

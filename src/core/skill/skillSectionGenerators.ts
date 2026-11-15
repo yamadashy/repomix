@@ -1,22 +1,20 @@
-import Handlebars from 'handlebars';
 import {
   type FilesByRoot,
   generateTreeStringWithLineCounts,
   generateTreeStringWithRootsAndLineCounts,
 } from '../file/fileTreeGenerate.js';
 import type { RenderContext } from '../output/outputGeneratorTypes.js';
-import { registerHandlebarsHelpers } from '../output/outputStyleUtils.js';
+import { renderMarkdownFile } from '../output/outputStyles/markdownStyle.js';
+import { renderEach } from '../output/outputStyleUtils.js';
 import { joinDisplayPath } from '../packager/rootDisplayPath.js';
-
-// Register Handlebars helpers (idempotent)
-registerHandlebarsHelpers();
 
 /**
  * Generates the summary section for skill output.
  * Contains purpose, file format, usage guidelines, notes, and project statistics.
  */
 export const generateSummarySection = (context: RenderContext, statisticsSection?: string): string => {
-  const template = Handlebars.compile(`{{{generationHeader}}}
+  // Values are inserted verbatim; the result is trimmed.
+  const summary = `${context.generationHeader}
 
 # Summary
 
@@ -38,18 +36,15 @@ This skill contains the following reference files:
 
 ## Usage Guidelines
 
-{{{summaryUsageGuidelines}}}
+${context.summaryUsageGuidelines}
 
 ## Notes
 
-{{{summaryNotes}}}
+${context.summaryNotes}
 
-{{#if statisticsSection}}
-{{{statisticsSection}}}
-{{/if}}
-`);
+${statisticsSection ? `${statisticsSection}\n` : ''}`;
 
-  return template({ ...context, statisticsSection }).trim();
+  return summary.trim();
 };
 
 /**
@@ -80,14 +75,7 @@ export const generateStructureSection = (context: RenderContext, filePathsByRoot
     treeStringWithLineCounts = generateTreeStringWithLineCounts(filePaths, context.fileLineCounts);
   }
 
-  const template = Handlebars.compile(`# Directory Structure
-
-\`\`\`
-{{{treeString}}}
-\`\`\`
-`);
-
-  return template({ treeString: treeStringWithLineCounts }).trim();
+  return `# Directory Structure\n\n\`\`\`\n${treeStringWithLineCounts}\n\`\`\`\n`.trim();
 };
 
 /**
@@ -99,16 +87,8 @@ export const generateFilesSection = (context: RenderContext): string => {
     return '';
   }
 
-  const template = Handlebars.compile(`# Files
-
-{{#each processedFiles}}
-## File: {{{this.path}}}
-{{{../markdownCodeBlockDelimiter}}}{{{getFileExtension this.path}}}
-{{{this.content}}}
-{{{../markdownCodeBlockDelimiter}}}
-
-{{/each}}
-`);
-
-  return template(context).trim();
+  const files = renderEach(context.processedFiles, (file) =>
+    renderMarkdownFile(file, context.markdownCodeBlockDelimiter),
+  );
+  return `# Files\n\n${files}`.trim();
 };

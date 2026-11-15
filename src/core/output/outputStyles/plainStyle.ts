@@ -1,22 +1,27 @@
+import type { ProcessedFile } from '../../file/fileTypes.js';
+import type { GitLogCommit } from '../../git/gitLogHandle.js';
+import type { RenderContext } from '../outputGeneratorTypes.js';
+import { renderEach } from '../outputStyleUtils.js';
+
 const PLAIN_SEPARATOR = '='.repeat(16);
 const PLAIN_LONG_SEPARATOR = '='.repeat(64);
 
-export const getPlainTemplate = () => {
-  return `
-{{#if fileSummaryEnabled}}
-{{{generationHeader}}}
+// Values are inserted verbatim. Each section carries its own trailing newline(s);
+// the bare '\n' entries in renderPlainStyle are fixed separators emitted even
+// when a neighbouring section is disabled. The caller trims the result.
 
-${PLAIN_LONG_SEPARATOR}
-File Summary
-${PLAIN_LONG_SEPARATOR}
+const renderHeading = (title: string): string => `${PLAIN_LONG_SEPARATOR}\n${title}\n${PLAIN_LONG_SEPARATOR}\n`;
 
+const renderFileSummary = (context: RenderContext): string => `${context.generationHeader}
+
+${renderHeading('File Summary')}
 Purpose:
 --------
-{{{summaryPurpose}}}
+${context.summaryPurpose}
 
 File Format:
 ------------
-{{{summaryFileFormat}}}
+${context.summaryFileFormat}
 5. Multiple file entries, each consisting of:
   a. A separator line (================)
   b. The file path (File: path/to/file)
@@ -26,84 +31,57 @@ File Format:
 
 Usage Guidelines:
 -----------------
-{{{summaryUsageGuidelines}}}
+${context.summaryUsageGuidelines}
 
 Notes:
 ------
-{{{summaryNotes}}}
+${context.summaryNotes}
 
-{{/if}}
+`;
 
-{{#if headerText}}
-${PLAIN_LONG_SEPARATOR}
-User Provided Header
-${PLAIN_LONG_SEPARATOR}
-{{{headerText}}}
+const renderHeader = (headerText: string): string => `${renderHeading('User Provided Header')}${headerText}\n\n`;
 
-{{/if}}
-{{#if directoryStructureEnabled}}
-${PLAIN_LONG_SEPARATOR}
-Directory Structure
-${PLAIN_LONG_SEPARATOR}
-{{{treeString}}}
+const renderDirectoryStructure = (treeString: string): string =>
+  `${renderHeading('Directory Structure')}${treeString}\n\n`;
 
-{{/if}}
-{{#if filesEnabled}}
-${PLAIN_LONG_SEPARATOR}
-Files
-${PLAIN_LONG_SEPARATOR}
+const renderFile = (file: ProcessedFile): string =>
+  `${PLAIN_SEPARATOR}\nFile: ${file.path}\n${PLAIN_SEPARATOR}\n${file.content}\n\n`;
 
-{{#each processedFiles}}
-${PLAIN_SEPARATOR}
-File: {{{this.path}}}
-${PLAIN_SEPARATOR}
-{{{this.content}}}
+const renderFiles = (files: ReadonlyArray<ProcessedFile>): string =>
+  `${renderHeading('Files')}\n${renderEach(files, renderFile)}`;
 
-{{/each}}
-{{/if}}
-
-{{#if gitDiffEnabled}}
-${PLAIN_LONG_SEPARATOR}
-Git Diffs
-${PLAIN_LONG_SEPARATOR}
-${PLAIN_SEPARATOR}
-{{{gitDiffWorkTree}}}
+const renderGitDiffs = (context: RenderContext): string => `${renderHeading('Git Diffs')}${PLAIN_SEPARATOR}
+${context.gitDiffWorkTree ?? ''}
 ${PLAIN_SEPARATOR}
 
 ${PLAIN_SEPARATOR}
 Git Diffs Staged
 ${PLAIN_SEPARATOR}
-{{{gitDiffStaged}}}
+${context.gitDiffStaged ?? ''}
 
-{{/if}}
-
-{{#if gitLogEnabled}}
-${PLAIN_LONG_SEPARATOR}
-Git Logs
-${PLAIN_LONG_SEPARATOR}
-{{#each gitLogCommits}}
-${PLAIN_SEPARATOR}
-Date: {{{this.date}}}
-Message: {{{this.message}}}
-Files:
-{{#each this.files}}
-  - {{{this}}}
-{{/each}}
-${PLAIN_SEPARATOR}
-
-{{/each}}
-
-{{/if}}
-
-{{#if instruction}}
-${PLAIN_LONG_SEPARATOR}
-Instruction
-${PLAIN_LONG_SEPARATOR}
-{{{instruction}}}
-{{/if}}
-
-${PLAIN_LONG_SEPARATOR}
-End of Codebase
-${PLAIN_LONG_SEPARATOR}
 `;
-};
+
+const renderGitLogCommit = (commit: GitLogCommit): string =>
+  `${PLAIN_SEPARATOR}\nDate: ${commit.date}\nMessage: ${commit.message}\nFiles:\n${renderEach(commit.files, (file) => `  - ${file}\n`)}${PLAIN_SEPARATOR}\n\n`;
+
+const renderGitLogs = (commits: ReadonlyArray<GitLogCommit> | undefined): string =>
+  `${renderHeading('Git Logs')}${renderEach(commits, renderGitLogCommit)}\n`;
+
+const renderInstruction = (instruction: string): string => `${renderHeading('Instruction')}${instruction}\n`;
+
+export const renderPlainStyle = (context: RenderContext): string =>
+  [
+    context.fileSummaryEnabled ? renderFileSummary(context) : '',
+    '\n',
+    context.headerText ? renderHeader(context.headerText) : '',
+    context.directoryStructureEnabled ? renderDirectoryStructure(context.treeString) : '',
+    context.filesEnabled ? renderFiles(context.processedFiles) : '',
+    '\n',
+    context.gitDiffEnabled ? renderGitDiffs(context) : '',
+    '\n',
+    context.gitLogEnabled ? renderGitLogs(context.gitLogCommits) : '',
+    '\n',
+    context.instruction ? renderInstruction(context.instruction) : '',
+    '\n',
+    renderHeading('End of Codebase'),
+  ].join('');
