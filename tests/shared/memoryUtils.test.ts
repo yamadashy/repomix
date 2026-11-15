@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, type MockInstance, test, vi } from 'vitest';
-import { logger } from '../../src/shared/logger.js';
+import { afterEach, beforeEach, describe, expect, type MockInstance, test, vi } from 'vitest';
+import { logger, repomixLogLevels } from '../../src/shared/logger.js';
 import {
   getMemoryStats,
   logMemoryDifference,
@@ -12,6 +12,11 @@ describe('memoryUtils', () => {
 
   beforeEach(() => {
     trace = vi.spyOn(logger, 'trace').mockImplementation(() => {});
+    logger.setLogLevel(repomixLogLevels.DEBUG);
+  });
+
+  afterEach(() => {
+    logger.setLogLevel(repomixLogLevels.INFO);
   });
 
   test('getMemoryStats returns numeric MB values and a heap percentage', () => {
@@ -62,5 +67,49 @@ describe('memoryUtils', () => {
 
     const messages = trace.mock.calls.map((c) => String(c[0]));
     expect(messages.some((m) => m.includes('After (Error)'))).toBe(true);
+  });
+
+  describe('when process.memoryUsage() is unavailable (e.g. Bun on Linux)', () => {
+    let memoryUsage: MockInstance<typeof process.memoryUsage>;
+
+    beforeEach(() => {
+      memoryUsage = vi.spyOn(process, 'memoryUsage').mockImplementation(() => {
+        throw new Error('Failed to get memory usage');
+      });
+    });
+
+    test('logMemoryUsage does not throw and reports that stats are unavailable', () => {
+      expect(() => logMemoryUsage('parse')).not.toThrow();
+      expect(trace).toHaveBeenCalledWith(expect.stringContaining('Memory [parse] | unavailable'));
+    });
+
+    test('withMemoryLogging still returns the inner result', async () => {
+      await expect(withMemoryLogging('task', async () => 'ok')).resolves.toBe('ok');
+    });
+
+    test('withMemoryLogging still rethrows the inner error', async () => {
+      const boom = new Error('boom');
+      await expect(
+        withMemoryLogging('task', async () => {
+          throw boom;
+        }),
+      ).rejects.toBe(boom);
+    });
+
+    test('logMemoryUsage does not query memory when trace logging is disabled', () => {
+      logger.setLogLevel(repomixLogLevels.INFO);
+      logMemoryUsage('parse');
+      expect(memoryUsage).not.toHaveBeenCalled();
+    });
+  });
+
+  test('withMemoryLogging does not query memory when trace logging is disabled', async () => {
+    logger.setLogLevel(repomixLogLevels.INFO);
+    const memoryUsage = vi.spyOn(process, 'memoryUsage');
+
+    await expect(withMemoryLogging('task', async () => 'ok')).resolves.toBe('ok');
+
+    expect(memoryUsage).not.toHaveBeenCalled();
+    expect(trace).not.toHaveBeenCalled();
   });
 });

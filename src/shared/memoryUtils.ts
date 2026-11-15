@@ -2,7 +2,7 @@
  * Memory utility functions for monitoring memory usage across the application
  */
 
-import { logger } from './logger.js';
+import { logger, repomixLogLevels } from './logger.js';
 
 export interface MemoryStats {
   heapUsed: number;
@@ -41,10 +41,39 @@ export function getMemoryStats(): MemoryStats {
 }
 
 /**
+ * Memory figures are only used for trace logging, so skip querying them otherwise
+ */
+function isTraceEnabled(): boolean {
+  return logger.getLogLevel() >= repomixLogLevels.DEBUG;
+}
+
+/**
+ * Best-effort variant of getMemoryStats: returns undefined instead of throwing.
+ * Some runtimes (e.g. Bun on Linux) can fail in process.memoryUsage(), and a
+ * diagnostics failure must never abort the pack.
+ */
+function tryGetMemoryStats(): MemoryStats | undefined {
+  try {
+    return getMemoryStats();
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Log memory usage at trace level with a context message
  */
 export function logMemoryUsage(context: string): void {
-  const stats = getMemoryStats();
+  if (!isTraceEnabled()) {
+    return;
+  }
+
+  const stats = tryGetMemoryStats();
+  if (!stats) {
+    logger.trace(`Memory [${context}] | unavailable`);
+    return;
+  }
+
   logger.trace(
     `Memory [${context}] | Heap: ${stats.heapUsed}/${stats.heapTotal}MB (${stats.heapUsagePercent}%) | RSS: ${stats.rss}MB | Ext: ${stats.external}MB`,
   );
@@ -69,19 +98,27 @@ export function logMemoryDifference(context: string, before: MemoryStats, after:
  * Execute a function and log memory usage before and after
  */
 export async function withMemoryLogging<T>(context: string, fn: () => Promise<T>): Promise<T> {
-  const before = getMemoryStats();
+  if (!isTraceEnabled()) {
+    return fn();
+  }
+
+  const before = tryGetMemoryStats();
   logMemoryUsage(`${context} - Before`);
 
   try {
     const result = await fn();
-    const after = getMemoryStats();
+    const after = tryGetMemoryStats();
     logMemoryUsage(`${context} - After`);
-    logMemoryDifference(context, before, after);
+    if (before && after) {
+      logMemoryDifference(context, before, after);
+    }
     return result;
   } catch (error) {
-    const after = getMemoryStats();
+    const after = tryGetMemoryStats();
     logMemoryUsage(`${context} - After (Error)`);
-    logMemoryDifference(context, before, after);
+    if (before && after) {
+      logMemoryDifference(context, before, after);
+    }
     throw error;
   }
 }
