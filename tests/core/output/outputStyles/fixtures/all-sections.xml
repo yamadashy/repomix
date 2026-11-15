@@ -1,0 +1,105 @@
+This file is a merged representation of the entire codebase.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+Purpose line 1
+Purpose line 2
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- Guideline one
+- a & b < c > d "e" 'f' `g` h=i {{not-a-template}} {{{raw}}}
+</usage_guidelines>
+
+<notes>
+- Note one
+- Note two
+</notes>
+
+</file_summary>
+
+<user_provided_header>
+Custom header
+
+a & b < c > d "e" 'f' `g` h=i {{not-a-template}} {{{raw}}}
+</user_provided_header>
+
+<directory_structure>
+src/
+  index.ts
+  data file.txt
+README.md
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="src/index.ts">
+export const a = '<b>';
+
+// a & b < c > d "e" 'f' `g` h=i {{not-a-template}} {{{raw}}}
+</file>
+
+<file path="README.md">
+# Title
+
+```ts
+const x = 1;
+```
+
+</file>
+
+<file path="src/data file.txt">
+
+</file>
+
+<file path="Dockerfile">
+FROM node:24
+</file>
+
+</files>
+
+<git_diffs>
+<git_diff_work_tree>
+diff --git a/a.ts b/a.ts
+-old
++new a & b < c > d "e" 'f' `g` h=i {{not-a-template}} {{{raw}}}
+</git_diff_work_tree>
+<git_diff_staged>
+diff --git a/b.ts b/b.ts
++added
+</git_diff_staged>
+</git_diffs>
+
+<git_logs>
+<git_log_commit>
+<date>2026-01-02 03:04:05 +0900</date>
+<message>feat: first a & b < c > d "e" 'f' `g` h=i {{not-a-template}} {{{raw}}}</message>
+<files>
+src/index.ts
+README.md
+</files>
+</git_log_commit>
+<git_log_commit>
+<date>2026-01-01 00:00:00 +0000</date>
+<message>chore: empty commit</message>
+<files>
+</files>
+</git_log_commit>
+</git_logs>
+
+<instruction>
+Follow these instructions.
+
+a & b < c > d "e" 'f' `g` h=i {{not-a-template}} {{{raw}}}
+</instruction>
