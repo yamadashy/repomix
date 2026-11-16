@@ -105,6 +105,10 @@ const findBlockCommentEnd = (content: string, start: number): number => {
 
 const newlinesOf = (text: string): string => text.replace(/[^\r\n]/g, '');
 
+// JavaScript line terminators (ECMA-262 LineTerminator).
+const isLineTerminator = (char: string): boolean =>
+  char === '\n' || char === '\r' || char === '\u2028' || char === '\u2029';
+
 export const stripJsComments = (content: string, options: { jsx: boolean }): string => {
   const stack: Frame[] = [{ kind: 'code', braces: 0 }];
   let out = '';
@@ -177,7 +181,7 @@ export const stripJsComments = (content: string, options: { jsx: boolean }): str
         stack.push({ kind: 'code', braces: 0 });
         expressionStart = true;
       } else if (char === '/' && next === '/') {
-        while (i < len && content[i] !== '\n') i++;
+        while (i < len && !isLineTerminator(content[i])) i++;
       } else if (char === '/' && next === '*') {
         const end = findBlockCommentEnd(content, i);
         out += newlinesOf(content.slice(i, end));
@@ -208,7 +212,7 @@ export const stripJsComments = (content: string, options: { jsx: boolean }): str
 
     // Code.
     if (char === '/' && next === '/') {
-      while (i < len && content[i] !== '\n') i++;
+      while (i < len && !isLineTerminator(content[i])) i++;
       continue;
     }
     if (char === '/' && next === '*') {
@@ -274,6 +278,19 @@ export const stripJsComments = (content: string, options: { jsx: boolean }): str
       out += word;
       i = end;
       expressionStart = EXPRESSION_KEYWORDS.has(word);
+      continue;
+    }
+
+    // Postfix `++` / `--` and TypeScript's non-null `!` end an expression, so a
+    // following `/` is division, not a regex.
+    if (!expressionStart && (char === '+' || char === '-') && next === char) {
+      out += char + next;
+      i += 2;
+      continue;
+    }
+    if (!expressionStart && char === '!' && next !== '=') {
+      out += char;
+      i++;
       continue;
     }
 
