@@ -50,6 +50,12 @@ type Scope = {
   // Unclosed `<` of type arguments or parameters in that header (`Promise<(a) => { b: 1 }>`),
   // inside which every `{` is a type literal.
   headerAngles: number;
+  // A brace scope that is the body of `switch (...)`, the only place where `case` and
+  // `default` clauses are legal; a `case`- or `default`-named object key must not change
+  // state, so the keyword is recognised by position rather than by its spelling alone.
+  switchBody: boolean;
+  // A `)` just closed the head of `switch`, so the next `{` opens a switch body.
+  pendingSwitch: boolean;
   // A TypeScript `type X = ...` alias is being read; it ends at `;` or, by automatic
   // semicolon insertion, at a line break before a token that cannot continue the type.
   inTypeAlias: boolean;
@@ -89,9 +95,15 @@ const BLOCK_KEYWORDS = new Set(['else', 'do', 'try', 'finally', 'catch', 'static
 // After these keywords a `{` opens a destructuring pattern, not a block.
 const DECLARATION_KEYWORDS = new Set(['const', 'let', 'var', 'using']);
 
-// Keywords that start a declaration header: a `{` after a `>` in it opens the body
-// (`class A extends B<C> {`, `interface I extends J<K> {`).
-const HEADER_KEYWORDS = new Set(['class', 'interface', 'function', 'enum', 'namespace', 'module', 'implements']);
+// Keywords that always start a declaration header, wherever they appear: a `{` after a `>`
+// in it opens the body (`class A extends B<C> {`, `function f(): Promise<T> {`).
+const RESERVED_HEADER_KEYWORDS = new Set(['class', 'function', 'implements']);
+
+// Contextual declaration keywords. They are also ordinary identifiers in expressions and
+// object keys (`const module = 4`, `{ namespace: 1 }`), so they only start a header where a
+// declaration can appear. Treating them as keywords everywhere turned `module > {` into a
+// declaration body and made the `/` after it look like a regex.
+const DECLARATION_HEADER_KEYWORDS = new Set(['interface', 'enum', 'namespace', 'module']);
 
 // Modifiers that do not end the start of a statement (`export default function`,
 // `declare const`, `abstract class`, `async function`).
@@ -100,7 +112,11 @@ const MODIFIERS = new Set(['export', 'declare', 'abstract', 'async', 'default'])
 // Words that continue an expression or a type on the next line.
 const CONTINUING_WORDS = new Set(['in', 'instanceof', 'of', 'as', 'satisfies', 'extends', 'implements', 'is', 'keyof']);
 
-const CONTROL_KEYWORDS = new Set(['if', 'while', 'for', 'with']);
+const CONTROL_KEYWORDS = new Set(['if', 'while', 'for', 'with', 'switch']);
+
+// Statements that consist of a keyword only (plus an optional label), after which automatic
+// semicolon insertion ends the statement: `debugger` then a regex statement on the next line.
+const STATEMENT_KEYWORDS = new Set(['debugger', 'break', 'continue']);
 
 // Non-ASCII characters count as identifier characters, except Unicode whitespace such as NBSP.
 const isIdentifierChar = (char: string | undefined): boolean =>
@@ -123,7 +139,10 @@ const wouldJoin = (before: string | undefined, after: string | undefined): boole
     (JOINING_PUNCTUATION.includes(before) && JOINING_PUNCTUATION.includes(after)) ||
     (/[0-9]/.test(before) && after === '.'));
 
-const NUMBER = /^(?:0[xXbBoO][0-9a-fA-F_]+n?|(?:\d[\d_]*\.?[\d_]*|\.\d[\d_]*)(?:[eE][+-]?\d[\d_]*)?n?)/y;
+// Sticky, so `lastIndex` selects the start. A `^` anchor would still require offset zero and
+// fail for every token after the first (`1.` in `const n = 1. / 2`), which then let the `.`
+// open expression position and turned the following slash into a regex.
+const NUMBER = /(?:0[xXbBoO][0-9a-fA-F_]+n?|(?:\d[\d_]*\.?[\d_]*|\.\d[\d_]*)(?:[eE][+-]?\d[\d_]*)?n?)/y;
 
 // Longest-first punctuators.
 const PUNCTUATORS = [
@@ -233,6 +252,76 @@ const peekSameLine = (content: string, index: number): string | undefined => {
   return content[i];
 };
 
+// The next significant character on the same line, stepping over spaces and block comments
+// that contain no line terminator: `async/**/function` is still one declaration head. A line
+// terminator or a line comment ends the line, so lookahead gives up there.
+const peekSignificantSameLine = (content: string, index: number): string | undefined => {
+  let i = index;
+  while (i < content.length) {
+    const char = content[i];
+    if (isLineTerminator(char)) return undefined;
+    if (/\s/.test(char)) {
+      i++;
+      continue;
+    }
+    if (char === '/' && content[i + 1] === '/') return undefined;
+    if (char === '/' && content[i + 1] === '*') {
+      const end = findBlockCommentEnd(content, i);
+      if (/[\r\n\u2028\u2029]/.test(content.slice(i, end))) return undefined;
+      i = end;
+      continue;
+    }
+    return char;
+  }
+  return undefined;
+};
+
+// The next identifier-like word after `index`, stepping over whitespace, line breaks and
+// comments: `export default /* note */ function` is a declaration across all of them.
+const peekNextWord = (content: string, index: number, len: number): string => {
+  let i = index;
+  while (i < len) {
+    const char = content[i];
+    if (/\s/.test(char)) {
+      i++;
+      continue;
+    }
+    if (char === '/' && content[i + 1] === '/') {
+      while (i < len && !isLineTerminator(content[i])) i++;
+      continue;
+    }
+    if (char === '/' && content[i + 1] === '*') {
+      i = findBlockCommentEnd(content, i);
+      continue;
+    }
+    break;
+  }
+  if (!isIdentifierChar(content[i])) return '';
+  const start = i;
+  while (i < len) {
+    if (isIdentifierChar(content[i])) {
+      i++;
+    } else if (content[i] === '\\' && content[i + 1] === 'u') {
+      i = skipUnicodeEscape(content, i);
+    } else {
+      break;
+    }
+  }
+  return content.slice(start, i);
+};
+
+// End of a `\uXXXX` or `\u{...}` escape that starts at `start` (a backslash). The braces of
+// `\u{61}` belong to the identifier, not to a block, so they must be consumed with it.
+const skipUnicodeEscape = (content: string, start: number): number => {
+  let i = start + 2;
+  if (content[i] === '{') {
+    const close = content.indexOf('}', i + 1);
+    return close === -1 ? i + 1 : close + 1;
+  }
+  for (let digits = 0; digits < 4 && i < content.length && /[0-9a-fA-F]/.test(content[i]); digits++) i++;
+  return i;
+};
+
 const setHeader = (scope: Scope, inHeader: boolean) => {
   scope.inHeader = inHeader;
   scope.headerAngles = 0;
@@ -248,6 +337,8 @@ const newScope = (kind: Scope['kind'], block = false): Scope => ({
   pendingFunction: null,
   inHeader: false,
   headerAngles: 0,
+  switchBody: false,
+  pendingSwitch: false,
   inTypeAlias: false,
 });
 
@@ -279,8 +370,12 @@ export const stripJsComments = (content: string, options: { jsx: boolean }): str
   let prev2 = '';
   let newlineSincePrev = false;
   let prevStartedStatement = false;
+  // Whether the previous token was a regex literal. Its closing `/` takes identifier
+  // characters as flags, so removing a comment right after it must leave a separator.
+  let prevWasRegex = false;
 
   const emitToken = (value: string, nextExprAllowed: boolean, nextStatementStart = false) => {
+    prevWasRegex = value === '<regex>';
     prev2 = prev;
     prev = value;
     prevStartedStatement = statementStart;
@@ -314,6 +409,10 @@ export const stripJsComments = (content: string, options: { jsx: boolean }): str
       block = true;
     }
     const opened = newScope('brace', block);
+    // A `{` that follows the `)` of `switch (...)` is the only scope where `case` and
+    // `default` are clauses rather than object keys.
+    opened.switchBody = current.pendingSwitch;
+    current.pendingSwitch = false;
     if (block && current.pendingFunction) {
       opened.expressionBody = current.pendingFunction.expression;
       current.pendingFunction = null;
@@ -356,17 +455,36 @@ export const stripJsComments = (content: string, options: { jsx: boolean }): str
     if (word === 'type' && statementStart && isIdentifierChar(peekSameLine(content, i))) {
       current.inTypeAlias = true;
     }
-    if (statementStart && MODIFIERS.has(word) && (word !== 'default' || prev === 'export')) {
-      const after = peekSameLine(content, i);
-      if (isIdentifierChar(after) || (word === 'async' && after === '(')) {
-        // Keep the start of the statement for the declaration that follows.
-        prev2 = prev;
-        prev = word;
-        newlineSincePrev = false;
+    // Keeps the start of the statement for the declaration that follows a modifier
+    // (`export default function`, `declare const`, `abstract class`).
+    const keepStatement = () => {
+      prev2 = prev;
+      prev = word;
+      newlineSincePrev = false;
+      exprAllowed = false;
+    };
+    if (word === 'export') {
+      // Always a modifier: `export default <expression>` is decided at `default`.
+      keepStatement();
+      return;
+    }
+    if (word === 'default' && prev === 'export') {
+      // `export default function`/`class`/`async function` is a declaration even when comments
+      // or line breaks separate the words; anything else after `default` is an expression.
+      const after = peekNextWord(content, i, len);
+      if (after === 'function' || after === 'class' || after === 'async') {
+        keepStatement();
         return;
       }
     }
-    if (word === 'async' && exprAllowed && isIdentifierChar(peekSameLine(content, i))) {
+    if (statementStart && MODIFIERS.has(word)) {
+      const after = peekSignificantSameLine(content, i);
+      if (isIdentifierChar(after) || (word === 'async' && after === '(')) {
+        keepStatement();
+        return;
+      }
+    }
+    if (word === 'async' && exprAllowed && isIdentifierChar(peekSignificantSameLine(content, i))) {
       // `x = async function`: `async` does not end the expression position.
       prev2 = prev;
       prev = word;
@@ -376,22 +494,34 @@ export const stripJsComments = (content: string, options: { jsx: boolean }): str
     if (word === 'function' || word === 'class') {
       current.pendingFunction = { expression: exprAllowed && !statementStart };
     }
-    if (HEADER_KEYWORDS.has(word) || (word === 'extends' && !current.inHeader)) setHeader(current, true);
-    if (word === 'case') {
+    // A contextual declaration keyword only starts a header where a declaration can appear;
+    // as an ordinary identifier (`module > {`) it must not turn the object into a body.
+    if (
+      RESERVED_HEADER_KEYWORDS.has(word) ||
+      (DECLARATION_HEADER_KEYWORDS.has(word) &&
+        (statementStart || MODIFIERS.has(prev) || DECLARATION_KEYWORDS.has(prev))) ||
+      (word === 'extends' && !current.inHeader)
+    ) {
+      setHeader(current, true);
+    }
+    if (word === 'case' && current.switchBody) {
       current.pendingCase = true;
       current.caseConditionals = 0;
     }
-    let next = EXPRESSION_KEYWORDS.has(word);
+    const statementKeyword = STATEMENT_KEYWORDS.has(word) && isStatementScope();
+    let next = EXPRESSION_KEYWORDS.has(word) || statementKeyword;
     if (word === 'default') {
-      // `default:` in a `switch`; `export default` is handled above.
-      if (peekSameLine(content, i) === ':') current.pendingCase = true;
+      // `default:` is a clause only in a switch body; `export default` is handled above, and
+      // an object key named `default` must not change state.
+      if (current.switchBody && peekSameLine(content, i) === ':') current.pendingCase = true;
     }
     if (word === 'of') {
       next =
         current.kind === 'paren' &&
         current.control === 'for' &&
-        // `of` follows the end of a binding: a name, `]` or `}`.
-        (isIdentifierChar(prev[0]) || prev === ']' || prev === '}') &&
+        // `of` follows the end of an assignment target: a name, a private name, `]`, `}` or a
+        // parenthesized target `(x)`.
+        (isIdentifierChar(prev[0]) || prev[0] === '#' || prev === ']' || prev === '}' || prev === ')') &&
         !DECLARATION_KEYWORDS.has(prev) &&
         prev !== 'await' &&
         prev !== 'of:keyword';
@@ -400,9 +530,9 @@ export const stripJsComments = (content: string, options: { jsx: boolean }): str
         return;
       }
     }
-    // A statement may follow `else` and `do`; a `{` after them (and after `try`, `finally`,
-    // `catch` and a class's `static`) is a block, which `openBrace` handles.
-    const startsStatement = word === 'else' || word === 'do';
+    // A statement may follow `else`, `do` and the keyword-only statements; a `{` after them
+    // (and after `try`, `finally`, `catch` and a class's `static`) is a block, handled above.
+    const startsStatement = word === 'else' || word === 'do' || statementKeyword;
     emitToken(word, next || startsStatement, startsStatement);
   };
 
@@ -421,6 +551,8 @@ export const stripJsComments = (content: string, options: { jsx: boolean }): str
       case ')': {
         const closed = current.kind === 'paren' && scopes.length > 1 ? (scopes.pop() as Scope) : null;
         const control = closed !== null && closed.control !== '';
+        // Remember that the next `{` is a switch body, where `case` and `default` are clauses.
+        if (closed !== null && closed.control === 'switch') scope().pendingSwitch = true;
         emitToken(')', control, control);
         return;
       }
@@ -503,7 +635,12 @@ export const stripJsComments = (content: string, options: { jsx: boolean }): str
       if (kept) {
         newlineSincePrev = true;
         emit(kept);
-      } else if (wouldJoin(lastChar, content[end])) {
+      } else if (
+        wouldJoin(lastChar, content[end]) ||
+        // A regex with no flags ends in `/`, and identifier characters right after it would
+        // be read as flags: `/x/` plus `instanceof` becomes `/x/instanceof`.
+        (prevWasRegex && lastChar === '/' && isIdentifierChar(content[end]))
+      ) {
         emit(' ');
       }
       i = end;
@@ -594,9 +731,18 @@ export const stripJsComments = (content: string, options: { jsx: boolean }): str
       return;
     }
     if (isIdentifierChar(char) || (char === '#' && isIdentifierChar(next)) || (char === '\\' && next === 'u')) {
-      let end = i + 1;
-      while (end < len && (isIdentifierChar(content[end]) || (content[end] === '\\' && content[end + 1] === 'u'))) {
-        end += content[end] === '\\' ? 2 : 1;
+      // Consume complete Unicode escapes (`\u{61}`, `\u0061`) as part of the identifier. The
+      // braces of `\u{61}` must not be read as a block, or the closing brace would enable a
+      // regex at the following division slash.
+      let end = char === '\\' ? skipUnicodeEscape(content, i) : i + 1;
+      while (end < len) {
+        if (isIdentifierChar(content[end])) {
+          end++;
+        } else if (content[end] === '\\' && content[end + 1] === 'u') {
+          end = skipUnicodeEscape(content, end);
+        } else {
+          break;
+        }
       }
       const word = content.slice(i, end);
       emit(word);

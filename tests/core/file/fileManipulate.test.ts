@@ -1727,6 +1727,98 @@ const url = 'http://example.com';
       const input = "const a = '';\n/*\n * doc\n */\nconst b = 1;\n";
       expect(strip('.ts', input)?.split('\n')).toHaveLength(input.split('\n').length);
     });
+
+    test('keeps a separator between an unflagged regex and a following identifier', () => {
+      expect(strip('.js', 'const ok = /x//**/instanceof RegExp; // a\n')).toBe('const ok = /x/ instanceof RegExp;\n');
+    });
+
+    test('reads a number with a trailing decimal point at any offset', () => {
+      expect(strip('.js', 'const n = 1. / 2; const r = /[/*]/; keep(); // a\n')).toBe(
+        'const n = 1. / 2; const r = /[/*]/; keep();\n',
+      );
+    });
+
+    test('keeps `async` as a function-expression prefix across a block comment', () => {
+      expect(strip('.js', 'const n = async/**/function() {} / 2; const r = /[/*]/; keep(); // a\n')).toBe(
+        'const n = async function() {} / 2; const r = /[/*]/; keep();\n',
+      );
+    });
+
+    test('starts a regex after a keyword-only statement on the next line', () => {
+      expect(strip('.js', 'debugger\n/[/*]/.test(s); keep(); // a\n')).toBe('debugger\n/[/*]/.test(s); keep();\n');
+      expect(strip('.js', 'for (;;) { break\n/[/*]/.test(s); } // a\n')).toBe('for (;;) { break\n/[/*]/.test(s); }\n');
+      expect(strip('.js', 'for (;;) { continue\n/[/*]/.test(s); } // a\n')).toBe(
+        'for (;;) { continue\n/[/*]/.test(s); }\n',
+      );
+    });
+
+    test('consumes a Unicode escape as part of an identifier', () => {
+      expect(strip('.js', 'const a = 6; const n = \\u{61} / 2; const r = /[/*]/; keep(); // a\n')).toBe(
+        'const a = 6; const n = \\u{61} / 2; const r = /[/*]/; keep();\n',
+      );
+      expect(strip('.js', 'const n = \\u0061 / 2; const r = /[/*]/; keep(); // a\n')).toBe(
+        'const n = \\u0061 / 2; const r = /[/*]/; keep();\n',
+      );
+    });
+
+    test('keeps `export default function`/`class` a declaration across comments and line breaks', () => {
+      const input = [
+        'export default /* note */ function() {}',
+        '/[/*]/.test(s); keep(); // a',
+        'export default',
+        'class {}',
+        '/[/*]/.test(s); keep(); // b',
+        '',
+      ].join('\n');
+      const expected = [
+        'export default  function() {}',
+        '/[/*]/.test(s); keep();',
+        'export default',
+        'class {}',
+        '/[/*]/.test(s); keep();',
+        '',
+      ].join('\n');
+      expect(strip('.js', input)).toBe(expected);
+    });
+
+    test('keeps a regex iterable in a for-of whose target is parenthesized or a private field', () => {
+      expect(strip('.js', 'for ((x) of /[/*]/.exec(s)) keep(); // a\n')).toBe('for ((x) of /[/*]/.exec(s)) keep();\n');
+      expect(strip('.js', 'class A { #x; f() { for (this.#x of /[/*]/.exec(s)) keep(); } } // b\n')).toBe(
+        'class A { #x; f() { for (this.#x of /[/*]/.exec(s)) keep(); } }\n',
+      );
+    });
+
+    test('does not treat `case` or `default` object keys as switch clauses', () => {
+      expect(strip('.js', 'const n = { default: { valueOf: () => 6 } / 2 }; const r = /[/*]/; keep(); // a\n')).toBe(
+        'const n = { default: { valueOf: () => 6 } / 2 }; const r = /[/*]/; keep();\n',
+      );
+      expect(strip('.js', 'const n = { case: { valueOf: () => 6 } / 2 }; const r = /[/*]/; keep(); // a\n')).toBe(
+        'const n = { case: { valueOf: () => 6 } / 2 }; const r = /[/*]/; keep();\n',
+      );
+    });
+
+    test('does not treat `module` or `namespace` in an expression as a declaration header', () => {
+      expect(
+        strip('.js', 'const module = 4; const n = module > { valueOf: () => 6 } / 2; const r = /[/*]/; keep(); // a\n'),
+      ).toBe('const module = 4; const n = module > { valueOf: () => 6 } / 2; const r = /[/*]/; keep();\n');
+      expect(
+        strip(
+          '.js',
+          'const namespace = 4; const n = namespace > { valueOf: () => 6 } / 2; const r = /[/*]/; keep(); // a\n',
+        ),
+      ).toBe('const namespace = 4; const n = namespace > { valueOf: () => 6 } / 2; const r = /[/*]/; keep();\n');
+    });
+
+    test('still ends a declaration body that starts with `namespace`, `module` or `const enum`', () => {
+      const input = [
+        'namespace N {}',
+        '/[/*]/.test(s); keep(); // a',
+        'const enum E { A }',
+        '/[/*]/.test(s); keep(); // b',
+        '',
+      ].join('\n');
+      expect(strip('.ts', input)).toBe(input.replace(/ \/\/ [ab]$/gm, ''));
+    });
   });
 
   describe('JS/TS module extension variants', () => {
