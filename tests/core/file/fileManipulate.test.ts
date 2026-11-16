@@ -1458,6 +1458,23 @@ const url = 'http://example.com';
       );
     });
 
+    test('treats `/` after postfix `++`, `--` and a non-null `!` as division', () => {
+      expect(strip('.js', 'const n = i++ / 2; /* a */\nconst m = j-- / 2; // b\n')).toBe(
+        'const n = i++ / 2;\nconst m = j-- / 2;\n',
+      );
+      expect(strip('.ts', 'const n = v! / 2; // c\nconst ok = !/re/.test(s); // d\n')).toBe(
+        'const n = v! / 2;\nconst ok = !/re/.test(s);\n',
+      );
+    });
+
+    test('ends a line comment at CR, LS and PS line terminators', () => {
+      for (const terminator of ['\r', '\u2028', '\u2029']) {
+        const output = strip('.ts', `const a = 1; // a${terminator}const b = 2;`);
+        expect(output).not.toContain('// a');
+        expect(output).toContain(`${terminator}const b = 2;`);
+      }
+    });
+
     test('keeps line numbers when removing multi-line block comments', () => {
       const input = "const a = '';\n/*\n * doc\n */\nconst b = 1;\n";
       expect(strip('.ts', input)?.split('\n')).toHaveLength(input.split('\n').length);
