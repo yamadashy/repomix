@@ -1653,6 +1653,76 @@ const url = 'http://example.com';
       );
     });
 
+    test('treats a keyword after a spread as a keyword', () => {
+      expect(strip('.ts', 'const a = [...typeof /[/*]/]; const b = [...await /[/*]/]; keep(); // c\n')).toBe(
+        'const a = [...typeof /[/*]/]; const b = [...await /[/*]/]; keep();\n',
+      );
+    });
+
+    test('does not let a conditional with an arrow function affect later `case` blocks', () => {
+      expect(
+        strip(
+          '.ts',
+          'switch (k) { case 1: c ? (a) : b => /:/.test(b); }\nswitch (k) { case 2: {} /[/*]/.test(s); } keep(); // c\n',
+        ),
+      ).toBe('switch (k) { case 1: c ? (a) : b => /:/.test(b); }\nswitch (k) { case 2: {} /[/*]/.test(s); } keep();\n');
+      expect(strip('.js', 'switch (k) { case a ? b : c: {} /[/*]/.test(s); } keep(); // c\n')).toBe(
+        'switch (k) { case a ? b : c: {} /[/*]/.test(s); } keep();\n',
+      );
+    });
+
+    test('strips a comment with a brace inside a template literal type in JSX type arguments', () => {
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: literal TypeScript source under test
+      expect(strip('.tsx', 'const v = <List<`${/* { */ string}`> />; keep(); // c\n')).toBe(
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: literal TypeScript source under test
+        'const v = <List<`${ string}`> />; keep();\n',
+      );
+    });
+
+    test('starts a regex after a declaration body with generic types in its header', () => {
+      const input = [
+        'class A extends B<C> {}',
+        '/[/*]/.test(s); keep(); // a',
+        'function f(): Promise<Map<K, { a: 1 }>> {}',
+        '/[/*]/.test(s); keep(); // b',
+        'interface I extends J<K<L>> {}',
+        '/[/*]/.test(s); keep(); // c',
+        '',
+      ].join('\n');
+      expect(strip('.ts', input)).toBe(input.replace(/ \/\/ [abc]$/gm, ''));
+    });
+
+    test('treats `/` after a function or class expression as division', () => {
+      expect(
+        strip('.js', 'const f = function () {} / 2; const g = class {} / 2; const r = /[/*]/; keep(); // c\n'),
+      ).toBe('const f = function () {} / 2; const g = class {} / 2; const r = /[/*]/; keep();\n');
+    });
+
+    test('ends a statement at a line break before a label or after a type alias', () => {
+      expect(
+        strip(
+          '.ts',
+          'a = b\nlabel: {}\n/[/*]/.test(s); keep(); // a\ntype T = { a: 1 }\n/[/*]/.test(s); keep(); // b\n',
+        ),
+      ).toBe('a = b\nlabel: {}\n/[/*]/.test(s); keep();\ntype T = { a: 1 }\n/[/*]/.test(s); keep();\n');
+    });
+
+    test('tells the `of` keyword from a variable named `of`', () => {
+      expect(strip('.js', 'for (const of of /[/*]/.exec(s)) x = of / 2 / 3; keep(); // c\n')).toBe(
+        'for (const of of /[/*]/.exec(s)) x = of / 2 / 3; keep();\n',
+      );
+    });
+
+    test('does not join tokens when removing a block comment between them', () => {
+      expect(strip('.js', 'const t = typeof/**/x; const n = a+/**/+b; // c\n')).toBe(
+        'const t = typeof x; const n = a+ +b;\n',
+      );
+    });
+
+    test('keeps a hashbang line', () => {
+      expect(strip('.js', '#!/usr/bin/env node\nconst a = 1; // c\n')).toBe('#!/usr/bin/env node\nconst a = 1;\n');
+    });
+
     test('keeps line numbers when removing multi-line block comments', () => {
       const input = "const a = '';\n/*\n * doc\n */\nconst b = 1;\n";
       expect(strip('.ts', input)?.split('\n')).toHaveLength(input.split('\n').length);
