@@ -129,6 +129,7 @@ const OBJECT_BRACE_AFTER = new Set([
   ',',
   ':',
   '?',
+  '??',
   '!',
   '&',
   '|',
@@ -155,6 +156,88 @@ const OBJECT_BRACE_AFTER_KEYWORDS = new Set([
   'new',
 ]);
 
+// Index just past a template literal starting at `start`. Its text, including line breaks, is
+// kept as is; `${}` substitutions are skipped by balancing braces and quotes.
+const skipTemplate = (content: string, start: number): number => {
+  let i = start + 1;
+  let depth = 0;
+  while (i < content.length) {
+    const char = content[i];
+    if (char === '\\') {
+      i += 2;
+      continue;
+    }
+    if (depth === 0) {
+      if (char === '`') return i + 1;
+      if (char === '$' && content[i + 1] === '{') {
+        depth = 1;
+        i += 2;
+        continue;
+      }
+    } else if (char === '"' || char === "'") {
+      i = skipQuoted(content, i, true);
+      continue;
+    } else if (char === '`') {
+      i = skipTemplate(content, i);
+      continue;
+    } else if (char === '{') {
+      depth++;
+    } else if (char === '}') {
+      depth--;
+    }
+    i++;
+  }
+  return i;
+};
+
+// Whether the `:` at `start`, right after a `)`, is an arrow function's return type
+// (`c ? (): number => 1 : x`) rather than the `:` of a conditional (`c ? (a) : b`). It is when
+// an `=>` follows at the same nesting level, and after it a `:` that the arrow body does not
+// itself use, before the expression ends at `;`, `,` or a closing bracket.
+const isReturnTypeColon = (content: string, start: number): boolean => {
+  let depth = 0;
+  let arrow = false;
+  let ternary = 0;
+  let i = start + 1;
+  while (i < content.length) {
+    const char = content[i];
+    const next = content[i + 1];
+    if (char === '"' || char === "'") {
+      i = skipQuoted(content, i, true);
+      continue;
+    }
+    if (char === '`') {
+      i = skipTemplate(content, i);
+      continue;
+    }
+    if (char === '(' || char === '[' || char === '{') depth++;
+    else if (char === ')' || char === ']' || char === '}') {
+      if (depth === 0) return false;
+      depth--;
+    } else if (depth === 0) {
+      if (char === ';' || char === ',') return false;
+      if (!arrow) {
+        if (char === '=' && next === '>') {
+          arrow = true;
+          i += 2;
+          continue;
+        }
+      } else if (char === '?') {
+        if (next === '?' || next === '.') {
+          i += 2;
+          continue;
+        }
+        ternary++;
+      } else if (char === ':') {
+        if (ternary === 0) return true;
+        ternary--;
+      }
+    }
+    i++;
+  }
+  return false;
+};
+
 // Generic type arguments in a JSX opening tag (`<List<Item> />`): the text with its comments
 // removed (line terminators kept) and the index just past the matching `>`. Strings and `=>`
 // are skipped, and `<`, `>` and quotes inside comments are ignored.
@@ -176,7 +259,8 @@ const skipTypeArguments = (content: string, start: number): { text: string; end:
       continue;
     }
     if (char === '"' || char === "'" || char === '`') {
-      const end = skipQuoted(content, i, true);
+      // A template literal type may span lines.
+      const end = char === '`' ? skipTemplate(content, i) : skipQuoted(content, i, true);
       text += content.slice(i, end);
       i = end;
       continue;
@@ -198,8 +282,8 @@ const skipTypeArguments = (content: string, start: number): { text: string; end:
 };
 
 export const stripJsComments = (content: string, options: { jsx: boolean }): string => {
-  // For each open `(`, whether it follows a control keyword.
-  const parens: boolean[] = [];
+  // For each open `(`, the control keyword it follows (`if`, `while`, `for`, `with`), or ''.
+  const parens: string[] = [];
   const codeFrame = (): Frame => ({
     kind: 'code',
     braces: [],
@@ -406,7 +490,10 @@ export const stripJsComments = (content: string, options: { jsx: boolean }): str
       const word = content.slice(i, end);
       out += word;
       i = end;
-      expressionStart = EXPRESSION_KEYWORDS.has(word);
+      // A property name (`obj.in`) is not a keyword, and `of` is one only in a `for` head.
+      const member = prevToken === '.' || prevToken === '?.';
+      expressionStart =
+        !member && EXPRESSION_KEYWORDS.has(word) && (word !== 'of' || parens[parens.length - 1] === 'for');
       token(word);
       continue;
     }
@@ -431,8 +518,10 @@ export const stripJsComments = (content: string, options: { jsx: boolean }): str
     // A `)` that closes the condition of `if`, `while`, `for` or `with` is followed by a
     // statement, so a `/` after it starts a regex (`if (ok) /re/.test(s)`).
     if (char === '(') {
-      const control =
-        prevToken2 !== '.' && (CONTROL_KEYWORDS.has(prevToken) || (prevToken === 'await' && prevToken2 === 'for'));
+      const member = prevToken2 === '.' || prevToken2 === '?.';
+      let control = '';
+      if (!member && CONTROL_KEYWORDS.has(prevToken)) control = prevToken;
+      else if (prevToken === 'await' && prevToken2 === 'for') control = 'for';
       parens.push(control);
       out += char;
       i++;
@@ -443,7 +532,7 @@ export const stripJsComments = (content: string, options: { jsx: boolean }): str
     if (char === ')') {
       out += char;
       i++;
-      expressionStart = parens.pop() ?? false;
+      expressionStart = (parens.pop() ?? '') !== '';
       token(')');
       continue;
     }
@@ -464,7 +553,8 @@ export const stripJsComments = (content: string, options: { jsx: boolean }): str
     if (char === '?' && parens.length === scope.parens) {
       scope.ternary++;
     } else if (char === ':' && parens.length === scope.parens) {
-      if (scope.ternary > 0) scope.ternary--;
+      if (prevToken === ')' && isReturnTypeColon(content, i)) value = 'type:';
+      else if (scope.ternary > 0) scope.ternary--;
       else if (!scope.object) value = 'label:';
     }
     out += char;
