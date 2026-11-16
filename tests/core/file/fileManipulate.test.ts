@@ -1561,6 +1561,50 @@ const url = 'http://example.com';
       );
     });
 
+    test('starts a regex after a block that follows a label, `case` or `return` and a newline', () => {
+      expect(strip('.js', 'label: {} /[/*]/.test(s); keep(); // a\n')).toBe('label: {} /[/*]/.test(s); keep();\n');
+      expect(strip('.js', 'switch (kind) { case 1: {} /[/*]/.test(s); keep(); } // a\n')).toBe(
+        'switch (kind) { case 1: {} /[/*]/.test(s); keep(); }\n',
+      );
+      expect(strip('.js', 'switch (k) { default: {} /[/*]/.test(s); keep(); } // a\n')).toBe(
+        'switch (k) { default: {} /[/*]/.test(s); keep(); }\n',
+      );
+      expect(strip('.js', 'function f() { return\n{} /[/*]/.test(s); keep(); } // a\n')).toBe(
+        'function f() { return\n{} /[/*]/.test(s); keep(); }\n',
+      );
+    });
+
+    test('still treats `/` after an object literal in a property or conditional as division', () => {
+      expect(strip('.js', 'const o = { a: { valueOf: () => 6 } / 2 }; const r = /[/*]/; keep(); // a\n')).toBe(
+        'const o = { a: { valueOf: () => 6 } / 2 }; const r = /[/*]/; keep();\n',
+      );
+      expect(strip('.js', 'const n = c ? 1 : { valueOf: () => 6 } / 2; const r = /[/*]/; keep(); // a\n')).toBe(
+        'const n = c ? 1 : { valueOf: () => 6 } / 2; const r = /[/*]/; keep();\n',
+      );
+      expect(strip('.ts', 'const n = a?.b ?? c ? 1 : { valueOf: () => 6 } / 2; const r = /[/*]/; // a\n')).toBe(
+        'const n = a?.b ?? c ? 1 : { valueOf: () => 6 } / 2; const r = /[/*]/;\n',
+      );
+    });
+
+    test('treats `/` after a spaced non-null `!` as division', () => {
+      expect(strip('.ts', 'const n = value ! / 2; const r = /[/*]/; keep(); // a\n')).toBe(
+        'const n = value ! / 2; const r = /[/*]/; keep();\n',
+      );
+      expect(strip('.ts', 'const n = value /* x */ ! / 2; const r = /[/*]/; keep(); // a\n')).toBe(
+        'const n = value  ! / 2; const r = /[/*]/; keep();\n',
+      );
+      expect(strip('.js', 'tick()\n!/[/*]/.test(s); keep(); // a\n')).toBe('tick()\n!/[/*]/.test(s); keep();\n');
+    });
+
+    test('removes comments inside JSX type arguments', () => {
+      expect(strip('.tsx', 'const v = <List</* item type */ Item>>text</List>;\n')).toBe(
+        'const v = <List< Item>>text</List>;\n',
+      );
+      expect(strip('.tsx', "const v = <List<Item // it's <a> type\n>>text</List>;\n")).toBe(
+        'const v = <List<Item\n>>text</List>;\n',
+      );
+    });
+
     test('reads the Vue `lang` attribute by its full name', () => {
       expect(
         strip('.vue', '<script data-lang="ts" lang="tsx">\nconst a = <p>https://example.com</p>; // c\n</script>\n'),
