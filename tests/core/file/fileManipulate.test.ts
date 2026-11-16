@@ -1605,6 +1605,45 @@ const url = 'http://example.com';
       );
     });
 
+    test('treats `/` after `?? {}` and after a `?.` call of a keyword-named method as division', () => {
+      expect(strip('.js', 'const n = x ?? { valueOf: () => 6 } / 2; const r = /[/*]/; keep(); // a\n')).toBe(
+        'const n = x ?? { valueOf: () => 6 } / 2; const r = /[/*]/; keep();\n',
+      );
+      expect(strip('.js', 'const n = o?.if(x) / 2; const r = /[/*]/; keep(); // a\n')).toBe(
+        'const n = o?.if(x) / 2; const r = /[/*]/; keep();\n',
+      );
+    });
+
+    test('does not take an arrow return-type `:` for the `:` of a conditional', () => {
+      expect(
+        strip('.ts', 'const n = c ? (): number => 1 : { valueOf: () => 6 } / 2; const r = /[/*]/; keep(); // a\n'),
+      ).toBe('const n = c ? (): number => 1 : { valueOf: () => 6 } / 2; const r = /[/*]/; keep();\n');
+      expect(strip('.ts', 'const f = c ? (a) : (b) => 1; label: {} /[/*]/.test(s); keep(); // a\n')).toBe(
+        'const f = c ? (a) : (b) => 1; label: {} /[/*]/.test(s); keep();\n',
+      );
+    });
+
+    test('keeps multiline template literal types in JSX type arguments', () => {
+      expect(strip('.tsx', 'const v = <List<`a\nhttps://example.com\n/* literal */`> />; // c\n')).toBe(
+        'const v = <List<`a\nhttps://example.com\n/* literal */`> />;\n',
+      );
+    });
+
+    test('does not treat a property or a plain identifier named like a keyword as a keyword', () => {
+      expect(strip('.js', 'const n = obj.in / 2; const r = /[/*]/; keep(); // a\n')).toBe(
+        'const n = obj.in / 2; const r = /[/*]/; keep();\n',
+      );
+      expect(strip('.js', 'const n = obj?.new / 2; const r = /[/*]/; keep(); // a\n')).toBe(
+        'const n = obj?.new / 2; const r = /[/*]/; keep();\n',
+      );
+      expect(strip('.js', 'const of = 4; const n = of / 2; const r = /[/*]/; keep(); // a\n')).toBe(
+        'const of = 4; const n = of / 2; const r = /[/*]/; keep();\n',
+      );
+      expect(strip('.js', 'for (const x of /[/*]/.exec(s)) keep(); // a\n')).toBe(
+        'for (const x of /[/*]/.exec(s)) keep();\n',
+      );
+    });
+
     test('reads the Vue `lang` attribute by its full name', () => {
       expect(
         strip('.vue', '<script data-lang="ts" lang="tsx">\nconst a = <p>https://example.com</p>; // c\n</script>\n'),
