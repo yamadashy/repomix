@@ -13,11 +13,15 @@
 // when enabled, JSX, and only removes comments that appear in code. Newlines inside removed
 // block comments are kept so line numbers do not shift.
 
+// A `{ }` scope in code: whether it is an object literal, how many `(` were open when it
+// started, and how many `?` of a conditional expression at its own level await their `:`.
+type Scope = { object: boolean; parens: number; ternary: number };
+
 type Frame =
-  // Code. `braces` has one entry per `{` opened inside this frame (true for an object
-  // literal, false for a block), so the `}` that closes a `${` or a JSX `{` can be told apart
-  // from one that closes an object or block.
-  | { kind: 'code'; braces: boolean[] }
+  // Code. `braces` has one entry per `{` opened inside this frame, so the `}` that closes a
+  // `${` or a JSX `{` can be told apart from one that closes an object or block. `top` is the
+  // frame's own level, outside any of those braces.
+  | { kind: 'code'; braces: Scope[]; top: Scope }
   | { kind: 'template' }
   // JSX element tree. `depth` is the number of open elements; `inTag` is true between `<`
   // and `>`; `closing` is true inside a closing tag (`</div>`).
@@ -151,40 +155,62 @@ const OBJECT_BRACE_AFTER_KEYWORDS = new Set([
   'new',
 ]);
 
-// Generic type arguments in a JSX opening tag (`<List<Item> />`): index just past the
-// matching `>`, skipping strings and `=>`.
-const skipTypeArguments = (content: string, start: number): number => {
+// Generic type arguments in a JSX opening tag (`<List<Item> />`): the text with its comments
+// removed (line terminators kept) and the index just past the matching `>`. Strings and `=>`
+// are skipped, and `<`, `>` and quotes inside comments are ignored.
+const skipTypeArguments = (content: string, start: number): { text: string; end: number } => {
   let depth = 0;
   let i = start;
+  let text = '';
   while (i < content.length) {
     const char = content[i];
-    if (char === '"' || char === "'" || char === '`') {
-      i = skipQuoted(content, i, true);
+    const next = content[i + 1];
+    if (char === '/' && next === '/') {
+      while (i < content.length && !isLineTerminator(content[i])) i++;
       continue;
     }
-    if (char === '=' && content[i + 1] === '>') {
+    if (char === '/' && next === '*') {
+      const end = findBlockCommentEnd(content, i);
+      text += newlinesOf(content.slice(i, end));
+      i = end;
+      continue;
+    }
+    if (char === '"' || char === "'" || char === '`') {
+      const end = skipQuoted(content, i, true);
+      text += content.slice(i, end);
+      i = end;
+      continue;
+    }
+    if (char === '=' && next === '>') {
+      text += '=>';
       i += 2;
       continue;
     }
+    text += char;
+    i++;
     if (char === '<') depth++;
     if (char === '>') {
       depth--;
-      if (depth === 0) return i + 1;
+      if (depth === 0) return { text, end: i };
     }
-    i++;
   }
-  return i;
+  return { text, end: i };
 };
 
 export const stripJsComments = (content: string, options: { jsx: boolean }): string => {
-  const stack: Frame[] = [{ kind: 'code', braces: [] }];
+  // For each open `(`, whether it follows a control keyword.
+  const parens: boolean[] = [];
+  const codeFrame = (): Frame => ({
+    kind: 'code',
+    braces: [],
+    top: { object: false, parens: parens.length, ternary: 0 },
+  });
+  const stack: Frame[] = [codeFrame()];
   let out = '';
   let i = 0;
   // Whether the next token is in expression position, where `/` starts a regex and `<`
   // may start JSX. True at the start of input and after operators and opening punctuation.
   let expressionStart = true;
-  // For each open `(`, whether it follows a control keyword.
-  const parens: boolean[] = [];
   // The last two tokens (identifier words or punctuation; whitespace and comments skipped),
   // and whether a line terminator came after the last one.
   let prevToken = '';
@@ -215,7 +241,7 @@ export const stripJsComments = (content: string, options: { jsx: boolean }): str
       } else if (char === '$' && next === '{') {
         out += '${';
         i += 2;
-        stack.push({ kind: 'code', braces: [] });
+        stack.push(codeFrame());
         expressionStart = true;
         token('{');
       } else {
@@ -231,7 +257,7 @@ export const stripJsComments = (content: string, options: { jsx: boolean }): str
         if (char === '{') {
           out += char;
           i++;
-          stack.push({ kind: 'code', braces: [] });
+          stack.push(codeFrame());
           expressionStart = true;
         } else if (char === '<') {
           frame.inTag = true;
@@ -259,7 +285,7 @@ export const stripJsComments = (content: string, options: { jsx: boolean }): str
       } else if (char === '{') {
         out += char;
         i++;
-        stack.push({ kind: 'code', braces: [] });
+        stack.push(codeFrame());
         expressionStart = true;
       } else if (char === '/' && next === '/') {
         while (i < len && !isLineTerminator(content[i])) i++;
@@ -268,8 +294,8 @@ export const stripJsComments = (content: string, options: { jsx: boolean }): str
         out += newlinesOf(content.slice(i, end));
         i = end;
       } else if (char === '<' && !frame.closing) {
-        const end = skipTypeArguments(content, i);
-        out += content.slice(i, end);
+        const { text, end } = skipTypeArguments(content, i);
+        out += text;
         i = end;
       } else if (char === '/' && next === '>') {
         out += '/>';
@@ -346,8 +372,12 @@ export const stripJsComments = (content: string, options: { jsx: boolean }): str
     }
     if (char === '{') {
       // An object literal follows an operator or opening punctuation; anything else
-      // (start of input, `;`, `)`, `=>`, `else`, ...) opens a block.
-      frame.braces.push(OBJECT_BRACE_AFTER.has(prevToken) || OBJECT_BRACE_AFTER_KEYWORDS.has(prevToken));
+      // (start of input, `;`, `)`, `=>`, `else`, the `:` of a label or `case`, ...) opens a
+      // block. After `return` and a line terminator, automatic semicolon insertion ends the
+      // `return`, so the `{` opens a block.
+      const asiBlock = (prevToken === 'return' || prevToken === 'yield') && newlineSinceToken;
+      const object = !asiBlock && (OBJECT_BRACE_AFTER.has(prevToken) || OBJECT_BRACE_AFTER_KEYWORDS.has(prevToken));
+      frame.braces.push({ object, parens: parens.length, ternary: 0 });
       out += char;
       i++;
       expressionStart = true;
@@ -362,7 +392,7 @@ export const stripJsComments = (content: string, options: { jsx: boolean }): str
         // Closes a `${` in a template literal or a `{` in JSX.
         stack.pop();
       } else {
-        objectLiteral = frame.braces.pop() ?? false;
+        objectLiteral = frame.braces.pop()?.object ?? false;
       }
       // After a block (`if (a) {} /re/.test(s)`) a `/` starts a regex; after an object
       // literal (`{ valueOf } / 2`) it is division.
@@ -382,15 +412,16 @@ export const stripJsComments = (content: string, options: { jsx: boolean }): str
     }
 
     // Postfix `++` / `--` and TypeScript's non-null `!` end an expression, so a
-    // following `/` is division, not a regex. A `++` on a new line is a prefix operator
-    // (automatic semicolon insertion), and a non-null `!` directly follows its operand.
+    // following `/` is division, not a regex. On a new line, `++` and `!` are prefix
+    // operators (automatic semicolon insertion); on the same line, spaces or comments may
+    // come between the operand and a postfix operator.
     if (!expressionStart && !newlineSinceToken && (char === '+' || char === '-') && next === char) {
       out += char + next;
       i += 2;
       token(char + next);
       continue;
     }
-    if (!expressionStart && char === '!' && next !== '=' && i > 0 && !/\s/.test(content[i - 1])) {
+    if (!expressionStart && !newlineSinceToken && char === '!' && next !== '=') {
       out += char;
       i++;
       token('!x');
@@ -417,10 +448,29 @@ export const stripJsComments = (content: string, options: { jsx: boolean }): str
       continue;
     }
 
+    // `??` and `?.` are not the `?` of a conditional expression.
+    if (char === '?' && (next === '?' || (next === '.' && !/[0-9]/.test(content[i + 2] ?? '')))) {
+      out += char + next;
+      i += 2;
+      expressionStart = true;
+      token(char + next);
+      continue;
+    }
+
+    // A `:` is a label or `case` colon, after which `{` opens a block, unless it is inside
+    // parentheses, an object literal, or ends the `?` of a conditional expression.
+    const scope = frame.braces[frame.braces.length - 1] ?? frame.top;
+    let value = char === '>' && prevToken === '=' && content[i - 1] === '=' ? '=>' : char;
+    if (char === '?' && parens.length === scope.parens) {
+      scope.ternary++;
+    } else if (char === ':' && parens.length === scope.parens) {
+      if (scope.ternary > 0) scope.ternary--;
+      else if (!scope.object) value = 'label:';
+    }
     out += char;
     i++;
     expressionStart = char !== ']';
-    token(char === '>' && prevToken === '=' && content[i - 2] === '=' ? '=>' : char);
+    token(value);
   }
 
   return out;
