@@ -1,5 +1,6 @@
 import path from 'node:path';
 import strip from '@repomix/strip-comments';
+import { stripJsComments } from './jsCommentStrip.js';
 
 export interface FileManipulator {
   removeComments(content: string): string;
@@ -39,6 +40,23 @@ class StripCommentsManipulator extends BaseManipulator {
       preserveNewlines: true,
     });
     return rtrimLines(result);
+  }
+}
+
+// JavaScript and TypeScript are stripped with a scanner that understands strings, template
+// literals, regex literals and JSX, since the generic profile cut code at `//` and `/*`
+// that are not comments (see jsCommentStrip.ts). JSX is only recognised where it is valid
+// syntax: `.ts` files use `<T>value` type assertions, which would look like JSX.
+class JavaScriptManipulator extends BaseManipulator {
+  private jsx: boolean;
+
+  constructor(options: { jsx: boolean }) {
+    super();
+    this.jsx = options.jsx;
+  }
+
+  removeComments(content: string): string {
+    return rtrimLines(stripJsComments(content, { jsx: this.jsx }));
   }
 }
 
@@ -267,7 +285,7 @@ class SfcManipulator extends BaseManipulator {
 
   private stripSection(tagName: string, attributes: string, body: string): string {
     if (tagName === 'script') {
-      return strip(body, { language: 'javascript', preserveNewlines: true });
+      return stripJsComments(body, { jsx: false });
     }
     const lang = attributes.match(STYLE_LANG_ATTR)?.[1].toLowerCase();
     if (lang === 'scss' || lang === 'sass' || lang === 'less') {
@@ -290,11 +308,11 @@ const manipulators: Record<string, FileManipulator> = {
   '.go': new StripCommentsManipulator('go'),
   '.html': new StripCommentsManipulator('html'),
   '.java': new StripCommentsManipulator('java'),
-  '.js': new StripCommentsManipulator('javascript'),
-  '.jsx': new StripCommentsManipulator('javascript'),
-  '.mjs': new StripCommentsManipulator('javascript'),
-  '.cjs': new StripCommentsManipulator('javascript'),
-  '.mjsx': new StripCommentsManipulator('javascript'),
+  '.js': new JavaScriptManipulator({ jsx: true }),
+  '.jsx': new JavaScriptManipulator({ jsx: true }),
+  '.mjs': new JavaScriptManipulator({ jsx: true }),
+  '.cjs': new JavaScriptManipulator({ jsx: true }),
+  '.mjsx': new JavaScriptManipulator({ jsx: true }),
   '.kt': new StripCommentsManipulator('c'),
   '.less': new CssPreprocessorManipulator(),
   '.php': new StripCommentsManipulator('php'),
@@ -307,11 +325,11 @@ const manipulators: Record<string, FileManipulator> = {
   '.sol': new StripCommentsManipulator('c'),
   '.sql': new StripCommentsManipulator('sql'),
   '.swift': new StripCommentsManipulator('swift'),
-  '.ts': new StripCommentsManipulator('javascript'),
-  '.tsx': new StripCommentsManipulator('javascript'),
-  '.mts': new StripCommentsManipulator('javascript'),
-  '.cts': new StripCommentsManipulator('javascript'),
-  '.mtsx': new StripCommentsManipulator('javascript'),
+  '.ts': new JavaScriptManipulator({ jsx: false }),
+  '.tsx': new JavaScriptManipulator({ jsx: true }),
+  '.mts': new JavaScriptManipulator({ jsx: false }),
+  '.cts': new JavaScriptManipulator({ jsx: false }),
+  '.mtsx': new JavaScriptManipulator({ jsx: true }),
   '.xml': new StripCommentsManipulator('xml'),
   '.yaml': new HashCommentManipulator('yaml'),
   '.yml': new HashCommentManipulator('yaml'),
