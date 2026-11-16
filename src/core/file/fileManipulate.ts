@@ -250,7 +250,7 @@ class HashCommentManipulator extends BaseManipulator {
 // and a self-closing `<script ... />` is rejected by the lookbehind since it has no body.
 const SFC_SECTION =
   /<!--[\s\S]*?-->|<(script|style)(?=[\s/>])((?:[^>"']|"[^"]*"|'[^']*')*)(?<!\/)>([\s\S]*?)(<\/\1\s*>)/gi;
-const STYLE_LANG_ATTR = /\blang\s*=\s*["']?([\w-]+)/i;
+const LANG_ATTR = /\blang\s*=\s*["']?([\w-]+)/i;
 
 // Vue and Svelte single-file components mix three languages. Running each language's
 // stripper over the whole file let the JavaScript one cut every `//` in the markup
@@ -284,10 +284,10 @@ class SfcManipulator extends BaseManipulator {
   }
 
   private stripSection(tagName: string, attributes: string, body: string): string {
+    const lang = attributes.match(LANG_ATTR)?.[1].toLowerCase();
     if (tagName === 'script') {
-      return stripJsComments(body, { jsx: false });
+      return stripJsComments(body, { jsx: lang === 'jsx' || lang === 'tsx' || lang === 'mtsx' });
     }
-    const lang = attributes.match(STYLE_LANG_ATTR)?.[1].toLowerCase();
     if (lang === 'scss' || lang === 'sass' || lang === 'less') {
       return stripCssPreprocessorComments(body);
     }

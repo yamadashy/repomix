@@ -41,11 +41,14 @@ const EXPRESSION_KEYWORDS = new Set([
   'yield',
 ]);
 
-const isIdentifierChar = (char: string): boolean => /[A-Za-z0-9_$]/.test(char) || char.charCodeAt(0) > 0x7f;
+// Non-ASCII characters count as identifier characters, except Unicode whitespace such as NBSP.
+const isIdentifierChar = (char: string): boolean =>
+  /[A-Za-z0-9_$]/.test(char) || (char.charCodeAt(0) > 0x7f && !/\s/.test(char));
 
 // A JSX tag name followed by something that can only follow a tag name. Rejects TypeScript
 // generics such as `<T,>`, `<T extends U>` and `<T = U>`, which are not JSX.
-const JSX_OPEN_TAG = /^<(?:>|[A-Za-z_$][\w$.:-]*(?=[\s/>{]))/;
+// A `<` after the name allows type arguments (`<Component<Props>>`).
+const JSX_OPEN_TAG = /^<(?:>|[A-Za-z_$][\w$.:-]*(?=[\s/>{<]))/;
 const NOT_JSX_AFTER_NAME = /^<[A-Za-z_$][\w$.:-]*\s*(?:,|=|extends\b)/;
 
 const looksLikeJsx = (content: string, index: number): boolean => {
@@ -61,7 +64,8 @@ const skipQuoted = (content: string, start: number, allowEscapes: boolean): numb
   while (i < content.length) {
     const char = content[i];
     if (allowEscapes && char === '\\') {
-      i += 2;
+      // A CRLF line continuation is three characters.
+      i += content[i + 1] === '\r' && content[i + 2] === '\n' ? 3 : 2;
       continue;
     }
     if (char === quote) return i + 1;
@@ -103,11 +107,14 @@ const findBlockCommentEnd = (content: string, start: number): number => {
   return end === -1 ? content.length : end + 2;
 };
 
-const newlinesOf = (text: string): string => text.replace(/[^\r\n]/g, '');
+// Keeps every line terminator, which also keeps automatic semicolon insertion unchanged.
+const newlinesOf = (text: string): string => text.replace(/[^\r\n\u2028\u2029]/g, '');
 
 // JavaScript line terminators (ECMA-262 LineTerminator).
 const isLineTerminator = (char: string): boolean =>
   char === '\n' || char === '\r' || char === '\u2028' || char === '\u2029';
+
+const CONTROL_KEYWORD_BEFORE_PAREN = /(?:^|[^\w$.])(?:if|while|for(?:\s+await)?|with)\s*$/;
 
 export const stripJsComments = (content: string, options: { jsx: boolean }): string => {
   const stack: Frame[] = [{ kind: 'code', braces: 0 }];
@@ -116,6 +123,8 @@ export const stripJsComments = (content: string, options: { jsx: boolean }): str
   // Whether the next token is in expression position, where `/` starts a regex and `<`
   // may start JSX. True at the start of input and after operators and opening punctuation.
   let expressionStart = true;
+  // For each open `(`, whether it follows a control keyword.
+  const parens: boolean[] = [];
 
   const len = content.length;
   while (i < len) {
@@ -268,7 +277,9 @@ export const stripJsComments = (content: string, options: { jsx: boolean }): str
       } else {
         frame.braces = Math.max(0, frame.braces - 1);
       }
-      expressionStart = false;
+      // A `}` almost always ends a block (`if (a) {} /re/.test(s)`); dividing an object
+      // literal is not realistic code, so a following `/` starts a regex.
+      expressionStart = true;
       continue;
     }
     if (isIdentifierChar(char)) {
@@ -294,9 +305,25 @@ export const stripJsComments = (content: string, options: { jsx: boolean }): str
       continue;
     }
 
+    // A `)` that closes the condition of `if`, `while`, `for` or `with` is followed by a
+    // statement, so a `/` after it starts a regex (`if (ok) /re/.test(s)`).
+    if (char === '(') {
+      parens.push(CONTROL_KEYWORD_BEFORE_PAREN.test(out.slice(-32)));
+      out += char;
+      i++;
+      expressionStart = true;
+      continue;
+    }
+    if (char === ')') {
+      out += char;
+      i++;
+      expressionStart = parens.pop() ?? false;
+      continue;
+    }
+
     out += char;
     i++;
-    expressionStart = char !== ')' && char !== ']';
+    expressionStart = char !== ']';
   }
 
   return out;
