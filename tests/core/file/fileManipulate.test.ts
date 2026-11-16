@@ -1384,6 +1384,86 @@ const url = 'http://example.com';
     });
   });
 
+  describe('JavaScript and TypeScript keep `//` and `/*` that are not comments', () => {
+    const strip = (ext: string, input: string) => getFileManipulator(`file${ext}`)?.removeComments(input);
+
+    test('keeps a URL in a string that follows an empty string', () => {
+      expect(strip('.ts', "const a = '';\nconst b = 'https://example.com'; // docs\n")).toBe(
+        "const a = '';\nconst b = 'https://example.com';\n",
+      );
+    });
+
+    test('a quote inside a regex literal does not start a string', () => {
+      expect(strip('.ts', "const quote = /'/;\nconst url = 'https://example.com'; // trailing\n")).toBe(
+        "const quote = /'/;\nconst url = 'https://example.com';\n",
+      );
+    });
+
+    test('`/*` inside a regex character class does not start a comment', () => {
+      expect(strip('.js', 'const re = /[/*]/;\nconst x = 1; /* note */\nconst y = 2;\n')).toBe(
+        'const re = /[/*]/;\nconst x = 1;\nconst y = 2;\n',
+      );
+    });
+
+    test('keeps `//` and `/*` escaped inside a regex literal', () => {
+      expect(strip('.ts', 'const r = /a\\/\\/b\\/\\*/g; // c\n')).toBe('const r = /a\\/\\/b\\/\\*/g;\n');
+    });
+
+    test('keeps a tagged template literal and strips comments in its placeholders', () => {
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: literal TypeScript source under test
+      const input = 'const Box = styled.div`background: url(//cdn.example.com/a.png); ${({ a }) => a /* x */}`; // c\n';
+      expect(strip('.ts', input)).toBe(
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: literal TypeScript source under test
+        'const Box = styled.div`background: url(//cdn.example.com/a.png); ${({ a }) => a }`;\n',
+      );
+    });
+
+    test('keeps `//` and `/*` in JSX text and attributes, and strips comments in JSX expressions', () => {
+      const input = [
+        'const A = () => (',
+        '  <div title="a//b" onClick={() => go() /* c */}>',
+        '    {/* jsx comment */}',
+        '    Docs at https://example.com <b>/* literal */</b>',
+        '    <img src="//cdn.example.com/a.png" />',
+        '  </div>',
+        '); // end',
+        '',
+      ].join('\n');
+      const expected = [
+        'const A = () => (',
+        '  <div title="a//b" onClick={() => go() }>',
+        '    {}',
+        '    Docs at https://example.com <b>/* literal */</b>',
+        '    <img src="//cdn.example.com/a.png" />',
+        '  </div>',
+        ');',
+        '',
+      ].join('\n');
+      expect(strip('.tsx', input)).toBe(expected);
+      expect(strip('.jsx', input)).toBe(expected);
+    });
+
+    test('does not treat comparisons, generics or type assertions as JSX', () => {
+      expect(strip('.tsx', 'const f = <T,>(x: T) => x; // generic\nconst g = a < b && c > d; // cmp\n')).toBe(
+        'const f = <T,>(x: T) => x;\nconst g = a < b && c > d;\n',
+      );
+      expect(strip('.ts', "const v = <Foo>bar; // assertion\nconst s = '<p>//</p>';\n")).toBe(
+        "const v = <Foo>bar;\nconst s = '<p>//</p>';\n",
+      );
+    });
+
+    test('treats `/` after a value as division', () => {
+      expect(strip('.js', 'const n = a / b; // c\nconst m = (x) / 2 / 3; // d\n')).toBe(
+        'const n = a / b;\nconst m = (x) / 2 / 3;\n',
+      );
+    });
+
+    test('keeps line numbers when removing multi-line block comments', () => {
+      const input = "const a = '';\n/*\n * doc\n */\nconst b = 1;\n";
+      expect(strip('.ts', input)?.split('\n')).toHaveLength(input.split('\n').length);
+    });
+  });
+
   describe('JS/TS module extension variants', () => {
     // .mjs/.cjs/.mjsx/.mts/.cts/.mtsx are ESM/CommonJS variants of .js/.ts and are
     // treated as JavaScript/TypeScript everywhere else (tree-sitter languageConfig,
