@@ -1515,6 +1515,61 @@ const url = 'http://example.com';
       );
     });
 
+    test('treats `++` on a new line as a prefix operator', () => {
+      expect(strip('.js', 'tick()\n++/[/*]/.lastIndex; // a\nkeep();\n')).toBe(
+        'tick()\n++/[/*]/.lastIndex;\nkeep();\n',
+      );
+      expect(strip('.js', 'tick() /*\n*/ ++/[/*]/.lastIndex; // a\nkeep();\n')).toBe(
+        'tick()\n ++/[/*]/.lastIndex;\nkeep();\n',
+      );
+    });
+
+    test('treats `!` after a control-flow `)` as unary', () => {
+      expect(strip('.js', 'if (ready) !/[/*]/.test(s); keep(); // a\n')).toBe('if (ready) !/[/*]/.test(s); keep();\n');
+    });
+
+    test('recognises control keywords by whole token, at any distance from `(`', () => {
+      expect(strip('.js', `if${' '.repeat(40)}(ok) /[/*]/.test(s); keep(); // a\n`)).toBe(
+        `if${' '.repeat(40)}(ok) /[/*]/.test(s); keep();\n`,
+      );
+      expect(strip('.js', 'const n = \u03b1if(x) / 2; const r = /[/*]/; keep(); // a\n')).toBe(
+        'const n = \u03b1if(x) / 2; const r = /[/*]/; keep();\n',
+      );
+      expect(strip('.js', 'const n = o.if(x) / 2; const r = /[/*]/; keep(); // a\n')).toBe(
+        'const n = o.if(x) / 2; const r = /[/*]/; keep();\n',
+      );
+    });
+
+    test('treats `/` after an object literal as division and after a block as a regex', () => {
+      expect(strip('.js', 'const n = { valueOf: () => 6 } / 2; const r = /[/*]/; keep(); // a\n')).toBe(
+        'const n = { valueOf: () => 6 } / 2; const r = /[/*]/; keep();\n',
+      );
+      expect(strip('.js', 'const f = () => {} \n/[/*]/.test(s); keep(); // a\n')).toBe(
+        'const f = () => {}\n/[/*]/.test(s); keep();\n',
+      );
+    });
+
+    test('consumes type arguments in a JSX opening tag', () => {
+      expect(strip('.tsx', 'const v = <List<Item> />; // c\nconst n = 1; // d\n')).toBe(
+        'const v = <List<Item> />;\nconst n = 1;\n',
+      );
+      expect(strip('.tsx', 'const v = <List<Item> label="{https://example.com}" />; // c\n')).toBe(
+        'const v = <List<Item> label="{https://example.com}" />;\n',
+      );
+      expect(strip('.tsx', 'const v = <Grid<Map<K, (a: A) => B>> />; // c\n')).toBe(
+        'const v = <Grid<Map<K, (a: A) => B>> />;\n',
+      );
+    });
+
+    test('reads the Vue `lang` attribute by its full name', () => {
+      expect(
+        strip('.vue', '<script data-lang="ts" lang="tsx">\nconst a = <p>https://example.com</p>; // c\n</script>\n'),
+      ).toBe('<script data-lang="ts" lang="tsx">\nconst a = <p>https://example.com</p>;\n</script>\n');
+      expect(strip('.vue', '<script title="lang=tsx" lang="ts">\nconst a = <T>x; // c\n</script>\n')).toBe(
+        '<script title="lang=tsx" lang="ts">\nconst a = <T>x;\n</script>\n',
+      );
+    });
+
     test('keeps line numbers when removing multi-line block comments', () => {
       const input = "const a = '';\n/*\n * doc\n */\nconst b = 1;\n";
       expect(strip('.ts', input)?.split('\n')).toHaveLength(input.split('\n').length);
