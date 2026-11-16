@@ -1,0 +1,7 @@
+import { useState } from 'react';
+⋮----
+type CounterProps = { initial: number; label: string };
+⋮----
+export function Counter({ initial, label }: CounterProps)
+⋮----
+export const Badge = ({ text }: { text: string }) =>

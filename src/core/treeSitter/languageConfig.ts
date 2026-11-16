@@ -40,6 +40,7 @@ export type SupportedLang =
   | 'rust'
   | 'solidity'
   | 'swift'
+  | 'tsx'
   | 'typescript'
   | 'vue';
 
@@ -70,7 +71,15 @@ export const LANGUAGE_CONFIGS: readonly LanguageConfig[] = [
   },
   {
     name: 'typescript',
-    extensions: ['ts', 'tsx', 'mts', 'mtsx', 'cts'],
+    extensions: ['ts', 'mts', 'cts'],
+    query: queryTypescript,
+    createStrategy: () => new TypeScriptParseStrategy(),
+  },
+  {
+    // TSX needs its own grammar: `tree-sitter-typescript` has no JSX nodes, so a component
+    // body was scanned as plain code and its JSX lines leaked into the `--compress` output.
+    name: 'tsx',
+    extensions: ['tsx', 'mtsx'],
     query: queryTypescript,
     createStrategy: () => new TypeScriptParseStrategy(),
   },
