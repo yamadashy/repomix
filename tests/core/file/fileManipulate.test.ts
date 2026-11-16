@@ -1475,6 +1475,46 @@ const url = 'http://example.com';
       }
     });
 
+    test('starts a regex after a control-flow `)` or a block `}`', () => {
+      expect(strip('.js', 'if (ok) /[/*]/.test(s); // a\nwhile (x) {} /[/*]/.test(s); // b\nconst y = 1;\n')).toBe(
+        'if (ok) /[/*]/.test(s);\nwhile (x) {} /[/*]/.test(s);\nconst y = 1;\n',
+      );
+      expect(strip('.js', 'const n = f(x) / 2 / (a + b); // c\n')).toBe('const n = f(x) / 2 / (a + b);\n');
+    });
+
+    test('does not treat NBSP as part of a keyword', () => {
+      expect(strip('.js', 'function f() { return\u00a0/[/*]/.test(s); } // c\nconst y = 1;\n')).toBe(
+        'function f() { return\u00a0/[/*]/.test(s); }\nconst y = 1;\n',
+      );
+    });
+
+    test('keeps a CRLF line continuation inside a string', () => {
+      // Trailing whitespace (including the CR) is trimmed per line afterwards; the string must stay whole.
+      expect(strip('.js', "const a = 'a\\\r\nhttps://example.com'; // c\r\n")).toBe(
+        "const a = 'a\\\nhttps://example.com';\n",
+      );
+    });
+
+    test('keeps U+2028 and U+2029 from removed block comments', () => {
+      expect(strip('.js', 'function f() { return /*\u2028*/ 1; }')).toContain('\u2028');
+      expect(strip('.js', 'function f() { return /*\u2029*/ 1; }')).toContain('\u2029');
+    });
+
+    test('keeps `//` in JSX children of a generic element', () => {
+      expect(strip('.tsx', 'const v = <List<Item>>https://example.com</List>; // c\n')).toBe(
+        'const v = <List<Item>>https://example.com</List>;\n',
+      );
+    });
+
+    test('enables JSX in Vue `<script lang="tsx">` and keeps it off for `lang="ts"`', () => {
+      expect(strip('.vue', '<script lang="tsx">\nconst a = <p>https://example.com</p>; // c\n</script>\n')).toBe(
+        '<script lang="tsx">\nconst a = <p>https://example.com</p>;\n</script>\n',
+      );
+      expect(strip('.vue', '<script lang="ts">\nconst a = <T>x; // c\n</script>\n')).toBe(
+        '<script lang="ts">\nconst a = <T>x;\n</script>\n',
+      );
+    });
+
     test('keeps line numbers when removing multi-line block comments', () => {
       const input = "const a = '';\n/*\n * doc\n */\nconst b = 1;\n";
       expect(strip('.ts', input)?.split('\n')).toHaveLength(input.split('\n').length);
