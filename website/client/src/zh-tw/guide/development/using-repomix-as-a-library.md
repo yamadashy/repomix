@@ -104,4 +104,4 @@ async function analyzeFiles(directory) {
 
 ## 實際示例
 
-Repomix 網站（[repomix.com](https://repomix.com)）使用 Repomix 作為庫來處理遠端倉庫。您可以在 [website/server/src/remoteRepo.ts](https://github.com/yamadashy/repomix/blob/main/website/server/src/remoteRepo.ts) 中查看實現。
+Repomix 網站（[repomix.com](https://repomix.com)）使用 Repomix 作為庫來處理遠端倉庫。您可以在 [website/server/src/domains/pack/remoteRepo.ts](https://github.com/yamadashy/repomix/blob/main/website/server/src/domains/pack/remoteRepo.ts) 中查看實現。

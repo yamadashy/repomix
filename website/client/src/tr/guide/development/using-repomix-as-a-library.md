@@ -104,4 +104,4 @@ Repomix'i Rolldown veya esbuild gibi araçlarla paketlerken bazı bağımlılık
 
 ## Gerçek Dünya Örneği
 
-Repomix web sitesi ([repomix.com](https://repomix.com)), uzak depoları işlemek için Repomix'i kütüphane olarak kullanmaktadır. Uygulamayı [website/server/src/remoteRepo.ts](https://github.com/yamadashy/repomix/blob/main/website/server/src/remoteRepo.ts) dosyasında inceleyebilirsiniz.
+Repomix web sitesi ([repomix.com](https://repomix.com)), uzak depoları işlemek için Repomix'i kütüphane olarak kullanmaktadır. Uygulamayı [website/server/src/domains/pack/remoteRepo.ts](https://github.com/yamadashy/repomix/blob/main/website/server/src/domains/pack/remoteRepo.ts) dosyasında inceleyebilirsiniz.

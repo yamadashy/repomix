@@ -124,7 +124,7 @@ File konfigurasi JavaScript bekerja sama seperti TypeScript, mendukung `defineCo
 | `ignore.useDefaultPatterns`      | Apakah akan menggunakan pola ignore default (node_modules, .git, dll.)                                                     | `true`                 |
 | `ignore.customPatterns`          | Pola tambahan untuk diabaikan menggunakan [pola glob](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) | `[]`                   |
 | `security.enableSecurityCheck`   | Apakah akan melakukan pemeriksaan keamanan menggunakan Secretlint untuk mendeteksi informasi sensitif                      | `true`                 |
-| `tokenCount.encoding`            | Encoding penghitungan token yang kompatibel dengan OpenAI (misalnya, `o200k_base` untuk GPT-4o, `cl100k_base` untuk GPT-4/3.5). Menggunakan [gpt-tokenizer](https://github.com/nicolo-ribaudo/gpt-tokenizer). | `"o200k_base"`         |
+| `tokenCount.encoding`            | Encoding penghitungan token yang kompatibel dengan OpenAI (misalnya, `o200k_base` untuk GPT-4o, `cl100k_base` untuk GPT-4/3.5). Menggunakan [gpt-tokenizer](https://github.com/niieani/gpt-tokenizer). | `"o200k_base"`         |
 
 File konfigurasi mendukung sintaks [JSON5](https://json5.org/), yang memungkinkan:
 - Komentar (baik single-line maupun multi-line)

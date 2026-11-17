@@ -124,7 +124,7 @@ JavaScript yapılandırma dosyaları, `defineConfig` ve dinamik değerleri deste
 | `ignore.useDefaultPatterns`      | Varsayılan yoksayma kalıplarının kullanılıp kullanılmayacağı (node_modules, .git vb.)                                       | `true`                 |
 | `ignore.customPatterns`          | [Glob kalıpları](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) kullanılarak yoksayılacak ek kalıplar | `[]`                   |
 | `security.enableSecurityCheck`   | Hassas bilgileri tespit etmek için Secretlint kullanılarak güvenlik kontrollerinin yapılıp yapılmayacağı                    | `true`                 |
-| `tokenCount.encoding`            | OpenAI uyumlu token sayımı kodlaması (ör. GPT-4o için `o200k_base`, GPT-4/3.5 için `cl100k_base`). [gpt-tokenizer](https://github.com/nicolo-ribaudo/gpt-tokenizer) kullanır. | `"o200k_base"`         |
+| `tokenCount.encoding`            | OpenAI uyumlu token sayımı kodlaması (ör. GPT-4o için `o200k_base`, GPT-4/3.5 için `cl100k_base`). [gpt-tokenizer](https://github.com/niieani/gpt-tokenizer) kullanır. | `"o200k_base"`         |
 
 Yapılandırma dosyası [JSON5](https://json5.org/) sözdizimini destekler; bu şunlara olanak tanır:
 - Yorumlar (hem tek satırlı hem de çok satırlı)

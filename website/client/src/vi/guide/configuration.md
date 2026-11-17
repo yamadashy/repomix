@@ -124,7 +124,7 @@ File cấu hình JavaScript hoạt động tương tự như TypeScript, hỗ tr
 | `ignore.useDefaultPatterns`      | Có nên sử dụng các mẫu ignore mặc định (node_modules, .git, v.v.) hay không                                               | `true`                 |
 | `ignore.customPatterns`          | Các mẫu bổ sung để ignore sử dụng [mẫu glob](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)       | `[]`                   |
 | `security.enableSecurityCheck`   | Có nên thực hiện kiểm tra bảo mật bằng Secretlint để phát hiện thông tin nhạy cảm hay không                                | `true`                 |
-| `tokenCount.encoding`            | Mã hóa đếm token tương thích OpenAI (ví dụ: `o200k_base` cho GPT-4o, `cl100k_base` cho GPT-4/3.5). Sử dụng [gpt-tokenizer](https://github.com/nicolo-ribaudo/gpt-tokenizer). | `"o200k_base"`         |
+| `tokenCount.encoding`            | Mã hóa đếm token tương thích OpenAI (ví dụ: `o200k_base` cho GPT-4o, `cl100k_base` cho GPT-4/3.5). Sử dụng [gpt-tokenizer](https://github.com/niieani/gpt-tokenizer). | `"o200k_base"`         |
 
 File cấu hình hỗ trợ cú pháp [JSON5](https://json5.org/), cho phép:
 - Bình luận (cả single-line và multi-line)

@@ -124,7 +124,7 @@ JavaScript設定檔的工作方式與TypeScript相同，支援`defineConfig`和�
 | `ignore.useDefaultPatterns`      | 是否使用預設忽略模式（node_modules、.git等）                                                                              | `true`                 |
 | `ignore.customPatterns`          | 額外的忽略模式（使用[glob模式](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)）                   | `[]`                   |
 | `security.enableSecurityCheck`   | 是否使用Secretlint執行安全檢查以檢測敏感資訊                                                                              | `true`                 |
-| `tokenCount.encoding`            | OpenAI相容的令牌計數編碼（GPT-4o使用`o200k_base`，GPT-4/3.5使用`cl100k_base`）。使用 [gpt-tokenizer](https://github.com/nicolo-ribaudo/gpt-tokenizer)。 | `"o200k_base"`         |
+| `tokenCount.encoding`            | OpenAI相容的令牌計數編碼（GPT-4o使用`o200k_base`，GPT-4/3.5使用`cl100k_base`）。使用 [gpt-tokenizer](https://github.com/niieani/gpt-tokenizer)。 | `"o200k_base"`         |
 
 設定檔支援[JSON5](https://json5.org/)語法，允許：
 - 註解（單行和多行）
