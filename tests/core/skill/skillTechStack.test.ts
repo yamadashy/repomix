@@ -796,4 +796,46 @@ golang 1.22.0`,
       expect(result[0].configFiles).toContain('.gitignore');
     });
   });
+
+  describe('file names that are Object.prototype keys', () => {
+    test.each(['constructor', 'toString', 'hasOwnProperty', '__proto__', 'valueOf'])(
+      'should ignore a file named %s',
+      (name) => {
+        const files: ProcessedFile[] = [
+          { path: name, content: 'x' },
+          { path: `sub/${name}`, content: 'x' },
+        ];
+
+        expect(detectTechStack(files)).toEqual([]);
+      },
+    );
+
+    test('should still detect the package when such a file sits beside a dependency file', () => {
+      const files: ProcessedFile[] = [
+        { path: 'package.json', content: JSON.stringify({ dependencies: { react: '^18.0.0' } }) },
+        { path: 'constructor', content: 'x' },
+        { path: 'toString', content: 'x' },
+      ];
+
+      const result = detectTechStack(files);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].languages).toEqual(['Node.js']);
+      expect(result[0].runtimeVersions).toEqual([]);
+    });
+
+    test('should keep a .tool-versions tool named constructor as its own name', () => {
+      const files: ProcessedFile[] = [
+        { path: 'package.json', content: JSON.stringify({ dependencies: {} }) },
+        { path: '.tool-versions', content: 'constructor 1.0.0\nnodejs 22.0.0' },
+      ];
+
+      const result = detectTechStack(files);
+
+      expect(result[0].runtimeVersions).toEqual([
+        { runtime: 'constructor', version: '1.0.0' },
+        { runtime: 'Node.js', version: '22.0.0' },
+      ]);
+    });
+  });
 });
