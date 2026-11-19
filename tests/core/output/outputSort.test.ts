@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
-import { sortOutputFiles } from '../../../src/core/output/outputSort.js';
+import { prefetchSortData, sortOutputFiles } from '../../../src/core/output/outputSort.js';
 import { createTempDir } from '../../testing/tempDir.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
@@ -162,6 +162,34 @@ describe('outputSort', () => {
       expect(mockGetFileChangeCount).toHaveBeenCalledTimes(1);
       // isGitInstalled should also be cached
       expect(mockIsGitInstalled).toHaveBeenCalledTimes(1);
+    });
+
+    test('drops the counts an earlier run read when the next run prefetches', async () => {
+      // The MCP server runs the CLI once per tool call from one process, so a
+      // second pack used to sort by the counts the first one had read.
+      const input: ProcessedFile[] = [
+        { path: `src${sep}a.ts`, content: 'a' },
+        { path: `src${sep}b.ts`, content: 'b' },
+      ];
+      const mockGetFileChangeCount = vi
+        .fn()
+        .mockResolvedValueOnce({ [`src${sep}a.ts`]: 1, [`src${sep}b.ts`]: 9 })
+        .mockResolvedValueOnce({ [`src${sep}a.ts`]: 9, [`src${sep}b.ts`]: 1 });
+      const deps = {
+        getFileChangeCount: mockGetFileChangeCount,
+        isGitInstalled: vi.fn().mockResolvedValue(true),
+      };
+
+      const first = await sortOutputFiles(input, mockConfig, deps);
+      expect(first.map((file) => file.path)).toEqual([`src${sep}a.ts`, `src${sep}b.ts`]);
+
+      // What pack() does at the start of a run: the commits since the last one
+      // have to be read, or the order is that of a history that is gone.
+      await prefetchSortData(mockConfig, deps);
+      const second = await sortOutputFiles(input, mockConfig, deps);
+
+      expect(second.map((file) => file.path)).toEqual([`src${sep}b.ts`, `src${sep}a.ts`]);
+      expect(mockGetFileChangeCount).toHaveBeenCalledTimes(2);
     });
   });
 });

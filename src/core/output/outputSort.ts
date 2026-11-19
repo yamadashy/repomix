@@ -114,9 +114,28 @@ export const sortOutputFiles = async (
 };
 
 /**
+ * Forget what an earlier pack run cached for this directory.
+ *
+ * The caches live for the process, which is right for a one-shot CLI run and wrong
+ * for the MCP server: it runs the CLI once per tool call from a single long-lived
+ * process, so the counts a second `pack_codebase` used were the ones the first one
+ * read — however many commits landed in between — and files kept the order of a
+ * history that no longer existed. Same shape as the logger level the MCP runtime
+ * already restores per call.
+ */
+const clearSortCaches = (cwd: string): void => {
+  const prefix = `${cwd}:`;
+  for (const key of fileChangeCountsCache.keys()) {
+    if (key.startsWith(prefix)) fileChangeCountsCache.delete(key);
+  }
+  gitAvailabilityCache.delete(cwd);
+};
+
+/**
  * Pre-fetch git file change counts so that a later `sortOutputFiles` call
  * hits the in-memory cache instead of spawning git subprocesses on the
- * critical path.
+ * critical path. Called once at the start of a pack run, which is also where the
+ * previous run's counts are dropped.
  */
 export const prefetchSortData = async (
   config: RepomixConfigMerged,
@@ -126,6 +145,7 @@ export const prefetchSortData = async (
   },
 ): Promise<void> => {
   if (!config.output.git?.sortByChanges) return;
+  clearSortCaches(config.cwd);
   await getFileChangeCounts(config.cwd, config.output.git?.sortByChangesMaxCommits, deps);
 };
 
