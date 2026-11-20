@@ -35,8 +35,8 @@ const SECURITY_TASKS_PER_SQUARED_THREAD = 150;
  * Scanning is CPU-bound regex work that scales with repository size, and the main thread
  * mostly waits while it runs. Each worker also has a fixed start-up cost, so the count grows
  * with the square root of the item count: 2 workers up to 600 items, 4 at 2,000, 7 at 7,000.
- * On an 18-core machine this cuts a warm 7,000-file pack by about 14% and a 21,000-file pack
- * by about 30% compared with a fixed cap of 2.
+ * On an 18-core machine this cuts a 7,000-file pack by about 9% and a 21,000-file pack by
+ * 24-29% compared with a fixed cap of 2.
  *
  * The count stops at half the cores because the metrics pool warms up at the same time: with
  * a cold token cache, a security pool of three quarters of the cores or more made the whole
