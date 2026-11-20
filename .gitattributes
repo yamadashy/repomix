@@ -1,3 +1,6 @@
 # Golden fixtures for tree-sitter parse tests: keep LF on every OS so
 # inputs and expected outputs are byte-identical on Windows CI.
 tests/core/treeSitter/fixtures/** text eol=lf
+
+# Golden fixtures for the output style renderers: same reason.
+tests/core/output/outputStyles/fixtures/** text eol=lf

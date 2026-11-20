@@ -26,6 +26,7 @@
       "!**/browser/packages",
       "!.claude/worktrees",
       "!**/tests/core/treeSitter/fixtures",
+      "!**/tests/core/output/outputStyles/fixtures",
       "!**/*.svg"
     ]
   },

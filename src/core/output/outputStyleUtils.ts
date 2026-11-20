@@ -1,7 +1,6 @@
 /**
  * Shared utilities for output style generation.
  */
-import Handlebars from 'handlebars';
 
 /**
  * Map of file extensions to syntax highlighting language names.
@@ -229,21 +228,17 @@ export const getLanguageFromFilePath = (filePath: string): string => {
   return extension ? extensionToLanguageMap[extension] || '' : '';
 };
 
-// Track if Handlebars helpers have been registered
-let handlebarsHelpersRegistered = false;
-
 /**
- * Register common Handlebars helpers for output generation.
- * This function is idempotent - calling it multiple times has no effect.
+ * Renders each item and concatenates the results, treating a missing list as empty.
+ * Used by the output style renderers in place of a template engine's `each` block.
  */
-export const registerHandlebarsHelpers = (): void => {
-  if (handlebarsHelpersRegistered) {
-    return;
+export const renderEach = <T>(items: ReadonlyArray<T> | undefined, render: (item: T) => string): string => {
+  if (!items) {
+    return '';
   }
-
-  Handlebars.registerHelper('getFileExtension', (filePath: string) => {
-    return getLanguageFromFilePath(filePath);
-  });
-
-  handlebarsHelpersRegistered = true;
+  let result = '';
+  for (const item of items) {
+    result += render(item);
+  }
+  return result;
 };

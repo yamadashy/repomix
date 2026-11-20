@@ -18,7 +18,7 @@ const createStrictXmlParser = () => {
 describe('outputGenerate', () => {
   const mockDeps = {
     buildOutputGeneratorContext: vi.fn(),
-    generateHandlebarOutput: vi.fn(),
+    generateTemplateOutput: vi.fn(),
     generateParsableXmlOutput: vi.fn(),
     generateParsableJsonOutput: vi.fn(),
     sortOutputFiles: vi.fn(),
@@ -49,7 +49,7 @@ describe('outputGenerate', () => {
       instruction: '',
       filesEnabled: true,
     });
-    mockDeps.generateHandlebarOutput.mockResolvedValue('mock output');
+    mockDeps.generateTemplateOutput.mockResolvedValue('mock output');
 
     const output = await generateOutput(
       [process.cwd()],

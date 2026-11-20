@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { defaultConfig, type RepomixConfigMerged } from '../../src/config/configSchema.js';
+import type { RenderContext } from '../../src/core/output/outputGeneratorTypes.js';
 
 type DeepPartial<T> = {
   [P in keyof T]?: T[P] extends (infer U)[]
@@ -48,6 +49,35 @@ export const createMockConfig = (config: DeepPartial<RepomixConfigMerged> = {}):
     ...(config.enableFileProcessors !== undefined && { enableFileProcessors: config.enableFileProcessors }),
   };
 };
+
+/**
+ * A RenderContext with every section disabled and short placeholder values, for
+ * testing the output style renderers directly. Override fields to enable sections.
+ */
+export const createMockRenderContext = (overrides: Partial<RenderContext> = {}): RenderContext => ({
+  generationHeader: 'GENERATION_HEADER',
+  summaryPurpose: 'PURPOSE',
+  summaryFileFormat: 'FILE_FORMAT',
+  summaryUsageGuidelines: 'USAGE_GUIDELINES',
+  summaryNotes: 'NOTES',
+  headerText: undefined,
+  instruction: '',
+  treeString: 'TREE',
+  processedFiles: [],
+  fileLineCounts: {},
+  fileSummaryEnabled: false,
+  directoryStructureEnabled: false,
+  filesEnabled: false,
+  escapeFileContent: false,
+  markdownCodeBlockDelimiter: '```',
+  gitDiffEnabled: false,
+  gitDiffWorkTree: undefined,
+  gitDiffStaged: undefined,
+  gitLogEnabled: false,
+  gitLogContent: undefined,
+  gitLogCommits: undefined,
+  ...overrides,
+});
 
 export const isWindows = os.platform() === 'win32';
 export const isMac = os.platform() === 'darwin';

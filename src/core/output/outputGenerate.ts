@@ -1,6 +1,5 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import Handlebars from 'handlebars';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { listDirectories, listFiles, searchFiles } from '../file/fileSearch.js';
@@ -19,40 +18,24 @@ import {
   generateSummaryPurpose,
   generateSummaryUsageGuidelines,
 } from './outputStyleDecorate.js';
-import { getMarkdownTemplate } from './outputStyles/markdownStyle.js';
-import { getPlainTemplate } from './outputStyles/plainStyle.js';
-import { getXmlTemplate } from './outputStyles/xmlStyle.js';
+import { renderMarkdownStyle } from './outputStyles/markdownStyle.js';
+import { renderPlainStyle } from './outputStyles/plainStyle.js';
+import { renderXmlStyle } from './outputStyles/xmlStyle.js';
 
-// Cache for compiled Handlebars templates to avoid recompilation on every call
-const compiledTemplateCache = new Map<string, Handlebars.TemplateDelegate>();
-
-const getCompiledTemplate = (style: string): Handlebars.TemplateDelegate => {
-  const cached = compiledTemplateCache.get(style);
-  if (cached) {
-    return cached;
-  }
-
-  let template: string;
+const getStyleRenderer = (style: string): ((renderContext: RenderContext) => string) => {
   switch (style) {
     case 'xml':
-      template = getXmlTemplate();
-      break;
+      return renderXmlStyle;
     case 'markdown':
-      template = getMarkdownTemplate();
-      break;
+      return renderMarkdownStyle;
     case 'plain':
-      template = getPlainTemplate();
-      break;
+      return renderPlainStyle;
     default:
-      throw new RepomixError(`Unsupported output style for handlebars template: ${style}`);
+      throw new RepomixError(`Unsupported output style for template rendering: ${style}`);
   }
-
-  const compiled = Handlebars.compile(template);
-  compiledTemplateCache.set(style, compiled);
-  return compiled;
 };
 
-// The Markdown template wraps file contents, the directory structure, and git
+// The Markdown style wraps file contents, the directory structure, and git
 // diffs in the same code fence, so the delimiter has to be longer than the
 // longest backtick run across all of them. A diff of a Markdown file, for
 // example, carries bare ``` context lines that would otherwise close the fence
@@ -226,14 +209,14 @@ const generateParsableJsonOutput = async (renderContext: RenderContext): Promise
   }
 };
 
-const generateHandlebarOutput = async (
+const generateTemplateOutput = async (
   config: RepomixConfigMerged,
   renderContext: RenderContext,
   processedFiles?: ProcessedFile[],
 ): Promise<string> => {
   try {
-    const compiledTemplate = getCompiledTemplate(config.output.style);
-    return `${compiledTemplate(renderContext).trim()}\n`;
+    const render = getStyleRenderer(config.output.style);
+    return `${render(renderContext).trim()}\n`;
   } catch (error) {
     if (error instanceof RangeError && error.message === 'Invalid string length') {
       let largeFilesInfo = '';
@@ -256,7 +239,7 @@ Please try:
       );
     }
     throw new RepomixError(
-      `Failed to compile template: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      `Failed to render template: ${error instanceof Error ? error.message : 'Unknown error'}`,
       error instanceof Error ? { cause: error } : undefined,
     );
   }
@@ -273,7 +256,7 @@ export const generateOutput = async (
   emptyDirPaths?: string[],
   deps = {
     buildOutputGeneratorContext,
-    generateHandlebarOutput,
+    generateTemplateOutput,
     generateParsableXmlOutput,
     generateParsableJsonOutput,
     sortOutputFiles,
@@ -298,12 +281,12 @@ export const generateOutput = async (
     case 'xml':
       return config.output.parsableStyle
         ? deps.generateParsableXmlOutput(renderContext)
-        : deps.generateHandlebarOutput(config, renderContext, sortedProcessedFiles);
+        : deps.generateTemplateOutput(config, renderContext, sortedProcessedFiles);
     case 'json':
       return deps.generateParsableJsonOutput(renderContext);
     case 'markdown':
     case 'plain':
-      return deps.generateHandlebarOutput(config, renderContext, sortedProcessedFiles);
+      return deps.generateTemplateOutput(config, renderContext, sortedProcessedFiles);
     default:
       throw new RepomixError(`Unsupported output style: ${config.output.style}`);
   }
