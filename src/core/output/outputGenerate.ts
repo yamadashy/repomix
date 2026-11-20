@@ -21,6 +21,7 @@ import {
 import { renderMarkdownStyle } from './outputStyles/markdownStyle.js';
 import { renderPlainStyle } from './outputStyles/plainStyle.js';
 import { renderXmlStyle } from './outputStyles/xmlStyle.js';
+import { serializeXml } from './xmlSerialize.js';
 
 const getStyleRenderer = (style: string): ((renderContext: RenderContext) => string) => {
   switch (style) {
@@ -99,9 +100,6 @@ export const createRenderContext = (outputGeneratorContext: OutputGeneratorConte
 };
 
 const generateParsableXmlOutput = async (renderContext: RenderContext): Promise<string> => {
-  // Lazy-load fast-xml-builder (~3ms) — only used for parsable XML output (non-default)
-  const FastXmlBuilder = (await import('fast-xml-builder')).default;
-  const xmlBuilder = new FastXmlBuilder({ ignoreAttributes: false });
   const xmlDocument = {
     repomix: {
       file_summary: renderContext.fileSummaryEnabled
@@ -146,7 +144,7 @@ const generateParsableXmlOutput = async (renderContext: RenderContext): Promise<
     },
   };
   try {
-    return xmlBuilder.build(xmlDocument);
+    return serializeXml(xmlDocument);
   } catch (error) {
     throw new RepomixError(
       `Failed to generate XML output: ${error instanceof Error ? error.message : 'Unknown error'}`,
