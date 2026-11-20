@@ -1,0 +1,31 @@
+<template>
+  <div class="counter">
+    <p>Count: {{ count }}</p>
+    <button @click="increment">Increment</button>
+  </div>
+</template>
+
+<script lang="ts">
+// Counter component
+import { defineComponent } from 'vue';
+
+/**
+ * A simple counter component
+ */
+export default defineComponent({
+  name: 'Counter',
+  data() {
+    return {
+      count: 0
+    };
+  },
+  methods: {
+    /**
+     * Increments the counter
+     */
+    increment(): void {
+      this.count++;
+    }
+  }
+});
+</script>

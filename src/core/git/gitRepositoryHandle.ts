@@ -1,3 +1,4 @@
+import { getErrorMessage } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { execGitLogFilenames, execGitRevParse, execGitVersion } from './gitCommand.js';
 
@@ -19,7 +20,7 @@ export const getFileChangeCount = async (
 
     return fileChangeCounts;
   } catch (error) {
-    logger.trace('Failed to get file change counts:', (error as Error).message);
+    logger.trace('Failed to get file change counts:', getErrorMessage(error));
     return {};
   }
 };
@@ -47,7 +48,7 @@ export const isGitInstalled = async (
     const result = await deps.execGitVersion();
     return !result.includes('error') && result.includes('git version');
   } catch (error) {
-    logger.trace('Git is not installed:', (error as Error).message);
+    logger.trace('Git is not installed:', getErrorMessage(error));
     return false;
   }
 };

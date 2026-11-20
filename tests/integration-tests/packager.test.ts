@@ -1,8 +1,7 @@
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
-import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { beforeEach, describe, expect, test } from 'vitest';
 
 // Mock globby worker for integration tests to avoid worker file loading issues
 
@@ -20,6 +19,7 @@ import { pack } from '../../src/core/packager.js';
 import { filterOutUntrustedFiles } from '../../src/core/security/filterOutUntrustedFiles.js';
 import { validateFileSafety } from '../../src/core/security/validateFileSafety.js';
 import { createMetricsTaskRunnerDouble } from '../testing/taskRunnerDoubles.js';
+import { createTempDir } from '../testing/tempDir.js';
 import { isWindows } from '../testing/testUtils.js';
 
 const fixturesDir = path.join(__dirname, 'fixtures', 'packager');
@@ -66,12 +66,7 @@ const outputsDir = path.join(fixturesDir, 'outputs');
 
   beforeEach(async () => {
     // Create a temporary directory for each test
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-test-'));
-  });
-
-  afterEach(async () => {
-    // Clean up the temporary directory after each test
-    await fs.rm(tempDir, { recursive: true, force: true });
+    tempDir = await createTempDir('repomix-test-');
   });
 
   for (const { desc, input, output, config } of testCases) {
@@ -198,10 +193,40 @@ const outputsDir = path.join(fixturesDir, 'outputs');
         case 'json': {
           // Validate it's valid JSON
           const jsonOutput = JSON.parse(actualOutput);
-          expect(jsonOutput.fileSummary).toBeDefined();
-          expect(jsonOutput.userProvidedHeader).toBeDefined();
-          expect(jsonOutput.directoryStructure).toBeDefined();
-          expect(jsonOutput.files).toBeDefined();
+          expect(Object.keys(jsonOutput)).toEqual(['fileSummary', 'userProvidedHeader', 'directoryStructure', 'files']);
+          expect(Object.keys(jsonOutput.fileSummary)).toEqual([
+            'generationHeader',
+            'purpose',
+            'fileFormat',
+            'usageGuidelines',
+            'notes',
+          ]);
+          expect(jsonOutput.userProvidedHeader).toBe('This repository is simple-project');
+          expect(jsonOutput.directoryStructure).toBe(
+            [
+              'resources/',
+              '  .repomixignore',
+              '  data.txt',
+              'src/',
+              '  index.js',
+              '  utils.js',
+              '.repomixignore',
+              'package.json',
+              'README.md',
+              'repomix.config.json',
+            ].join('\n'),
+          );
+          // Compare packed paths as a set so the check does not depend on output ordering
+          expect(Object.keys(jsonOutput.files).sort()).toEqual([
+            '.repomixignore',
+            'README.md',
+            'package.json',
+            'repomix.config.json',
+            'resources/.repomixignore',
+            'resources/data.txt',
+            'src/index.js',
+            'src/utils.js',
+          ]);
           expect(jsonOutput.files['src/index.js']).toContain('function main() {');
           expect(jsonOutput.files['src/utils.js']).toContain('function greet(name) {');
           break;

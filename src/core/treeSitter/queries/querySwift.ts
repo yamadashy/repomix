@@ -12,7 +12,6 @@ export const querySwift = `
     (function_declaration
       name: (simple_identifier) @name
     ) @definition.method
-    (subscript_declaration) @name.definition.method
     (init_declaration "init" @name) @definition.method
     (deinit_declaration "deinit" @name) @definition.method
   ]
@@ -23,7 +22,6 @@ export const querySwift = `
     (protocol_function_declaration
       name: (simple_identifier) @name
     ) @definition.method
-    (subscript_declaration) @name.definition.method
     (init_declaration "init" @name) @definition.method
   ]
 )
@@ -36,10 +34,31 @@ export const querySwift = `
   ]
 )
 
-(property_declaration
+; Top-level and enum properties. Local variables inside function bodies are
+; also property_declaration nodes, so the pattern is anchored to its parent.
+(source_file
+  (property_declaration
     (pattern (simple_identifier) @name)
-) @definition.property
+  ) @definition.property
+)
+
+(enum_class_body
+  (property_declaration
+    (pattern (simple_identifier) @name)
+  ) @definition.property
+)
 
 (function_declaration
     name: (simple_identifier) @name) @definition.function
+
+; Subscripts in class, protocol and enum bodies. Signatures can span several
+; lines, and the node itself includes the accessor body, so capture the
+; "subscript" keyword plus the lines holding its parameters and return type.
+(subscript_declaration "subscript" @name) @definition.method
+
+(subscript_declaration
+  (parameter) @name.definition.method)
+
+(subscript_declaration
+  name: (_) @name.definition.method)
 `;

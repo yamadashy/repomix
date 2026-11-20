@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import { RepomixError } from '../../shared/errorHandle.js';
+import { getErrorMessage, RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { redactErrorMessage, redactUrl } from '../../shared/urlRedact.js';
 
@@ -68,7 +68,7 @@ export const execGitLogFilenames = async (
 
     return result.stdout.split('\n').filter(Boolean);
   } catch (error) {
-    logger.trace('Failed to get git log filenames:', (error as Error).message);
+    logger.trace('Failed to get git log filenames:', getErrorMessage(error));
     return [];
   }
 };
@@ -97,7 +97,7 @@ export const execGitDiff = async (
 
     return result.stdout || '';
   } catch (error) {
-    logger.trace('Failed to execute git diff:', (error as Error).message);
+    logger.trace('Failed to execute git diff:', getErrorMessage(error));
     throw error;
   }
 };
@@ -111,7 +111,7 @@ export const execGitVersion = async (
     const result = await deps.execFileAsync('git', ['--version']);
     return result.stdout || '';
   } catch (error) {
-    logger.trace('Failed to execute git version:', (error as Error).message);
+    logger.trace('Failed to execute git version:', getErrorMessage(error));
     throw error;
   }
 };
@@ -132,7 +132,7 @@ export const execGitRevParse = async (
     ]);
     return result.stdout || '';
   } catch (error) {
-    logger.trace('Failed to execute git rev-parse:', (error as Error).message);
+    logger.trace('Failed to execute git rev-parse:', getErrorMessage(error));
     throw error;
   }
 };
@@ -265,7 +265,7 @@ export const execGitLog = async (
 
     return result.stdout || '';
   } catch (error) {
-    logger.trace('Failed to execute git log:', (error as Error).message);
+    logger.trace('Failed to execute git log:', getErrorMessage(error));
     throw error;
   }
 };

@@ -1,6 +1,6 @@
 import path from 'node:path';
 import process from 'node:process';
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { loadFileConfig, mergeConfigs } from '../../src/config/configLoad.js';
 import { defaultConfig, type RepomixConfigCli, type RepomixConfigFile } from '../../src/config/configSchema.js';
 import { RepomixConfigValidationError } from '../../src/shared/errorHandle.js';
@@ -21,10 +21,6 @@ describe('configLoad', () => {
     vi.resetAllMocks();
     silenceLogger();
     process.env = {};
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('loadFileConfig', () => {

@@ -1,23 +1,22 @@
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import { writeOutputToDisk } from '../../../src/core/packager/writeOutputToDisk.js';
+import { createTempDir } from '../../testing/tempDir.js';
 
 describe('writeOutputToDisk', () => {
   let originalStdoutWrite: typeof process.stdout.write;
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-write-output-'));
+    tempDir = await createTempDir('repomix-write-output-');
     originalStdoutWrite = process.stdout.write;
     process.stdout.write = vi.fn();
   });
 
-  afterEach(async () => {
+  afterEach(() => {
     process.stdout.write = originalStdoutWrite;
-    await fs.rm(tempDir, { recursive: true, force: true });
   });
 
   it('should write output to the specified file path', async () => {

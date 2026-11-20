@@ -1,7 +1,6 @@
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import { collectFiles } from '../../../src/core/file/fileCollect.js';
 import { readRawFile } from '../../../src/core/file/fileRead.js';
@@ -11,6 +10,7 @@ import { pack } from '../../../src/core/packager.js';
 import { filterOutUntrustedFiles } from '../../../src/core/security/filterOutUntrustedFiles.js';
 import { validateFileSafety } from '../../../src/core/security/validateFileSafety.js';
 import { createMetricsTaskRunnerDouble } from '../../testing/taskRunnerDoubles.js';
+import { createTempDir } from '../../testing/tempDir.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 // End-to-end coverage that output.patterns globs match each file's
@@ -81,10 +81,10 @@ describe('output.patterns per-root-relative matching (end-to-end)', () => {
   let outputPath: string;
 
   beforeEach(async () => {
-    rootParent = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-inclusion-level-'));
+    rootParent = await createTempDir('repomix-inclusion-level-');
     rootApp = path.join(rootParent, 'app');
     rootLib = path.join(rootParent, 'lib');
-    outputDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-inclusion-level-out-'));
+    outputDir = await createTempDir('repomix-inclusion-level-out-');
     outputPath = path.join(outputDir, 'output.md');
 
     await fs.mkdir(path.join(rootApp, 'src'), { recursive: true });
@@ -94,11 +94,6 @@ describe('output.patterns per-root-relative matching (end-to-end)', () => {
     await fs.mkdir(path.join(rootLib, 'src'), { recursive: true });
     await fs.writeFile(path.join(rootLib, 'README.md'), '# Lib\nREADME_B_CONTENT\n');
     await fs.writeFile(path.join(rootLib, 'src', 'index.ts'), 'export const b = "SRC_B_CONTENT";\n');
-  });
-
-  afterEach(async () => {
-    await fs.rm(rootParent, { recursive: true, force: true });
-    await fs.rm(outputDir, { recursive: true, force: true });
   });
 
   it('single root: drops src content via `src/**` while keeping it in the directory tree', async () => {

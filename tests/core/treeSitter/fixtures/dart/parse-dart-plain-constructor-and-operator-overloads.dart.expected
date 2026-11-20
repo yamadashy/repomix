@@ -1,0 +1,19 @@
+/// Vector class with operators
+class Vector {
+final double x;
+final double y;
+⋮----
+/// Plain constructor
+Vector(this.x, this.y);
+⋮----
+/// Plus operator
+Vector operator +(Vector other) => Vector(x + other.x, y + other.y);
+⋮----
+/// Index operator
+double operator [](int i) => i == 0 ? x : y;
+⋮----
+/// Index assignment operator
+void operator []=(int i, double v) {}
+⋮----
+/// Equality operator
+bool operator ==(Object other) => other is Vector && x == other.x && y == other.y;

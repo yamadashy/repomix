@@ -50,9 +50,9 @@ describe('server.json (MCP Registry metadata)', () => {
   });
 
   test('the npm package identifier matches the published package name', () => {
-    const npmPackage = serverJson.packages.find((pkg: { registryType: string }) => pkg.registryType === 'npm');
-    expect(npmPackage).toBeDefined();
-    expect(npmPackage.identifier).toBe(packageJson.name);
+    const npmPackages = serverJson.packages.filter((pkg: { registryType: string }) => pkg.registryType === 'npm');
+    expect(npmPackages).toHaveLength(1);
+    expect(npmPackages[0].identifier).toBe(packageJson.name);
   });
 
   test('the description stays within the registry limit of 100 characters', () => {

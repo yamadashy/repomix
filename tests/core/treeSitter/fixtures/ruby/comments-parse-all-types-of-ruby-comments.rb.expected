@@ -1,0 +1,13 @@
+# Single line comment
+def func1
+⋮----
+# Documentation comment
+# @param name [String] The name
+# @return [void]
+def func2(name)
+⋮----
+=begin
+Multi-line comment block
+using =begin/=end syntax
+=end
+def func3

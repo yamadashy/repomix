@@ -1,0 +1,14 @@
+// Single line comment
+/* Multi-line comment
+   spanning multiple lines */
+
+/// <summary>
+/// XML documentation for class
+/// </summary>
+public class Test {
+    /// <summary>
+    /// Property documentation
+    /// </summary>
+    /// <value>The value description</value>
+    public int Property { get; set; }
+}

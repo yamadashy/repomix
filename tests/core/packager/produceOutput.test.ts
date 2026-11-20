@@ -136,8 +136,60 @@ describe('produceOutput', () => {
       );
 
       expect(mockDeps.writeOutputToDisk).toHaveBeenCalled();
-      expect(result.outputFiles).toBeDefined();
-      expect(Array.isArray(result.outputForMetrics)).toBe(true);
+      // Both files fit under the 1MB limit, so a single numbered part is produced
+      expect(result.outputFiles).toEqual(['repomix-output.1.xml']);
+      expect(result.outputForMetrics).toEqual(['output for 2 files']);
+    });
+
+    it('writes one file per part when the output exceeds the split limit', async () => {
+      const mockDeps = createMockDeps();
+      mockDeps.generateOutput.mockImplementation(async (_rootDirs, _config, files) =>
+        files.map((file: { content: string }) => file.content).join('\n'),
+      );
+
+      // Each root entry renders to 9 bytes, both together to 19, so a 15-byte limit forces two parts
+      const mockConfig = createMockConfig({
+        output: {
+          filePath: 'repomix-output.xml',
+          splitOutput: 15,
+        },
+      });
+
+      const processedFiles = [
+        { path: 'src/a.ts', content: 'content a' },
+        { path: 'lib/b.ts', content: 'content b' },
+      ];
+      const allFilePaths = ['src/a.ts', 'lib/b.ts'];
+
+      const result = await produceOutput(
+        ['/root'],
+        mockConfig,
+        processedFiles,
+        allFilePaths,
+        undefined,
+        undefined,
+        vi.fn(),
+        undefined,
+        undefined,
+        mockDeps,
+      );
+
+      // Groups are ordered by root entry, so lib/ comes before src/
+      expect(result.outputFiles).toEqual(['repomix-output.1.xml', 'repomix-output.2.xml']);
+      expect(result.outputForMetrics).toEqual(['content b', 'content a']);
+      expect(mockDeps.writeOutputToDisk).toHaveBeenCalledTimes(2);
+      expect(mockDeps.writeOutputToDisk).toHaveBeenCalledWith(
+        'content b',
+        expect.objectContaining({
+          output: expect.objectContaining({ filePath: 'repomix-output.1.xml', stdout: false }),
+        }),
+      );
+      expect(mockDeps.writeOutputToDisk).toHaveBeenCalledWith(
+        'content a',
+        expect.objectContaining({
+          output: expect.objectContaining({ filePath: 'repomix-output.2.xml', stdout: false }),
+        }),
+      );
     });
 
     it('calls progress callback for split output', async () => {

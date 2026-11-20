@@ -3,6 +3,7 @@ import path from 'node:path';
 import pc from 'picocolors';
 import { findLocalConfigPath, isExecutableConfigPath } from '../../config/configLoad.js';
 import { OperationCancelledError, RepomixError } from '../../shared/errorHandle.js';
+import { isPathWithin } from '../../shared/pathUtils.js';
 import { writeStderrLine as writeErr } from '../../shared/stderrWrite.js';
 import { redactUrl } from '../../shared/urlRedact.js';
 import { isRemoteConfigTrusted, markRemoteConfigTrusted, sha256 } from './remoteConfigTrustStore.js';
@@ -115,8 +116,7 @@ const assertConfigIsContained = async (
   }
 
   const [realConfigPath, realRepoDir] = await Promise.all([deps.realpath(configPath), deps.realpath(repoDir)]);
-  const relative = path.relative(realRepoDir, realConfigPath);
-  if (relative.startsWith('..') || path.isAbsolute(relative)) {
+  if (!isPathWithin(realRepoDir, realConfigPath)) {
     throw new RepomixError(`Refusing to trust ${configName}: it resolves outside the cloned repository.`);
   }
 };

@@ -9,13 +9,13 @@
     "source": "github",
     "id": "828119367"
   },
-  "version": "1.18.1",
+  "version": "1.19.0",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "repomix",
-      "version": "1.18.1",
+      "version": "1.19.0",
       "runtimeHint": "npx",
       "transport": {
         "type": "stdio"

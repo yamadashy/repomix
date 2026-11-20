@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { Parser } from 'web-tree-sitter';
 import { LanguageParser } from '../../../src/core/treeSitter/languageParser.js';
 import { RepomixError } from '../../../src/shared/errorHandle.js';
@@ -35,10 +35,6 @@ describe('LanguageParser', () => {
   });
 
   describe('init / dispose', () => {
-    afterEach(() => {
-      vi.restoreAllMocks();
-    });
-
     it('throws RepomixError when used before init', async () => {
       const fresh = new LanguageParser();
       const error = await fresh.getParserForLang('javascript').catch((e) => e);

@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { toPosixPath } from '../../shared/pathUtils.js';
 
 // Sort paths for general use (not affected by git change count)
 // Uses decorate-sort-undecorate to pre-compute path.split() once per path
@@ -10,7 +11,7 @@ import path from 'node:path';
 export const sortPaths = (filePaths: string[]): string[] => {
   const decorated = filePaths.map((p) => ({
     original: p,
-    parts: p.replaceAll(path.win32.sep, path.posix.sep).split(path.posix.sep),
+    parts: toPosixPath(p).split(path.posix.sep),
   }));
 
   decorated.sort((a, b) => {

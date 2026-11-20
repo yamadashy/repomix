@@ -1,20 +1,15 @@
 import * as fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test } from 'vitest';
 import { readRawFile } from '../../../src/core/file/fileRead.js';
 import { silenceLogger } from '../../testing/loggerDoubles.js';
+import { createTempDir } from '../../testing/tempDir.js';
 
 describe('readRawFile', () => {
   let testDir: string;
 
   beforeEach(async () => {
-    testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-fileRead-'));
-  });
-
-  afterEach(async () => {
-    await fs.rm(testDir, { recursive: true, force: true });
-    vi.restoreAllMocks();
+    testDir = await createTempDir('repomix-fileRead-');
   });
 
   test('should read normal text file successfully', async () => {
@@ -87,10 +82,12 @@ def hello():
 
   test('should skip file with actual decode errors (U+FFFD)', async () => {
     const filePath = path.join(testDir, 'invalid.txt');
-    // Create a file with a UTF-8 BOM followed by valid text and invalid UTF-8 sequences
-    // The BOM forces UTF-8 detection, and the invalid sequence will produce U+FFFD
+    // Create a file with a UTF-8 BOM followed by valid text and invalid UTF-8 sequences.
+    // The multibyte UTF-8 text keeps jschardet on UTF-8 (since 4.1 it ignores a BOM that is
+    // followed by invalid UTF-8 and may guess a single-byte encoding for pure ASCII), so the
+    // invalid sequence produces U+FFFD.
     const utf8Bom = Buffer.from([0xef, 0xbb, 0xbf]); // UTF-8 BOM
-    const validText = 'Hello World\n'.repeat(50);
+    const validText = 'Hello World こんにちは\n'.repeat(50);
     // Invalid UTF-8: 0x80 is a continuation byte without a leading byte
     const invalidSequence = Buffer.from([0x80, 0x81, 0x82]);
     const buffer = Buffer.concat([utf8Bom, Buffer.from(validText), invalidSequence, Buffer.from(validText)]);

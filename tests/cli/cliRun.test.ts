@@ -154,7 +154,6 @@ describe('cliRun', () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
     logger.init();
   });
 

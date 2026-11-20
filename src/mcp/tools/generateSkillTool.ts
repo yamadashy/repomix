@@ -2,9 +2,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { CallToolResult, McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
-import { getSkillBaseDir } from '../../cli/prompts/skillPrompts.js';
 import type { CliOptions } from '../../cli/types.js';
-import { generateDefaultSkillName, validateSkillName } from '../../core/skill/skillUtils.js';
+import { generateDefaultSkillName, getSkillBaseDir, validateSkillName } from '../../core/skill/skillUtils.js';
 import { withMcpProgress } from './mcpProgress.js';
 import {
   buildMcpToolErrorResponse,
@@ -130,7 +129,7 @@ Example Path:
         }
         createdSkillDir = skillDir;
 
-        const cliOptions = {
+        const cliOptions: CliOptions = {
           skillGenerate: actualSkillName,
           skillName: actualSkillName,
           skillDir,
@@ -140,7 +139,7 @@ Example Path:
           securityCheck: true,
           quiet: true,
           signal,
-        } as CliOptions;
+        };
 
         const result = await withMcpProgress(ctx, { sandboxed: false }, (progressCallback) =>
           deps.runCliPreservingLogLevel(['.'], directory, cliOptions, progressCallback),

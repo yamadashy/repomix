@@ -1,0 +1,11 @@
+// Interface definition
+public interface IExample {
+  void DoSomething();
+}
+
+// Implementation
+public class ExampleImpl : IExample {
+  public void DoSomething() {
+    Console.WriteLine("Doing something");
+  }
+}

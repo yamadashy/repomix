@@ -1,0 +1,4 @@
+class OrderService {
+private $repository;
+⋮----
+public function place($order) {

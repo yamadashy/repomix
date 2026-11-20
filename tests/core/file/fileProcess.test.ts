@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { FileManipulator } from '../../../src/core/file/fileManipulate.js';
-import { applyLightweightTransforms, processFiles } from '../../../src/core/file/fileProcess.js';
+import {
+  applyLightweightTransforms,
+  getFileProcessMaxWorkerThreads,
+  processFiles,
+} from '../../../src/core/file/fileProcess.js';
 import type { ProcessedFile, RawFile } from '../../../src/core/file/fileTypes.js';
 import fileProcessWorker from '../../../src/core/file/workers/fileProcessWorker.js';
 import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
@@ -22,6 +26,49 @@ const mockGetFileManipulator = (filePath: string): FileManipulator | null => {
 const mockInitTaskRunner = inlineInitTaskRunner(fileProcessWorker);
 
 describe('fileProcess', () => {
+  describe('getFileProcessMaxWorkerThreads', () => {
+    it('scales the cap with the square root of the task count when compressing on Bun', () => {
+      expect(getFileProcessMaxWorkerThreads(true, 1, true, 18)).toBe(1);
+      expect(getFileProcessMaxWorkerThreads(true, 75, true, 18)).toBe(1);
+      expect(getFileProcessMaxWorkerThreads(true, 400, true, 18)).toBe(3);
+      expect(getFileProcessMaxWorkerThreads(true, 1300, true, 18)).toBe(5);
+    });
+
+    it('never uses more than half the cores', () => {
+      expect(getFileProcessMaxWorkerThreads(true, 8200, true, 18)).toBe(9);
+      expect(getFileProcessMaxWorkerThreads(true, 8200, true, 8)).toBe(4);
+      expect(getFileProcessMaxWorkerThreads(true, 8200, true, 4)).toBe(2);
+    });
+
+    it('rounds half the cores up on odd core counts', () => {
+      expect(getFileProcessMaxWorkerThreads(true, 8200, true, 3)).toBe(2);
+      expect(getFileProcessMaxWorkerThreads(true, 8200, true, 5)).toBe(3);
+    });
+
+    it('uses a second thread on two cores only for large repositories', () => {
+      expect(getFileProcessMaxWorkerThreads(true, 400, true, 2)).toBe(1);
+      expect(getFileProcessMaxWorkerThreads(true, 1300, true, 2)).toBe(1);
+      expect(getFileProcessMaxWorkerThreads(true, 2000, true, 2)).toBe(2);
+      expect(getFileProcessMaxWorkerThreads(true, 8200, true, 2)).toBe(2);
+    });
+
+    it('uses a single thread on a single core', () => {
+      expect(getFileProcessMaxWorkerThreads(true, 8200, true, 1)).toBe(1);
+    });
+
+    it('never returns less than one thread', () => {
+      expect(getFileProcessMaxWorkerThreads(true, 0, true, 18)).toBe(1);
+    });
+
+    it('keeps the default sizing on Node.js', () => {
+      expect(getFileProcessMaxWorkerThreads(true, 1300, false, 18)).toBeUndefined();
+    });
+
+    it('keeps the default sizing on Bun when nothing is compressed', () => {
+      expect(getFileProcessMaxWorkerThreads(false, 1300, true, 18)).toBeUndefined();
+    });
+  });
+
   describe('processFiles', () => {
     it('should process multiple files with worker path', async () => {
       const mockRawFiles: RawFile[] = [

@@ -1,10 +1,10 @@
 import fsp from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import type { CallToolResult } from '@modelcontextprotocol/server';
-import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { beforeEach, describe, expect, test } from 'vitest';
 import { registerFileSystemReadFileTool } from '../../../src/mcp/tools/fileSystemReadFileTool.js';
 import { createMcpServerDouble } from '../../testing/mcpServerDoubles.js';
+import { createTempDir } from '../../testing/tempDir.js';
 import { structuredContentOf } from '../../testing/testUtils.js';
 
 // No module mocks here: the sandboxed branch relies on real fs + realpath so
@@ -14,15 +14,11 @@ describe('FileSystemReadFileTool (sandboxed)', () => {
   let handler: (args: { path: string }) => Promise<CallToolResult>;
 
   beforeEach(async () => {
-    root = await fsp.realpath(await fsp.mkdtemp(path.join(os.tmpdir(), 'iso-read-')));
+    root = await createTempDir('iso-read-', { realpath: true });
     await fsp.writeFile(path.join(root, 'a.ts'), 'const x = 1;\n');
     const server = createMcpServerDouble();
     registerFileSystemReadFileTool(server.server, { sandboxed: true, root });
     handler = server.toolHandler();
-  });
-
-  afterEach(async () => {
-    await fsp.rm(root, { recursive: true, force: true });
   });
 
   test('reads a plain-relative file and echoes a plain-relative path', async () => {

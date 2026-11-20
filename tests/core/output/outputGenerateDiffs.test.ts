@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
 import { generateOutput } from '../../../src/core/output/outputGenerate.js';
@@ -30,48 +30,54 @@ describe('Output Generation with Diffs', () => {
   const allFilePaths = ['file1.ts'];
   const rootDirs = ['/test/repo'];
 
-  // Create a mock config for testing
-  const mockConfig: RepomixConfigMerged = createMockConfig({
-    cwd: '/test',
-    output: {
-      files: true,
-      directoryStructure: true,
-      fileSummary: true,
-      style: 'xml',
-      git: {
-        includeDiffs: true,
-      },
-    },
-  });
-
   const gitDiffResult: GitDiffResult = {
     workTreeDiffContent: sampleDiff,
     stagedDiffContent: '',
   };
 
-  // Mock dependencies
-  const mockDeps = {
+  const createDeps = (config: RepomixConfigMerged) => ({
     buildOutputGeneratorContext: vi.fn().mockImplementation(async () => ({
       generationDate: '2025-05-05T12:00:00Z',
       treeString: 'mock-tree',
       processedFiles: mockProcessedFiles,
-      config: mockConfig,
+      config,
       instruction: '',
       gitDiffResult,
     })),
-    generateHandlebarOutput: vi.fn(),
+    generateTemplateOutput: vi.fn(),
     generateParsableXmlOutput: vi.fn(),
     generateParsableJsonOutput: vi.fn(),
     sortOutputFiles: vi.fn().mockResolvedValue(mockProcessedFiles),
-  };
+  });
+
+  // Tests mutate the config and the deps, so build fresh ones per test to keep them order independent.
+  let mockConfig: RepomixConfigMerged;
+  let mockDeps: ReturnType<typeof createDeps>;
+
+  beforeEach(() => {
+    mockConfig = createMockConfig({
+      cwd: '/test',
+      output: {
+        files: true,
+        directoryStructure: true,
+        fileSummary: true,
+        style: 'xml',
+        git: {
+          includeDiffs: true,
+        },
+      },
+    });
+
+    mockDeps = createDeps(mockConfig);
+  });
 
   test('XML style output should include diffs section when includeDiffs is enabled', async () => {
     // Explicitly set XML style and parsable to false to use the template
     mockConfig.output.style = 'xml';
     mockConfig.output.parsableStyle = false;
 
-    // Mock the Handlebars output function to check for diffs in the template
-    mockDeps.generateHandlebarOutput.mockImplementation((_config, renderContext: RenderContext, _processedFiles) => {
+    // Mock the template output function to check for diffs in the template
+    mockDeps.generateTemplateOutput.mockImplementation((_config, renderContext: RenderContext, _processedFiles) => {
       // Verify that the renderContext has the gitDiffs property
       expect(renderContext.gitDiffWorkTree).toBe(sampleDiff);
 
@@ -97,8 +103,8 @@ describe('Output Generation with Diffs', () => {
     expect(output).toContain(sampleDiff);
     expect(output).toContain('</diffs>');
 
-    // Verify that the generateHandlebarOutput function was called
-    expect(mockDeps.generateHandlebarOutput).toHaveBeenCalled();
+    // Verify that the generateTemplateOutput function was called
+    expect(mockDeps.generateTemplateOutput).toHaveBeenCalled();
   });
 
   test('XML style output with parsableStyle should include diffs section', async () => {
@@ -142,8 +148,8 @@ describe('Output Generation with Diffs', () => {
     mockConfig.output.style = 'markdown';
     mockConfig.output.parsableStyle = false;
 
-    // Mock the Handlebars output function for markdown
-    mockDeps.generateHandlebarOutput.mockImplementation((_config, renderContext: RenderContext, _processedFiles) => {
+    // Mock the template output function for markdown
+    mockDeps.generateTemplateOutput.mockImplementation((_config, renderContext: RenderContext, _processedFiles) => {
       // Verify that the renderContext has the gitDiffs property
       expect(renderContext.gitDiffWorkTree).toBe(sampleDiff);
 
@@ -170,8 +176,8 @@ describe('Output Generation with Diffs', () => {
     expect(output).toContain(sampleDiff);
     expect(output).toContain('```');
 
-    // Verify that the generateHandlebarOutput function was called
-    expect(mockDeps.generateHandlebarOutput).toHaveBeenCalled();
+    // Verify that the generateTemplateOutput function was called
+    expect(mockDeps.generateTemplateOutput).toHaveBeenCalled();
   });
 
   test('Plain style output should include diffs section when includeDiffs is enabled', async () => {
@@ -179,8 +185,8 @@ describe('Output Generation with Diffs', () => {
     mockConfig.output.style = 'plain';
     mockConfig.output.parsableStyle = false;
 
-    // Mock the Handlebars output function for plain text
-    mockDeps.generateHandlebarOutput.mockImplementation((_config, renderContext: RenderContext, _processedFiles) => {
+    // Mock the template output function for plain text
+    mockDeps.generateTemplateOutput.mockImplementation((_config, renderContext: RenderContext, _processedFiles) => {
       expect(renderContext.gitDiffWorkTree).toBe(sampleDiff);
 
       // Simulate the plain text output
@@ -204,8 +210,8 @@ describe('Output Generation with Diffs', () => {
     expect(output).toContain('===============\nGit Diffs\n===============');
     expect(output).toContain(sampleDiff);
 
-    // Verify that the generateHandlebarOutput function was called
-    expect(mockDeps.generateHandlebarOutput).toHaveBeenCalled();
+    // Verify that the generateTemplateOutput function was called
+    expect(mockDeps.generateTemplateOutput).toHaveBeenCalled();
   });
 
   test('Output should not include diffs section when includeDiffs is disabled', async () => {
@@ -224,8 +230,8 @@ describe('Output Generation with Diffs', () => {
       // No gitDiffs property
     }));
 
-    // Mock the Handlebars output function
-    mockDeps.generateHandlebarOutput.mockImplementation((_config, renderContext: RenderContext, _processedFiles) => {
+    // Mock the template output function
+    mockDeps.generateTemplateOutput.mockImplementation((_config, renderContext: RenderContext, _processedFiles) => {
       // Verify that the renderContext does not have the gitDiffs property
       expect(renderContext.gitDiffWorkTree).toBeUndefined();
 
@@ -250,7 +256,7 @@ describe('Output Generation with Diffs', () => {
     expect(output).not.toContain('Git Diffs');
     expect(output).not.toContain(sampleDiff);
 
-    // Verify that the generateHandlebarOutput function was called
-    expect(mockDeps.generateHandlebarOutput).toHaveBeenCalled();
+    // Verify that the generateTemplateOutput function was called
+    expect(mockDeps.generateTemplateOutput).toHaveBeenCalled();
   });
 });

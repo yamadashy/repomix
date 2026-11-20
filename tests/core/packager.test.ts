@@ -1,13 +1,9 @@
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { pack } from '../../src/core/packager.js';
 import { createMetricsTaskRunnerDouble } from '../testing/taskRunnerDoubles.js';
 import { createMockConfig } from '../testing/testUtils.js';
 
 describe('packager', () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-  });
-
   test('pack should orchestrate packing files and generating output', async () => {
     // Use a POSIX separator: globby yields forward-slash paths on every platform
     // and pack() normalizes display paths to forward slashes, so the mock must match
@@ -499,6 +495,10 @@ describe('packager', () => {
             { path: 'packages/b/logo.png', reason: 'binary-extension' },
           ],
           progressCallback,
+          filePathsByRoot: [
+            { rootLabel: 'packages/a', files: ['index.ts'] },
+            { rootLabel: 'packages/b', files: ['index.ts'] },
+          ],
         }),
       );
       expect(deps.produceOutput).not.toHaveBeenCalled();

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { registerPackRemoteRepositoryPrompt } from '../../../src/mcp/prompts/packRemoteRepositoryPrompts.js';
 import { createMcpServerDouble, type McpServerDouble } from '../../testing/mcpServerDoubles.js';
 
@@ -14,8 +14,6 @@ describe('packRemoteRepositoryPrompts', () => {
   let promptHandler: PromptHandlerType;
 
   beforeEach(() => {
-    vi.resetAllMocks();
-
     mockMcpServer = createMcpServerDouble();
     registerPackRemoteRepositoryPrompt(mockMcpServer.server);
 

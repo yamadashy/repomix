@@ -1,0 +1,23 @@
+module Searchable
+extend ActiveSupport::Concern
+⋮----
+included do
+scope :recent, -> { order(created_at: :desc) }
+⋮----
+class Author < ApplicationRecord
+has_many :books
+validates :name, presence: true
+⋮----
+def display_name
+⋮----
+class Publisher < ApplicationRecord
+has_many :books,
+           class_name: "Book",
+           dependent: :destroy
+⋮----
+class Order < ApplicationRecord
+before_save do
+⋮----
+class Account < ApplicationRecord
+with_options presence: true do
+validates :email

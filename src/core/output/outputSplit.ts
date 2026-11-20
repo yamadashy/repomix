@@ -2,6 +2,7 @@ import path from 'node:path';
 import pc from 'picocolors';
 import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
+import { toPosixPath } from '../../shared/pathUtils.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { FilesByRoot } from '../file/fileTreeGenerate.js';
 import type { ProcessedFile } from '../file/fileTypes.js';
@@ -27,7 +28,7 @@ export interface OutputSplitPart {
 export type GenerateOutputFn = typeof generateOutput;
 
 export const getRootEntry = (relativeFilePath: string): string => {
-  const normalized = relativeFilePath.replaceAll(path.win32.sep, path.posix.sep);
+  const normalized = toPosixPath(relativeFilePath);
   const [first] = normalized.split('/');
   return first || normalized;
 };
@@ -35,7 +36,7 @@ export const getRootEntry = (relativeFilePath: string): string => {
 // Returns the first `depth` path segments joined with '/'. Used to key a group at a
 // deeper directory level than its current one when a single group is too large to fit.
 const getPathPrefix = (relativeFilePath: string, depth: number): string => {
-  const normalized = relativeFilePath.replaceAll(path.win32.sep, path.posix.sep);
+  const normalized = toPosixPath(relativeFilePath);
   return normalized.split('/').slice(0, depth).join('/');
 };
 

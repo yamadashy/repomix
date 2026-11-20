@@ -1,8 +1,8 @@
 import * as fs from 'node:fs/promises';
-import * as os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { buildWatchIgnoreFilter } from '../../../../src/cli/actions/watch/watchIgnore.js';
+import { createTempDir } from '../../../testing/tempDir.js';
 import { createMockConfig, isWindows } from '../../../testing/testUtils.js';
 
 describe('buildWatchIgnoreFilter', () => {
@@ -11,17 +11,13 @@ describe('buildWatchIgnoreFilter', () => {
   beforeEach(async () => {
     // Real filesystem + real timers: the builder reads .gitignore via globby, which
     // needs a .git directory present to anchor gitignore resolution.
-    tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-watch-ignore-'));
+    tmpRoot = await createTempDir('repomix-watch-ignore-');
     await fs.mkdir(path.join(tmpRoot, '.git'), { recursive: true });
     await fs.mkdir(path.join(tmpRoot, 'node_modules', 'pkg'), { recursive: true });
     await fs.mkdir(path.join(tmpRoot, 'build-cache'), { recursive: true });
     await fs.mkdir(path.join(tmpRoot, 'src'), { recursive: true });
     await fs.writeFile(path.join(tmpRoot, '.gitignore'), 'build-cache/\n');
     await fs.writeFile(path.join(tmpRoot, 'src', 'index.ts'), 'export const a = 1;\n');
-  });
-
-  afterEach(async () => {
-    await fs.rm(tmpRoot, { recursive: true, force: true });
   });
 
   const buildFilter = async () => {

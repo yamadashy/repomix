@@ -1,0 +1,17 @@
+module Loggable
+def log(message)
+⋮----
+class Service
+include Loggable
+extend Comparable
+⋮----
+# Singleton method
+def self.fetch_data
+# Implementation
+⋮----
+# Instance method
+def process
+⋮----
+# Monkey patching an existing class
+class String
+def palindrome?

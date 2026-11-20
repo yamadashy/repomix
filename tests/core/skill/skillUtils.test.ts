@@ -1,9 +1,13 @@
+import os from 'node:os';
+import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 import {
   extractRepoName,
   generateProjectName,
   generateProjectNameFromUrl,
   generateSkillDescription,
+  getSkillBaseDir,
+  getSkillLocation,
   toKebabCase,
   validateSkillName,
 } from '../../../src/core/skill/skillUtils.js';
@@ -173,9 +177,10 @@ describe('skillUtils', () => {
     });
 
     test('should handle current directory', () => {
-      // This depends on the actual directory name, so we just check it returns something
+      // '.' resolves against the working directory, so it must match the absolute cwd's basename
       const result = generateProjectName(['.']);
-      expect(result).toBeTruthy();
+      expect(result).toBe(generateProjectName([process.cwd()]));
+      expect(result).not.toBe('');
     });
   });
 
@@ -195,6 +200,41 @@ describe('skillUtils', () => {
     test('should include usage guidance', () => {
       const description = generateSkillDescription('my-skill', 'My Project');
       expect(description).toContain('Use this skill when');
+    });
+  });
+
+  describe('getSkillBaseDir', () => {
+    test('should return personal skills directory for personal location', () => {
+      const result = getSkillBaseDir('/test/project', 'personal');
+      expect(result).toBe(path.join(os.homedir(), '.claude', 'skills'));
+    });
+
+    test('should return project skills directory for project location', () => {
+      const result = getSkillBaseDir('/test/project', 'project');
+      expect(result).toBe(path.join('/test/project', '.claude', 'skills'));
+    });
+  });
+
+  describe('getSkillLocation', () => {
+    test('should return personal for paths under ~/.claude/skills', () => {
+      const personalPath = path.join(os.homedir(), '.claude', 'skills', 'my-skill');
+      expect(getSkillLocation(personalPath)).toBe('personal');
+    });
+
+    test('should return project for paths not under ~/.claude/skills', () => {
+      expect(getSkillLocation('/project/.claude/skills/my-skill')).toBe('project');
+      expect(getSkillLocation('/some/other/path')).toBe('project');
+    });
+
+    test('should not treat a sibling directory with the same prefix as personal skills', () => {
+      const personalSkillsBase = getSkillBaseDir('', 'personal');
+      const siblingPath = path.join(
+        path.dirname(personalSkillsBase),
+        `${path.basename(personalSkillsBase)}-backup`,
+        'skill',
+      );
+
+      expect(getSkillLocation(siblingPath)).toBe('project');
     });
   });
 });

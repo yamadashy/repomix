@@ -2,53 +2,21 @@ import { describe, expect, test } from 'vitest';
 import type { RepomixConfigMerged } from '../../../../src/config/configSchema.js';
 import type { ProcessedFile } from '../../../../src/core/file/fileTypes.js';
 import { generateOutput } from '../../../../src/core/output/outputGenerate.js';
+import { createMockConfig } from '../../../testing/testUtils.js';
 
-const createMockConfig = (overrides: Partial<RepomixConfigMerged> = {}): RepomixConfigMerged => ({
-  cwd: '/test',
-  input: { maxFileSize: 1024 * 1024 },
-  output: {
-    filePath: 'test-output.json',
-    style: 'json' as const,
-    filePathStyle: 'target-relative',
-    parsableStyle: false,
-    headerText: undefined,
-    instructionFilePath: undefined,
-    fileSummary: true,
-    directoryStructure: true,
-    files: true,
-    removeComments: false,
-    removeEmptyLines: false,
-    compress: false,
-    topFilesLength: 5,
-    showLineNumbers: false,
-    truncateBase64: false,
-    copyToClipboard: false,
-    includeEmptyDirectories: false,
-    includeFullDirectoryStructure: false,
-    tokenCountTree: false,
-    git: {
-      sortByChanges: false,
-      sortByChangesMaxCommits: 10,
-      includeDiffs: false,
-      includeLogs: false,
-      includeLogsCount: 5,
+// Only the fields these tests depend on differ from the shared defaults.
+const createJsonConfig = (
+  output: NonNullable<Parameters<typeof createMockConfig>[0]>['output'] = {},
+): RepomixConfigMerged =>
+  createMockConfig({
+    cwd: '/test',
+    output: {
+      filePath: 'test-output.json',
+      style: 'json',
+      git: { sortByChanges: false },
+      ...output,
     },
-  },
-  include: [],
-  ignore: {
-    useGitignore: true,
-    useDotIgnore: true,
-    useDefaultPatterns: true,
-    customPatterns: [],
-  },
-  security: {
-    enableSecurityCheck: true,
-  },
-  tokenCount: {
-    encoding: 'cl100k_base',
-  },
-  ...overrides,
-});
+  });
 
 const createMockProcessedFiles = (): ProcessedFile[] => [
   {
@@ -63,7 +31,7 @@ const createMockProcessedFiles = (): ProcessedFile[] => [
 
 describe('JSON Output Style', () => {
   test('should generate valid JSON output', async () => {
-    const config = createMockConfig();
+    const config = createJsonConfig();
     const processedFiles = createMockProcessedFiles();
     const allFilePaths = processedFiles.map((f) => f.path);
 
@@ -73,33 +41,34 @@ describe('JSON Output Style', () => {
     expect(() => JSON.parse(result)).not.toThrow();
 
     const parsed = JSON.parse(result);
-    expect(parsed).toBeDefined();
+    expect(Object.keys(parsed)).toEqual(['fileSummary', 'directoryStructure', 'files']);
+    expect(parsed.directoryStructure).toBe('src/\n  index.ts\npackage.json');
   });
 
   test('should include fileSummary when enabled', async () => {
-    const config = createMockConfig({
-      output: {
-        ...createMockConfig().output,
-        fileSummary: true,
-      },
-    });
+    const config = createJsonConfig({ fileSummary: true });
     const processedFiles = createMockProcessedFiles();
     const allFilePaths = processedFiles.map((f) => f.path);
 
     const result = await generateOutput(['/test'], config, processedFiles, allFilePaths);
     const parsed = JSON.parse(result);
 
-    expect(parsed.fileSummary).toBeDefined();
-    expect(parsed.fileSummary.purpose).toBeDefined();
+    expect(Object.keys(parsed.fileSummary)).toEqual([
+      'generationHeader',
+      'purpose',
+      'fileFormat',
+      'usageGuidelines',
+      'notes',
+    ]);
+    expect(parsed.fileSummary.purpose).toBe(
+      "This file contains a packed representation of the entire repository's contents.\n" +
+        'It is designed to be easily consumable by AI systems for analysis, code review,\n' +
+        'or other automated processes.',
+    );
   });
 
   test('should not include fileSummary when disabled', async () => {
-    const config = createMockConfig({
-      output: {
-        ...createMockConfig().output,
-        fileSummary: false,
-      },
-    });
+    const config = createJsonConfig({ fileSummary: false });
     const processedFiles = createMockProcessedFiles();
     const allFilePaths = processedFiles.map((f) => f.path);
 
@@ -110,25 +79,21 @@ describe('JSON Output Style', () => {
   });
 
   test('should include files when enabled', async () => {
-    const config = createMockConfig({
-      output: {
-        ...createMockConfig().output,
-        files: true,
-      },
-    });
+    const config = createJsonConfig({ files: true });
     const processedFiles = createMockProcessedFiles();
     const allFilePaths = processedFiles.map((f) => f.path);
 
     const result = await generateOutput(['/test'], config, processedFiles, allFilePaths);
     const parsed = JSON.parse(result);
 
-    expect(parsed.files).toBeDefined();
-    expect(parsed.files['src/index.ts']).toBe('console.log("Hello");');
-    expect(parsed.files['package.json']).toBe('{"name": "test"}');
+    expect(parsed.files).toEqual({
+      'src/index.ts': 'console.log("Hello");',
+      'package.json': '{"name": "test"}',
+    });
   });
 
   test('should handle special characters in file content', async () => {
-    const config = createMockConfig();
+    const config = createJsonConfig();
     const processedFiles: ProcessedFile[] = [
       {
         path: 'test.js',

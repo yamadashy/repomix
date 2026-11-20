@@ -6,6 +6,4 @@ export const queryVue = `
 (script_element) @script
 
 (style_element) @style
-
-(interpolation) @interpolation
 `;

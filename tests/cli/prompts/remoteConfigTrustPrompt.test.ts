@@ -19,7 +19,6 @@ describe('remoteConfigTrustPrompt', () => {
   let stderrSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    vi.restoreAllMocks();
     // Silence the trust prompt's stderr output so test logs stay clean, while still
     // allowing assertions on what the user was told.
     stderrSpy = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
@@ -354,6 +353,26 @@ describe('remoteConfigTrustPrompt', () => {
         realpath: fakeRealpath((target) => (target === '/repo' ? '/repo' : '/etc/shadow')),
       });
       await expect(confirmRemoteConfigTrust(baseOptions, deps)).rejects.toThrow(RepomixError);
+      expect(deps.readFile).not.toHaveBeenCalled();
+    });
+
+    it('accepts a config inside a clone directory whose name starts with ".."', async () => {
+      // `..foo` is a child of the clone, not a parent traversal, so it must not be refused
+      // as resolving outside the repository.
+      const deps = makeDeps({
+        realpath: fakeRealpath((target) => (target === '/repo' ? '/repo' : '/repo/..foo/repomix.config.json')),
+      });
+      await expect(confirmRemoteConfigTrust(baseOptions, deps)).resolves.toBeUndefined();
+      expect(deps.readFile).toHaveBeenCalled();
+    });
+
+    it('refuses a config resolving to a sibling directory of the clone', async () => {
+      const deps = makeDeps({
+        realpath: fakeRealpath((target) => (target === '/repo' ? '/repo' : '/repo-evil/repomix.config.json')),
+      });
+      await expect(confirmRemoteConfigTrust({ ...baseOptions, force: true }, deps)).rejects.toThrow(
+        /resolves outside the cloned repository/,
+      );
       expect(deps.readFile).not.toHaveBeenCalled();
     });
 

@@ -1,0 +1,14 @@
+/* Main styles for the application */
+body {
+⋮----
+/* Header styles */
+.header {
+⋮----
+/* Navigation styles */
+.nav {
+⋮----
+@media (max-width: 768px) {
+⋮----
+.nav {
+⋮----
+.container {

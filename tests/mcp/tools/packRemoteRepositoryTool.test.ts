@@ -43,7 +43,6 @@ describe('PackRemoteRepositoryTool', () => {
   };
 
   beforeEach(() => {
-    vi.resetAllMocks();
     runCli = vi.fn<typeof runCliPreservingLogLevel>();
     deps = {
       createToolWorkspace: vi.fn().mockResolvedValue('/temp/dir'),

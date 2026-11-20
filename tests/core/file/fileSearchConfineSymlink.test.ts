@@ -1,8 +1,8 @@
 import fsp from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { beforeEach, describe, expect, test } from 'vitest';
 import { searchFiles } from '../../../src/core/file/fileSearch.js';
+import { createTempDir } from '../../testing/tempDir.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 // Real-filesystem regression for the confineToBaseDir backstop against a SYMLINK
@@ -18,19 +18,13 @@ describe('searchFiles confineToBaseDir vs real symlink escape', () => {
 
   beforeEach(async () => {
     if (process.platform === 'win32') return; // symlink creation needs privilege on Windows
-    root = await fsp.realpath(await fsp.mkdtemp(path.join(os.tmpdir(), 'confine-root-')));
-    outside = await fsp.realpath(await fsp.mkdtemp(path.join(os.tmpdir(), 'confine-outside-')));
+    root = await createTempDir('confine-root-', { realpath: true });
+    outside = await createTempDir('confine-outside-', { realpath: true });
     await fsp.writeFile(path.join(outside, 'secret.txt'), 'HOST SECRET');
     await fsp.mkdir(path.join(root, 'src'));
     await fsp.writeFile(path.join(root, 'src', 'a.ts'), 'const x = 1;\n');
     // A symlinked directory inside root pointing outside — the escape gateway.
     await fsp.symlink(outside, path.join(root, 'gateway'), 'dir');
-  });
-
-  afterEach(async () => {
-    if (process.platform === 'win32') return;
-    await fsp.rm(root, { recursive: true, force: true });
-    await fsp.rm(outside, { recursive: true, force: true });
   });
 
   test('drops a file reached through a symlinked directory base', async () => {

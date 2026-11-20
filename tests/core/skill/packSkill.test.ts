@@ -43,16 +43,39 @@ describe('packSkill', () => {
         undefined,
         undefined,
         undefined,
+        undefined,
         mockDeps,
       );
 
       expect(result.skillName).toBe('test-skill');
-      expect(result.projectName).toBeTruthy();
+      expect(result.projectName).toBe('Project');
       expect(result.skillDescription).toContain('Reference codebase');
       expect(result.totalFiles).toBe(3);
-      expect(result.references.summary).toBeTruthy();
-      expect(result.references.structure).toBeTruthy();
-      expect(result.references.files).toBeTruthy();
+      expect(result.references.summary).toContain('# Summary');
+      expect(result.references.summary).toContain('3 files | 3 lines');
+      expect(result.references.structure).toBe(
+        '# Directory Structure\n\n```\nsrc/\n  index.ts (1 lines)\n  utils.ts (1 lines)\npackage.json (1 lines)\n```',
+      );
+      expect(result.references.files).toBe(
+        [
+          '# Files',
+          '',
+          '## File: src/index.ts',
+          '```typescript',
+          'console.log("hello");',
+          '```',
+          '',
+          '## File: src/utils.ts',
+          '```typescript',
+          'export const add = (a, b) => a + b;',
+          '```',
+          '',
+          '## File: package.json',
+          '```json',
+          '{"name": "test", "dependencies": {"react": "^18.0.0"}}',
+          '```',
+        ].join('\n'),
+      );
     });
 
     test('should normalize skill name', async () => {
@@ -76,6 +99,7 @@ describe('packSkill', () => {
         mockConfig,
         mockFiles,
         [],
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -111,6 +135,7 @@ describe('packSkill', () => {
         undefined,
         'Vite', // Provided skillProjectName
         undefined,
+        undefined,
         mockDeps,
       );
 
@@ -143,11 +168,34 @@ describe('packSkill', () => {
         undefined,
         undefined,
         undefined,
+        undefined,
         mockDeps,
       );
 
       expect(result.hasTechStack).toBe(true);
-      expect(result.references.techStack).toBeTruthy();
+      expect(result.references.techStack).toBe(
+        [
+          '# Tech Stacks',
+          '',
+          '## Tech Stack: .',
+          '',
+          '### Languages',
+          '',
+          '- Node.js',
+          '',
+          '### Frameworks',
+          '',
+          '- React',
+          '',
+          '### Dependencies',
+          '',
+          '- react (^18.0.0)',
+          '',
+          '### Configuration Files',
+          '',
+          '- package.json',
+        ].join('\n'),
+      );
     });
 
     test('should handle empty processed files', async () => {
@@ -171,6 +219,7 @@ describe('packSkill', () => {
         mockConfig,
         mockFiles,
         [],
+        undefined,
         undefined,
         undefined,
         undefined,
@@ -365,6 +414,66 @@ describe('packSkill', () => {
       expect(result.totalTokens).toBe(100);
       expect(mockDeps.writeSkillOutput).toHaveBeenCalled();
       expect(params.progressCallback).toHaveBeenCalledWith('Writing skill output...');
+    });
+
+    test('writes a per-root labeled directory structure for multiple roots', async () => {
+      const mockConfig = createMockConfig({ skillGenerate: 'test-skill' });
+      const mockFiles: ProcessedFile[] = [
+        { path: 'app/src/index.ts', content: 'export const app = 1;' },
+        { path: 'lib/README.md', content: '# lib' },
+      ];
+
+      const params: PackSkillParams = {
+        rootDirs: ['/test/app', '/test/lib'],
+        config: mockConfig,
+        options: { skillName: 'test-skill', skillDir: '/test/.claude/skills/test-skill' },
+        processedFiles: mockFiles,
+        allFilePaths: ['app/src/index.ts', 'lib/README.md'],
+        gitDiffResult: undefined,
+        gitLogResult: undefined,
+        suspiciousFilesResults: [],
+        suspiciousGitDiffResults: [],
+        suspiciousGitLogResults: [],
+        safeFilePaths: ['app/src/index.ts', 'lib/README.md'],
+        skippedFiles: [],
+        progressCallback: vi.fn(),
+        filePathsByRoot: [
+          { rootLabel: 'app', files: ['src/index.ts'] },
+          { rootLabel: 'lib', files: ['README.md'] },
+        ],
+      };
+
+      const mockDeps = {
+        buildOutputGeneratorContext: vi.fn().mockResolvedValue({
+          config: mockConfig,
+          generationDate: new Date().toISOString(),
+          treeString: '',
+          processedFiles: mockFiles,
+          instruction: '',
+        }),
+        sortOutputFiles: vi.fn().mockResolvedValue(mockFiles),
+        calculateMetrics: vi.fn().mockResolvedValue({ totalFiles: 2, totalCharacters: 30, totalTokens: 10 }),
+        writeSkillOutput: vi.fn().mockResolvedValue('/test/.claude/skills/test-skill'),
+        generateDefaultSkillName: vi.fn().mockReturnValue('test-skill'),
+      };
+
+      await packSkill(params, mockDeps);
+
+      const [skillOutput] = mockDeps.writeSkillOutput.mock.calls[0];
+      expect(skillOutput.references.structure).toBe(
+        [
+          '# Directory Structure',
+          '',
+          '```',
+          '[app]/',
+          '  src/',
+          '    index.ts (1 lines)',
+          '',
+          '[lib]/',
+          '  README.md (1 lines)',
+          '```',
+        ].join('\n'),
+      );
     });
 
     test('should use config.skillGenerate as skill name when string', async () => {

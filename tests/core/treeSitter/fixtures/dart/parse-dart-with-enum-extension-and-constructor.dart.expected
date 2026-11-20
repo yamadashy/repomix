@@ -1,0 +1,18 @@
+/// Status enum
+enum Status {
+⋮----
+/// String extension
+extension StringExtension on String {
+/// Capitalizes first letter
+String capitalize() {
+⋮----
+/// User class
+class User {
+final String name;
+final Status status;
+⋮----
+/// User constructor
+User(this.name, this.status);
+⋮----
+/// Named constructor
+User.guest() : name = 'Guest', status = Status.pending;

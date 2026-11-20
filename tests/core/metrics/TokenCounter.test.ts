@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { TokenCounter } from '../../../src/core/metrics/TokenCounter.js';
 import { logger } from '../../../src/shared/logger.js';
 import { silenceLogger } from '../../testing/loggerDoubles.js';
@@ -14,7 +14,6 @@ describe('TokenCounter', () => {
 
   afterEach(() => {
     tokenCounter.free();
-    vi.restoreAllMocks();
   });
 
   test('should correctly count tokens for simple text', () => {
@@ -73,8 +72,9 @@ describe('TokenCounter', () => {
 
   test('should handle special token sequences as plain text', () => {
     // gpt-tokenizer should treat <|endoftext|> as ordinary text, not a control token
+    // A control token would count as 1; as plain text the marker splits into several tokens
     const count = tokenCounter.countTokens('Hello <|endoftext|> world');
-    expect(count).toBeGreaterThan(0);
+    expect(count).toBe(9);
   });
 
   test('should work with cl100k_base encoding', async () => {

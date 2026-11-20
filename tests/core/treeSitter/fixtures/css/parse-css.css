@@ -1,0 +1,34 @@
+/* Main styles for the application */
+body {
+  font-family: 'Arial', sans-serif;
+  line-height: 1.6;
+  color: #333;
+  background-color: #f4f4f4;
+  margin: 0;
+  padding: 0;
+}
+
+/* Header styles */
+.header {
+  background-color: #35424a;
+  color: #ffffff;
+  padding: 20px;
+  border-bottom: #e8491d 3px solid;
+}
+
+/* Navigation styles */
+.nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .nav {
+    flex-direction: column;
+  }
+
+  .container {
+    width: 95%;
+  }
+}

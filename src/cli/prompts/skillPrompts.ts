@@ -1,11 +1,9 @@
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import pc from 'picocolors';
+import { getSkillBaseDir, type SkillLocation } from '../../core/skill/skillUtils.js';
 import { OperationCancelledError, RepomixError } from '../../shared/errorHandle.js';
 import { getDisplayPath } from '../cliReport.js';
-
-export type SkillLocation = 'personal' | 'project';
 
 export interface SkillPromptResult {
   location: SkillLocation;
@@ -15,16 +13,6 @@ export interface SkillPromptResult {
 const onCancelOperation = (cancelFn: (message?: string) => void): never => {
   cancelFn('Skill generation cancelled.');
   throw new OperationCancelledError('Skill generation cancelled');
-};
-
-/**
- * Get the base directory for skills based on location type.
- */
-export const getSkillBaseDir = (cwd: string, location: SkillLocation): string => {
-  if (location === 'personal') {
-    return path.join(os.homedir(), '.claude', 'skills');
-  }
-  return path.join(cwd, '.claude', 'skills');
 };
 
 /**
@@ -146,16 +134,4 @@ export const resolveAndPrepareSkillDir = async (skillOutput: string, cwd: string
   const skillDir = path.isAbsolute(skillOutput) ? skillOutput : path.resolve(cwd, skillOutput);
   await prepareSkillDir(skillDir, force);
   return skillDir;
-};
-
-/**
- * Determine skill location type based on the skill directory path.
- */
-export const getSkillLocation = (skillDir: string): SkillLocation => {
-  const personalSkillsBase = getSkillBaseDir('', 'personal');
-  const relativePath = path.relative(personalSkillsBase, skillDir);
-  const isPersonal =
-    relativePath === '' ||
-    (relativePath !== '..' && !relativePath.startsWith(`..${path.sep}`) && !path.isAbsolute(relativePath));
-  return isPersonal ? 'personal' : 'project';
 };

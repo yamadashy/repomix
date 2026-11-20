@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { Readable } from 'node:stream';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   filterValidLines,
   readFilePathsFromStdin,
@@ -11,10 +11,6 @@ import {
 import { RepomixError } from '../../../src/shared/errorHandle.js';
 
 describe('fileStdin', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe('filterValidLines', () => {
     it('should filter out empty lines', () => {
       const lines = ['file1.txt', '', 'file2.txt', '   ', 'file3.txt'];

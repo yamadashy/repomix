@@ -1,0 +1,14 @@
+// Single line comment
+/* Multi-line comment
+   spanning multiple lines */
+function func1() {}
+
+/**
+ * JSDoc documentation
+ * @param {string} name - The name parameter
+ * @returns {void}
+ */
+function func2(name) {}
+
+/** Single line JSDoc */
+const x = 1;

@@ -1,0 +1,7 @@
+package main
+
+// UserID is a type alias for integer
+type UserID int
+
+// Result is a type alias for map
+type Result map[string]interface{}

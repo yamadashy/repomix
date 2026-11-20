@@ -1,0 +1,4 @@
+public class Inventory {
+private Repository repository;
+⋮----
+public void Add(string item) {

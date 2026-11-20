@@ -1,89 +1,86 @@
-export const getXmlTemplate = () => {
-  return /* xml */ `
-{{#if fileSummaryEnabled}}
-{{{generationHeader}}}
+import type { ProcessedFile } from '../../file/fileTypes.js';
+import type { GitLogCommit } from '../../git/gitLogHandle.js';
+import type { RenderContext } from '../outputGeneratorTypes.js';
+import { renderEach } from '../outputStyleUtils.js';
+
+// Values are inserted verbatim, without XML escaping: this style has always emitted
+// raw content (`--parsable-style` XML goes through fast-xml-builder instead).
+// Each section carries its own trailing newline(s); the bare '\n' entries in
+// renderXmlStyle are fixed separators emitted even when a neighbouring section is
+// disabled. The caller trims the result.
+
+const renderFileSummary = (context: RenderContext): string => `${context.generationHeader}
 
 <file_summary>
 This section contains a summary of this file.
 
 <purpose>
-{{{summaryPurpose}}}
+${context.summaryPurpose}
 </purpose>
 
 <file_format>
-{{{summaryFileFormat}}}
+${context.summaryFileFormat}
 5. Multiple file entries, each consisting of:
   - File path as an attribute
   - Full contents of the file
 </file_format>
 
 <usage_guidelines>
-{{{summaryUsageGuidelines}}}
+${context.summaryUsageGuidelines}
 </usage_guidelines>
 
 <notes>
-{{{summaryNotes}}}
+${context.summaryNotes}
 </notes>
 
 </file_summary>
 
-{{/if}}
-{{#if headerText}}
-<user_provided_header>
-{{{headerText}}}
-</user_provided_header>
+`;
 
-{{/if}}
-{{#if directoryStructureEnabled}}
-<directory_structure>
-{{{treeString}}}
-</directory_structure>
+const renderHeader = (headerText: string): string =>
+  `<user_provided_header>\n${headerText}\n</user_provided_header>\n\n`;
 
-{{/if}}
-{{#if filesEnabled}}
-<files>
-This section contains the contents of the repository's files.
+const renderDirectoryStructure = (treeString: string): string =>
+  `<directory_structure>\n${treeString}\n</directory_structure>\n\n`;
 
-{{#each processedFiles}}
-<file path="{{{this.path}}}">
-{{{this.content}}}
-</file>
+const renderFile = (file: ProcessedFile): string => `<file path="${file.path}">\n${file.content}\n</file>\n\n`;
 
-{{/each}}
-</files>
-{{/if}}
+const renderFiles = (files: ReadonlyArray<ProcessedFile>): string =>
+  `<files>\nThis section contains the contents of the repository's files.\n\n${renderEach(files, renderFile)}</files>\n`;
 
-{{#if gitDiffEnabled}}
-<git_diffs>
+const renderGitDiffs = (context: RenderContext): string => `<git_diffs>
 <git_diff_work_tree>
-{{{gitDiffWorkTree}}}
+${context.gitDiffWorkTree ?? ''}
 </git_diff_work_tree>
 <git_diff_staged>
-{{{gitDiffStaged}}}
+${context.gitDiffStaged ?? ''}
 </git_diff_staged>
 </git_diffs>
-{{/if}}
-
-{{#if gitLogEnabled}}
-<git_logs>
-{{#each gitLogCommits}}
-<git_log_commit>
-<date>{{{this.date}}}</date>
-<message>{{{this.message}}}</message>
-<files>
-{{#each this.files}}
-{{{this}}}
-{{/each}}
-</files>
-</git_log_commit>
-{{/each}}
-</git_logs>
-{{/if}}
-
-{{#if instruction}}
-<instruction>
-{{{instruction}}}
-</instruction>
-{{/if}}
 `;
-};
+
+const renderGitLogCommit = (commit: GitLogCommit): string => `<git_log_commit>
+<date>${commit.date}</date>
+<message>${commit.message}</message>
+<files>
+${renderEach(commit.files, (file) => `${file}\n`)}</files>
+</git_log_commit>
+`;
+
+const renderGitLogs = (commits: ReadonlyArray<GitLogCommit> | undefined): string =>
+  `<git_logs>\n${renderEach(commits, renderGitLogCommit)}</git_logs>\n`;
+
+const renderInstruction = (instruction: string): string => `<instruction>\n${instruction}\n</instruction>\n`;
+
+export const renderXmlStyle = (context: RenderContext): string =>
+  [
+    context.fileSummaryEnabled ? renderFileSummary(context) : '',
+    context.headerText ? renderHeader(context.headerText) : '',
+    context.directoryStructureEnabled ? renderDirectoryStructure(context.treeString) : '',
+    context.filesEnabled ? renderFiles(context.processedFiles) : '',
+    '\n',
+    context.gitDiffEnabled ? renderGitDiffs(context) : '',
+    '\n',
+    context.gitLogEnabled ? renderGitLogs(context.gitLogCommits) : '',
+    '\n',
+    context.instruction ? renderInstruction(context.instruction) : '',
+  ].join('');

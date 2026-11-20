@@ -1,0 +1,6 @@
+// React component function
+/**
+ * A hello world component
+ * @param {string} name - The name to display
+ */
+function sayHello(name) { console.log("Hello, " + name); }

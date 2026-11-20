@@ -1,0 +1,8 @@
+/**
+ * Greeting function
+ * @param name The name to greet
+ */
+function sayHello(name) {  // inline comment
+⋮----
+// next function
+function sayGoodbye(name)

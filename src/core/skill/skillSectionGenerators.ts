@@ -1,17 +1,20 @@
-import Handlebars from 'handlebars';
-import { generateTreeStringWithLineCounts } from '../file/fileTreeGenerate.js';
+import {
+  type FilesByRoot,
+  generateTreeStringWithLineCounts,
+  generateTreeStringWithRootsAndLineCounts,
+} from '../file/fileTreeGenerate.js';
 import type { RenderContext } from '../output/outputGeneratorTypes.js';
-import { registerHandlebarsHelpers } from '../output/outputStyleUtils.js';
-
-// Register Handlebars helpers (idempotent)
-registerHandlebarsHelpers();
+import { renderMarkdownFile } from '../output/outputStyles/markdownStyle.js';
+import { renderEach } from '../output/outputStyleUtils.js';
+import { joinDisplayPath } from '../packager/rootDisplayPath.js';
 
 /**
  * Generates the summary section for skill output.
  * Contains purpose, file format, usage guidelines, notes, and project statistics.
  */
 export const generateSummarySection = (context: RenderContext, statisticsSection?: string): string => {
-  const template = Handlebars.compile(`{{{generationHeader}}}
+  // Values are inserted verbatim; the result is trimmed.
+  const summary = `${context.generationHeader}
 
 # Summary
 
@@ -33,41 +36,46 @@ This skill contains the following reference files:
 
 ## Usage Guidelines
 
-{{{summaryUsageGuidelines}}}
+${context.summaryUsageGuidelines}
 
 ## Notes
 
-{{{summaryNotes}}}
+${context.summaryNotes}
 
-{{#if statisticsSection}}
-{{{statisticsSection}}}
-{{/if}}
-`);
+${statisticsSection ? `${statisticsSection}\n` : ''}`;
 
-  return template({ ...context, statisticsSection }).trim();
+  return summary.trim();
 };
 
 /**
  * Generates the directory structure section for skill output.
  * Includes line counts for each file to aid in grep searches.
+ * With multiple roots, the tree is split into labeled `[rootLabel]/` sections like the
+ * directory structure of the regular output.
  */
-export const generateStructureSection = (context: RenderContext): string => {
+export const generateStructureSection = (context: RenderContext, filePathsByRoot?: FilesByRoot[]): string => {
   if (!context.directoryStructureEnabled) {
     return '';
   }
 
   // Generate tree string with line counts for skill output
   const filePaths = context.processedFiles.map((f) => f.path);
-  const treeStringWithLineCounts = generateTreeStringWithLineCounts(filePaths, context.fileLineCounts);
+  let treeStringWithLineCounts: string;
+  if (filePathsByRoot && filePathsByRoot.length > 1) {
+    // Keep only processed files (e.g. drop ones excluded by the security check), matching
+    // the single-root tree. Multi-root processed paths are root-prefixed display paths,
+    // while filePathsByRoot holds paths relative to each root.
+    const processedPathSet = new Set(filePaths);
+    const processedFilesByRoot = filePathsByRoot.map(({ rootLabel, files }) => ({
+      rootLabel,
+      files: files.filter((file) => processedPathSet.has(joinDisplayPath(rootLabel, file))),
+    }));
+    treeStringWithLineCounts = generateTreeStringWithRootsAndLineCounts(processedFilesByRoot, context.fileLineCounts);
+  } else {
+    treeStringWithLineCounts = generateTreeStringWithLineCounts(filePaths, context.fileLineCounts);
+  }
 
-  const template = Handlebars.compile(`# Directory Structure
-
-\`\`\`
-{{{treeString}}}
-\`\`\`
-`);
-
-  return template({ treeString: treeStringWithLineCounts }).trim();
+  return `# Directory Structure\n\n\`\`\`\n${treeStringWithLineCounts}\n\`\`\`\n`.trim();
 };
 
 /**
@@ -79,16 +87,8 @@ export const generateFilesSection = (context: RenderContext): string => {
     return '';
   }
 
-  const template = Handlebars.compile(`# Files
-
-{{#each processedFiles}}
-## File: {{{this.path}}}
-{{{../markdownCodeBlockDelimiter}}}{{{getFileExtension this.path}}}
-{{{this.content}}}
-{{{../markdownCodeBlockDelimiter}}}
-
-{{/each}}
-`);
-
-  return template(context).trim();
+  const files = renderEach(context.processedFiles, (file) =>
+    renderMarkdownFile(file, context.markdownCodeBlockDelimiter),
+  );
+  return `# Files\n\n${files}`.trim();
 };

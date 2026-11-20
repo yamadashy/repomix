@@ -1,5 +1,5 @@
 import type fs from 'node:fs/promises';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createRegexPattern,
   formatSearchResults,
@@ -441,7 +441,6 @@ describe('grepRepomixOutputTool', () => {
     let deps: MockedDeps<NonNullable<Parameters<typeof registerGrepRepomixOutputTool>[2]>>;
 
     beforeEach(() => {
-      vi.resetAllMocks();
       vi.spyOn(logger, 'trace').mockImplementation(() => {});
       vi.spyOn(logger, 'error').mockImplementation(() => {});
       deps = {
@@ -457,10 +456,6 @@ describe('grepRepomixOutputTool', () => {
       registerGrepRepomixOutputTool(mockMcpServer.server, undefined, deps);
 
       toolHandler = mockMcpServer.toolHandler<ToolHandlerType>();
-    });
-
-    afterEach(() => {
-      vi.restoreAllMocks();
     });
 
     it('should register the tool with correct parameters', () => {
@@ -777,7 +772,14 @@ describe('grepRepomixOutputTool', () => {
       expect(result.content).toHaveLength(1);
       const parsedResult = JSON.parse(result.content[0].text);
       expect(parsedResult.description).toContain('Found 2 match(es)');
-      expect(parsedResult.formattedOutput.length).toBeGreaterThan(0);
+      // beforeLines '2' and afterLines '1' win over contextLines once coerced, covering lines 1-5
+      expect(parsedResult.formattedOutput).toEqual([
+        '1-line 1',
+        '2:pattern match',
+        '3-line 3',
+        '4:another pattern',
+        '5-line 5',
+      ]);
     });
 
     it('should handle mixed string and number parameters', async () => {

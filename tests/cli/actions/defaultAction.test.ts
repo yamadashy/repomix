@@ -1,8 +1,7 @@
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildCliConfig, buildMergedConfig, runDefaultAction } from '../../../src/cli/actions/defaultAction.js';
 import type { CliOptions } from '../../../src/cli/types.js';
 import type { readFilePathsFromStdin } from '../../../src/core/file/fileStdin.js';
@@ -10,6 +9,7 @@ import type { pack } from '../../../src/core/packager.js';
 import { logger } from '../../../src/shared/logger.js';
 import { createMockSpinner } from '../../testing/cliDoubles.js';
 import { silenceLogger } from '../../testing/loggerDoubles.js';
+import { createTempDir } from '../../testing/tempDir.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 const createDeps = () => {
@@ -97,10 +97,6 @@ describe('defaultAction', () => {
       gitLogTokenCount: 0,
       skippedFiles: [],
     });
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   it('should run the default command successfully', async () => {
@@ -518,11 +514,7 @@ describe('defaultAction', () => {
       let tempDir: string;
 
       beforeEach(async () => {
-        tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-default-action-skill-'));
-      });
-
-      afterEach(async () => {
-        await fs.rm(tempDir, { recursive: true, force: true });
+        tempDir = await createTempDir('repomix-default-action-skill-');
       });
 
       const getPackOptions = () => deps.pack.mock.calls[0][5];

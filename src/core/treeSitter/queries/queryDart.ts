@@ -29,6 +29,20 @@ export const queryDart = `
 (type_alias
   (type_identifier) @name.definition.type) @definition.type
 
+; Field declaration (e.g. 'final String name;', 'static const int x = 1;')
+; Only class members: local variables use local_variable_declaration instead.
+(class_body
+  (declaration
+    (initialized_identifier_list
+      (initialized_identifier
+        (identifier) @name.definition.field))) @definition.field)
+
+(class_body
+  (declaration
+    (static_final_declaration_list
+      (static_final_declaration
+        (identifier) @name.definition.field))) @definition.field)
+
 ; Function declaration
 (function_signature
   name: (identifier) @name.definition.function) @definition.function

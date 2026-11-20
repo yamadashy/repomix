@@ -1,0 +1,20 @@
+/// Protocol for database operations
+protocol DatabaseProtocol {
+/// Initialize the database connection
+init(url: String)
+⋮----
+/// Save data to the database
+func save(_ data: String) throws
+⋮----
+/// Fetch data from the database
+func fetch(id: Int) -> String?
+⋮----
+/// Subscript for accessing data by key
+subscript(key: String) -> String? { get set }
+⋮----
+/// Protocol with static requirements
+protocol StaticProtocol {
+/// Create a default instance
+static func createDefault() -> Self
+⋮----
+/// The version number

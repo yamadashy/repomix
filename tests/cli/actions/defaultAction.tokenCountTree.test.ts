@@ -16,7 +16,6 @@ describe('defaultAction with tokenCountTree', () => {
   };
 
   beforeEach(() => {
-    vi.clearAllMocks();
     mockBuildMergedConfig.mockResolvedValue({
       output: {
         filePath: 'output.xml',

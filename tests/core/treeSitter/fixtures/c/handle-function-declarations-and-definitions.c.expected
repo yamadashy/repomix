@@ -1,0 +1,9 @@
+/* Function declaration */
+void print_message(const char* message);
+⋮----
+/* Function definition */
+int calculate_sum(int values[], int count) {
+⋮----
+/* Function with no params */
+void init(void) {
+// Initialize something

@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { getVersion } from '../../../src/core/file/packageJsonParse.js';
 import { logger } from '../../../src/shared/logger.js';
 
@@ -10,10 +10,6 @@ describe('packageJsonParse', () => {
 
   beforeEach(() => {
     vi.resetAllMocks();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   test('getVersion should return correct version from package.json', async () => {

@@ -3,7 +3,6 @@ export const queryGo = `
 (comment) @comment
 (package_clause) @definition.package
 (import_declaration) @definition.import
-(import_spec) @definition.import
 (var_declaration) @definition.variable
 (const_declaration) @definition.constant
 
@@ -35,6 +34,9 @@ export const queryGo = `
   ]) @reference.call
 
 (type_spec
+  name: (type_identifier) @name) @definition.type
+
+(type_alias
   name: (type_identifier) @name) @definition.type
 
 (type_identifier) @name @reference.type

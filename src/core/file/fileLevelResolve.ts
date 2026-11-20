@@ -1,5 +1,6 @@
 import { minimatch } from 'minimatch';
 import type { OutputPattern } from '../../config/configSchema.js';
+import { toPosixPath } from '../../shared/pathUtils.js';
 
 /**
  * The effective inclusion level for a single file in the packed output:
@@ -39,7 +40,7 @@ export const resolveFileLevel = (filePath: string, output: FileLevelOutputConfig
   const patterns = output.patterns;
 
   if (patterns && patterns.length > 0) {
-    const normalizedPath = filePath.replace(/\\/g, '/');
+    const normalizedPath = toPosixPath(filePath);
 
     for (const entry of patterns) {
       if (minimatch(normalizedPath, entry.pattern, { dot: true })) {

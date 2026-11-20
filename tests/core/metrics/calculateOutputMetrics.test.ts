@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { calculateOutputMetrics } from '../../../src/core/metrics/calculateOutputMetrics.js';
 import type { MetricsTaskRunner } from '../../../src/core/metrics/metricsWorkerRunner.js';
 import type { MetricsWorkerTask, TokenCountTask } from '../../../src/core/metrics/workers/calculateMetricsWorker.js';
@@ -10,10 +10,6 @@ import { createInlineMetricsTaskRunner } from '../../testing/taskRunnerDoubles.j
 describe('calculateOutputMetrics', () => {
   beforeEach(() => {
     silenceLogger();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   it('should calculate metrics for output content', async () => {
@@ -83,8 +79,7 @@ describe('calculateOutputMetrics', () => {
       taskRunner: createInlineMetricsTaskRunner(),
     });
 
-    expect(result).toBeGreaterThan(0);
-    expect(typeof result).toBe('number');
+    expect(result).toBe(15);
   });
 
   it('should process large content in parallel', async () => {

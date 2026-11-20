@@ -1,0 +1,11 @@
+// Single line comment
+/* Multi-line comment
+   spanning multiple lines */
+
+//! Module documentation
+
+/// Documentation for struct
+struct Test {
+    /// Field documentation
+    field: i32
+}

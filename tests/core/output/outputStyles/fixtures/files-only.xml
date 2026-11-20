@@ -1,0 +1,30 @@
+<files>
+This section contains the contents of the repository's files.
+
+<file path="src/index.ts">
+export const a = '<b>';
+
+// a & b < c > d "e" 'f' `g` h=i {{not-a-template}} {{{raw}}}
+</file>
+
+<file path="README.md">
+# Title
+
+```ts
+const x = 1;
+```
+
+</file>
+
+<file path="src/data file.txt">
+
+</file>
+
+<file path="Dockerfile">
+FROM node:24
+</file>
+
+</files>
+
+
+

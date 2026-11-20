@@ -1,16 +1,11 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { checkRemoteRepoExists, getRemoteRefs } from '../../../src/core/git/gitRemoteHandle.js';
 import { logger } from '../../../src/shared/logger.js';
 import { silenceLogger } from '../../testing/loggerDoubles.js';
 
 describe('gitRemoteHandle', () => {
   beforeEach(() => {
-    vi.resetAllMocks();
     silenceLogger();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('checkRemoteRepoExists', () => {

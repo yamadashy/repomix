@@ -1,0 +1,5 @@
+// Main entry point
+/* The main function that outputs
+ * a greeting to the world
+ */
+int main() {

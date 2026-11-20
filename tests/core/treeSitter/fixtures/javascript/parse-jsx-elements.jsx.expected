@@ -1,0 +1,9 @@
+// Greeting component
+/**
+ * Renders a greeting
+ * @param {string} name - The name to display
+ */
+function Greeting({ name })
+⋮----
+// Arrow component with a fragment
+const List = ({ items }) =>

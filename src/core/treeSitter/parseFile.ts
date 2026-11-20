@@ -23,7 +23,7 @@ import type { RepomixConfigMerged } from '../../config/configSchema.js';
 import { logger } from '../../shared/logger.js';
 import type { SupportedLang } from './languageConfig.js';
 import { LanguageParser } from './languageParser.js';
-import type { ParseContext } from './parseStrategies/BaseParseStrategy.js';
+import { getNodeEndRow, type ParseContext } from './parseStrategies/BaseParseStrategy.js';
 
 interface CapturedChunk {
   content: string;
@@ -95,10 +95,14 @@ export const parseFile = async (
     for (const capture of captures) {
       const capturedChunkContent = parseStrategy.parseCapture(capture, lines, processedChunks, context);
       if (capturedChunkContent !== null) {
+        const content = capturedChunkContent.trim();
+        const startRow = capture.node.startPosition.row;
         capturedChunks.push({
-          content: capturedChunkContent.trim(),
-          startRow: capture.node.startPosition.row,
-          endRow: capture.node.endPosition.row,
+          content,
+          startRow,
+          // A strategy may emit lines past the node (e.g. a Ruby =begin block the
+          // grammar ends early), so cover the emitted lines for adjacency merging
+          endRow: Math.max(getNodeEndRow(capture.node), startRow + countLines(content) - 1),
         });
       }
     }
@@ -155,6 +159,14 @@ export const cleanupLanguageParser = async (): Promise<void> => {
       languageParserSingleton = null;
     }
   }
+};
+
+const countLines = (text: string): number => {
+  let count = 1;
+  for (let i = text.indexOf('\n'); i !== -1; i = text.indexOf('\n', i + 1)) {
+    count++;
+  }
+  return count;
 };
 
 const filterDuplicatedChunks = (chunks: CapturedChunk[]): CapturedChunk[] => {

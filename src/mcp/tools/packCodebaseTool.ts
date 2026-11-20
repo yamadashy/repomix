@@ -156,10 +156,10 @@ export const registerPackCodebaseTool = (
         }
 
         tempDir = await deps.createToolWorkspace();
-        const outputFileName = defaultFilePathMap[style as keyof typeof defaultFilePathMap];
+        const outputFileName = defaultFilePathMap[style];
         const outputFilePath = path.join(tempDir, outputFileName);
 
-        const cliOptions = {
+        const cliOptions: CliOptions = {
           compress,
           include: includePatterns,
           ignore: ignorePatterns,
@@ -184,7 +184,7 @@ export const registerPackCodebaseTool = (
           ...(config.sandboxed
             ? { skipLocalConfig: true, skipGlobalConfig: true, confineToBaseDir: true, gitSortByChanges: false }
             : {}),
-        } as CliOptions;
+        };
 
         // Quiet packing must not leave the shared logger SILENT for the rest of the MCP
         // session, so it goes through the save/restore wrapper all packing tools share.

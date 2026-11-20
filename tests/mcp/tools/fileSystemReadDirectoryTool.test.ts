@@ -1,6 +1,6 @@
 import type fs from 'node:fs/promises';
 import type { CallToolResult } from '@modelcontextprotocol/server';
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { registerFileSystemReadDirectoryTool } from '../../../src/mcp/tools/fileSystemReadDirectoryTool.js';
 import { logger } from '../../../src/shared/logger.js';
 import { type MockedDeps, mockOverloaded } from '../../testing/depsDoubles.js';
@@ -17,7 +17,6 @@ describe('FileSystemReadDirectoryTool', () => {
   let deps: MockedDeps<Deps>;
 
   beforeEach(() => {
-    vi.resetAllMocks();
     vi.spyOn(logger, 'trace').mockImplementation(() => {});
     vi.spyOn(logger, 'error').mockImplementation(() => {});
     deps = {
@@ -27,10 +26,6 @@ describe('FileSystemReadDirectoryTool', () => {
     mockServer = createMcpServerDouble();
     registerFileSystemReadDirectoryTool(mockServer.server, undefined, deps);
     toolHandler = mockServer.toolHandler();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   test('should register tool with correct parameters', () => {

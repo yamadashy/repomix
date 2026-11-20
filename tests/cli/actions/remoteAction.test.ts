@@ -1,7 +1,6 @@
 import * as fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { DefaultActionRunnerResult } from '../../../src/cli/actions/defaultAction.js';
 import {
   cloneRepository,
@@ -12,6 +11,7 @@ import { OperationCancelledError } from '../../../src/shared/errorHandle.js';
 import { logger } from '../../../src/shared/logger.js';
 import { createMockSpinner } from '../../testing/cliDoubles.js';
 import { silenceLogger } from '../../testing/loggerDoubles.js';
+import { createTempDir } from '../../testing/tempDir.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 // Stand-ins for the copy-out step and the spinner. The copy is covered by the
@@ -42,12 +42,7 @@ describe('remoteAction functions', () => {
   let loggerSpies: ReturnType<typeof silenceLogger>;
 
   beforeEach(() => {
-    vi.resetAllMocks();
     loggerSpies = silenceLogger();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('runRemoteAction', () => {
@@ -61,7 +56,6 @@ describe('remoteAction functions', () => {
         getRemoteRefs: async () => ['main'],
         runDefaultAction: runDefaultActionMock,
         downloadGitHubArchive: vi.fn(),
-        isGitHubRepository: vi.fn().mockReturnValue(false),
         parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
         isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
         confirmRemoteConfigTrust: vi.fn(),
@@ -82,22 +76,22 @@ describe('remoteAction functions', () => {
       const progressCallback = vi.fn(() => {
         throw new Error('listener failed');
       });
+      const defaultActionResult = createMockDefaultActionResult();
 
       await expect(
         runRemoteAction('https://gitlab.com/owner/repo.git', {}, progressCallback, {
           isGitInstalled: async () => true,
           execGitShallowClone: vi.fn(async () => {}),
           getRemoteRefs: async () => ['main'],
-          runDefaultAction: vi.fn(async () => createMockDefaultActionResult()),
+          runDefaultAction: vi.fn(async () => defaultActionResult),
           downloadGitHubArchive: vi.fn(),
-          isGitHubRepository: vi.fn().mockReturnValue(false),
           parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
           isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
           confirmRemoteConfigTrust: vi.fn(),
           copyOutputToCurrentDirectory: copyOutputToCurrentDirectoryMock,
           Spinner: MockSpinner,
         }),
-      ).resolves.toBeDefined();
+      ).resolves.toBe(defaultActionResult);
       expect(progressCallback).toHaveBeenCalled();
     });
 
@@ -113,7 +107,6 @@ describe('remoteAction functions', () => {
         getRemoteRefs: async () => Promise.resolve(['main']),
         runDefaultAction: runDefaultActionMock,
         downloadGitHubArchive: vi.fn().mockRejectedValue(new Error('Archive download not implemented in test')),
-        isGitHubRepository: vi.fn().mockReturnValue(false),
         parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
         isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
         confirmRemoteConfigTrust: vi.fn(),
@@ -140,7 +133,6 @@ describe('remoteAction functions', () => {
         getRemoteRefs: async () => Promise.resolve(['main']),
         runDefaultAction: vi.fn(async () => createMockDefaultActionResult()),
         downloadGitHubArchive: vi.fn().mockRejectedValue(new Error('Archive download not implemented in test')),
-        isGitHubRepository: vi.fn().mockReturnValue(false),
         parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
         isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
         confirmRemoteConfigTrust: vi.fn(),
@@ -255,7 +247,6 @@ describe('remoteAction functions', () => {
           getRemoteRefs: async () => Promise.resolve(['main']),
           runDefaultAction: runDefaultActionMock,
           downloadGitHubArchive: vi.fn().mockRejectedValue(new Error('Archive download not implemented in test')),
-          isGitHubRepository: vi.fn().mockReturnValue(false),
           parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
           isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
           confirmRemoteConfigTrust: vi.fn(),
@@ -295,7 +286,6 @@ describe('remoteAction functions', () => {
         getRemoteRefs: async () => Promise.resolve(['main']),
         runDefaultAction: runDefaultActionMock,
         downloadGitHubArchive: vi.fn().mockRejectedValue(new Error('Archive download not implemented in test')),
-        isGitHubRepository: vi.fn().mockReturnValue(false),
         parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
         isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
         confirmRemoteConfigTrust: vi.fn(),
@@ -334,7 +324,6 @@ describe('remoteAction functions', () => {
         getRemoteRefs: async () => Promise.resolve(['main']),
         runDefaultAction: async () => createMockDefaultActionResult(),
         downloadGitHubArchive: downloadGitHubArchiveMock,
-        isGitHubRepository: vi.fn().mockReturnValue(true),
         parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
         isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
         confirmRemoteConfigTrust: vi.fn(),
@@ -359,7 +348,6 @@ describe('remoteAction functions', () => {
         getRemoteRefs: async () => Promise.resolve(['main']),
         runDefaultAction: async () => createMockDefaultActionResult(),
         downloadGitHubArchive: downloadGitHubArchiveMock,
-        isGitHubRepository: vi.fn().mockReturnValue(true),
         parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
         isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
         confirmRemoteConfigTrust: vi.fn(),
@@ -380,7 +368,6 @@ describe('remoteAction functions', () => {
         getRemoteRefs: async () => ['main'],
         runDefaultAction: async () => createMockDefaultActionResult(),
         downloadGitHubArchive: vi.fn(),
-        isGitHubRepository: vi.fn().mockReturnValue(false),
         parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
         isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
         confirmRemoteConfigTrust: vi.fn(),
@@ -407,7 +394,6 @@ describe('remoteAction functions', () => {
         getRemoteRefs: async () => ['main'],
         runDefaultAction: async () => createMockDefaultActionResult(),
         downloadGitHubArchive: downloadGitHubArchiveMock,
-        isGitHubRepository: vi.fn().mockReturnValue(true),
         parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'owner', repo: 'repo', ref: 'main/some/path' }),
         isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
         confirmRemoteConfigTrust: vi.fn(),
@@ -431,7 +417,6 @@ describe('remoteAction functions', () => {
         getRemoteRefs: async () => ['main'],
         runDefaultAction: async () => createMockDefaultActionResult(),
         downloadGitHubArchive: vi.fn(async () => {}),
-        isGitHubRepository: vi.fn().mockReturnValue(true),
         parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'owner', repo: 'repo' }),
         isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
         confirmRemoteConfigTrust: vi.fn(),
@@ -457,7 +442,6 @@ describe('remoteAction functions', () => {
         getRemoteRefs: async () => ['main'],
         runDefaultAction: async () => createMockDefaultActionResult(),
         downloadGitHubArchive: vi.fn(),
-        isGitHubRepository: vi.fn().mockReturnValue(false),
         parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
         isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
         confirmRemoteConfigTrust: vi.fn(),
@@ -477,7 +461,6 @@ describe('remoteAction functions', () => {
         getRemoteRefs: async () => ['main'],
         runDefaultAction: async () => createMockDefaultActionResult(),
         downloadGitHubArchive: vi.fn(),
-        isGitHubRepository: vi.fn().mockReturnValue(false),
         parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
         isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
         confirmRemoteConfigTrust: vi.fn(),
@@ -495,7 +478,6 @@ describe('remoteAction functions', () => {
         getRemoteRefs: async () => ['main'],
         runDefaultAction: async () => createMockDefaultActionResult(),
         downloadGitHubArchive: vi.fn(),
-        isGitHubRepository: vi.fn().mockReturnValue(false),
         parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
         isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
         confirmRemoteConfigTrust: vi.fn(),
@@ -524,7 +506,6 @@ describe('remoteAction functions', () => {
           getRemoteRefs: async () => ['main'],
           runDefaultAction: runDefaultActionMock,
           downloadGitHubArchive: downloadGitHubArchiveMock,
-          isGitHubRepository: vi.fn().mockReturnValue(true),
           parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
           isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
           confirmRemoteConfigTrust: vi.fn(),
@@ -555,7 +536,6 @@ describe('remoteAction functions', () => {
         getRemoteRefs: async () => ['main'],
         runDefaultAction: runDefaultActionMock,
         downloadGitHubArchive: vi.fn(),
-        isGitHubRepository: vi.fn().mockReturnValue(false),
         parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
         isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
         confirmRemoteConfigTrust: vi.fn(),
@@ -590,7 +570,6 @@ describe('remoteAction functions', () => {
           getRemoteRefs: async () => Promise.resolve(['main']),
           runDefaultAction: async () => createMockDefaultActionResult(),
           downloadGitHubArchive: downloadGitHubArchiveMock,
-          isGitHubRepository: vi.fn().mockReturnValue(true),
           parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
           isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
           confirmRemoteConfigTrust: vi.fn(),
@@ -613,7 +592,6 @@ describe('remoteAction functions', () => {
         getRemoteRefs: async () => Promise.resolve(['main']),
         runDefaultAction: runDefaultActionMock,
         downloadGitHubArchive: vi.fn().mockResolvedValue(undefined),
-        isGitHubRepository: vi.fn().mockReturnValue(true),
         parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
         isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
         confirmRemoteConfigTrust: vi.fn(),
@@ -640,7 +618,6 @@ describe('remoteAction functions', () => {
         getRemoteRefs: async () => Promise.resolve(['main']),
         runDefaultAction: runDefaultActionMock,
         downloadGitHubArchive: vi.fn(),
-        isGitHubRepository: vi.fn().mockReturnValue(false),
         parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
         isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
         confirmRemoteConfigTrust: vi.fn(),
@@ -667,7 +644,6 @@ describe('remoteAction functions', () => {
         getRemoteRefs: async () => Promise.resolve(['main']),
         runDefaultAction: runDefaultActionMock,
         downloadGitHubArchive: vi.fn().mockResolvedValue(undefined),
-        isGitHubRepository: vi.fn().mockReturnValue(true),
         parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
         isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
         confirmRemoteConfigTrust: vi.fn(),
@@ -698,7 +674,6 @@ describe('remoteAction functions', () => {
           getRemoteRefs: async () => Promise.resolve(['main']),
           runDefaultAction: runDefaultActionMock,
           downloadGitHubArchive: vi.fn(),
-          isGitHubRepository: vi.fn().mockReturnValue(false),
           parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
           isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
           confirmRemoteConfigTrust: vi.fn(),
@@ -726,7 +701,6 @@ describe('remoteAction functions', () => {
         getRemoteRefs: async () => Promise.resolve(['main']),
         runDefaultAction: runDefaultActionMock,
         downloadGitHubArchive: vi.fn(),
-        isGitHubRepository: vi.fn().mockReturnValue(false),
         parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
         isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
         confirmRemoteConfigTrust: vi.fn(),
@@ -759,7 +733,6 @@ describe('remoteAction functions', () => {
         getRemoteRefs: async () => Promise.resolve(['main']),
         runDefaultAction: runDefaultActionMock,
         downloadGitHubArchive: vi.fn(),
-        isGitHubRepository: vi.fn().mockReturnValue(false),
         parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
         isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
         confirmRemoteConfigTrust: vi.fn(),
@@ -791,7 +764,6 @@ describe('remoteAction functions', () => {
         config: createMockConfig({ skillGenerate: true }),
       })),
       downloadGitHubArchive: vi.fn(),
-      isGitHubRepository: vi.fn().mockReturnValue(false),
       parseGitHubRepoInfo: vi.fn().mockReturnValue(null),
       isArchiveDownloadSupported: vi.fn().mockReturnValue(false),
       confirmRemoteConfigTrust: vi.fn(),
@@ -899,7 +871,6 @@ describe('remoteAction functions', () => {
           getRemoteRefs: async () => Promise.resolve(['main']),
           runDefaultAction: vi.fn(),
           downloadGitHubArchive: vi.fn().mockResolvedValue(undefined),
-          isGitHubRepository: vi.fn().mockReturnValue(true),
           parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
           isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
           confirmRemoteConfigTrust: vi.fn(),
@@ -917,7 +888,6 @@ describe('remoteAction functions', () => {
           getRemoteRefs: async () => Promise.resolve(['main']),
           runDefaultAction: vi.fn(),
           downloadGitHubArchive: vi.fn().mockResolvedValue(undefined),
-          isGitHubRepository: vi.fn().mockReturnValue(true),
           parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
           isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
           confirmRemoteConfigTrust: vi.fn(),
@@ -936,7 +906,6 @@ describe('remoteAction functions', () => {
         getRemoteRefs: async () => Promise.resolve(['main']),
         runDefaultAction: runDefaultActionMock,
         downloadGitHubArchive: vi.fn().mockResolvedValue(undefined),
-        isGitHubRepository: vi.fn().mockReturnValue(true),
         parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
         isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
         confirmRemoteConfigTrust: vi.fn(),
@@ -955,7 +924,6 @@ describe('remoteAction functions', () => {
           getRemoteRefs: async () => Promise.resolve(['main']),
           runDefaultAction: vi.fn(),
           downloadGitHubArchive: vi.fn().mockResolvedValue(undefined),
-          isGitHubRepository: vi.fn().mockReturnValue(true),
           parseGitHubRepoInfo: vi.fn().mockReturnValue({ owner: 'yamadashy', repo: 'repomix' }),
           isArchiveDownloadSupported: vi.fn().mockReturnValue(true),
           confirmRemoteConfigTrust: vi.fn(),
@@ -970,11 +938,7 @@ describe('remoteAction functions', () => {
     let tempDir: string;
 
     beforeEach(async () => {
-      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-remote-copy-'));
-    });
-
-    afterEach(async () => {
-      await fs.rm(tempDir, { recursive: true, force: true });
+      tempDir = await createTempDir('repomix-remote-copy-');
     });
 
     test('should copy output file when source and target are different', async () => {

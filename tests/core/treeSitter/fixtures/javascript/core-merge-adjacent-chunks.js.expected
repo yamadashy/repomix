@@ -1,0 +1,16 @@
+/**
+ * First function
+ */
+function first()
+⋮----
+/**
+ * Second function, right after first
+ */
+function second()
+⋮----
+// Some space
+⋮----
+/**
+ * Third function
+ */
+function third()

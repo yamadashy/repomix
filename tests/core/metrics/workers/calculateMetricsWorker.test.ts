@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { getTokenCounter } from '../../../../src/core/metrics/tokenCounterFactory.js';
 import calculateMetricsWorker, {
   onWorkerTermination,
@@ -14,11 +14,6 @@ describe('calculateMetricsWorker default export', () => {
 
   beforeEach(() => {
     silenceLogger();
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
-    vi.restoreAllMocks();
   });
 
   test('single-mode task returns a number from countTokens', async () => {

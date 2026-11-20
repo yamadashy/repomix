@@ -1,5 +1,4 @@
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -18,6 +17,7 @@ import {
   tokenCountCacheSeenMarkerExistsSync,
 } from '../../../src/core/metrics/tokenCountCache.js';
 import { getRepomixTmpDir } from '../../../src/shared/tmpDir.js';
+import { createTempDir } from '../../testing/tempDir.js';
 
 describe('tokenCountCache', () => {
   let tmpDir: string;
@@ -26,17 +26,16 @@ describe('tokenCountCache', () => {
   let env: NodeJS.ProcessEnv;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-cache-test-'));
+    tmpDir = await createTempDir('repomix-cache-test-');
     cacheFile = path.join(tmpDir, 'token-counts.json');
     env = { REPOMIX_TOKEN_CACHE_PATH: cacheFile };
     __setTokenCountCacheEnvForTests(env);
     __resetTokenCountCacheForTests();
   });
 
-  afterEach(async () => {
+  afterEach(() => {
     __setTokenCountCacheEnvForTests();
     __resetTokenCountCacheForTests();
-    await fs.rm(tmpDir, { recursive: true, force: true });
   });
 
   describe('contentCacheKey', () => {

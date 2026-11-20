@@ -1,0 +1,10 @@
+// Program class containing the entry point
+/// <summary>
+/// The main program class
+/// </summary>
+class Program {
+// The main entry point
+/// <summary>
+/// Writes a greeting to the console
+/// </summary>
+static void Main() {

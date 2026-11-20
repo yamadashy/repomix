@@ -21,6 +21,45 @@ export type { SecurityCheckType, SuspiciousFileResult } from './workers/security
 // is disabled, and needs a smaller batch size to avoid one batch monopolizing a worker.)
 const BATCH_SIZE = 50;
 
+// The pool keeps at least this many workers when the machine has them. It is also the fixed
+// cap on Bun.
+const MIN_SECURITY_WORKER_CAP = 2;
+
+// Files per squared worker in the square-root rule below. 150 keeps repositories of up to
+// 600 files at two workers, where extra workers only added start-up cost.
+const SECURITY_TASKS_PER_SQUARED_THREAD = 150;
+
+/**
+ * Upper bound for the security check worker pool.
+ *
+ * Scanning is CPU-bound regex work that scales with repository size, and the main thread
+ * mostly waits while it runs. Each worker also has a fixed start-up cost, so the count grows
+ * with the square root of the item count: 2 workers up to 600 items, 4 at 2,000, 7 at 7,000.
+ * On an 18-core machine this cuts a 7,000-file pack by about 9% and a 21,000-file pack by
+ * 24-29% compared with a fixed cap of 2.
+ *
+ * The count stops at half the cores because the metrics pool warms up at the same time: with
+ * a cold token cache, a security pool of three quarters of the cores or more made the whole
+ * run up to twice as slow on Linux.
+ *
+ * Bun keeps the fixed cap of 2. With 6 or more security workers a cold 2,000-file pack took
+ * almost twice as long there, and its timings were too noisy to fit a rule.
+ */
+export const getSecurityCheckMaxWorkerThreads = (
+  numOfItems: number,
+  processConcurrency = defaultGetProcessConcurrency(),
+  isBun = Boolean(process.versions.bun),
+): number => {
+  if (isBun) {
+    return Math.max(1, Math.min(MIN_SECURITY_WORKER_CAP, processConcurrency));
+  }
+
+  const threadsForItems = Math.ceil(Math.sqrt(numOfItems / SECURITY_TASKS_PER_SQUARED_THREAD));
+  const coreCap = Math.max(MIN_SECURITY_WORKER_CAP, Math.floor(processConcurrency / 2));
+  const cap = Math.max(MIN_SECURITY_WORKER_CAP, Math.min(threadsForItems, coreCap));
+  return Math.max(1, Math.min(cap, processConcurrency));
+};
+
 export const runSecurityCheck = async (
   rawFiles: RawFile[],
   progressCallback: RepomixProgressCallback = () => {},
@@ -79,10 +118,9 @@ export const runSecurityCheck = async (
     return [];
   }
 
-  // Cap security workers at 2 to reduce contention with the metrics worker pool that
-  // runs concurrently. The security check uses coarse-grained batches (BATCH_SIZE=50),
-  // so 2 workers provide sufficient parallelism even for large repos (1000 files = 20 batches).
-  const maxSecurityWorkers = Math.min(2, deps.getProcessConcurrency());
+  // The pool is further limited to one worker per 100 items, so the smallest repositories
+  // start a single worker.
+  const maxSecurityWorkers = getSecurityCheckMaxWorkerThreads(totalItems, deps.getProcessConcurrency());
 
   // numOfTasks uses totalItems (not batches.length) to avoid under-sizing the pool.
   const taskRunner = deps.initTaskRunner<SecurityCheckTask, (SuspiciousFileResult | null)[]>({

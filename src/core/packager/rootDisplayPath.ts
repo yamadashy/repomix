@@ -1,6 +1,7 @@
 import path from 'node:path';
 import type { RepomixOutputFilePathStyle } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
+import { toPosixPath } from '../../shared/pathUtils.js';
 
 /**
  * Helpers for building stable, unique per-root display labels and display
@@ -8,8 +9,6 @@ import { RepomixError } from '../../shared/errorHandle.js';
  * relative path (e.g. `README.md` in two roots) distinguishable in the output
  * and avoid key collisions in styles that key files by path (e.g. JSON).
  */
-
-const toDisplayPath = (filePath: string): string => filePath.replaceAll(path.win32.sep, path.posix.sep);
 
 const isCwdRelativePath = (relativePath: string): boolean =>
   relativePath !== '' &&
@@ -48,8 +47,8 @@ export const buildRootLabels = (rootDirs: string[], cwd: string): string[] => {
     const resolvedRootDir = path.resolve(rootDir);
     const relativeRootDir = path.relative(resolvedCwd, resolvedRootDir);
     return isCwdRelativePath(relativeRootDir)
-      ? toDisplayPath(relativeRootDir)
-      : toDisplayPath(path.basename(resolvedRootDir) || resolvedRootDir);
+      ? toPosixPath(relativeRootDir)
+      : toPosixPath(path.basename(resolvedRootDir) || resolvedRootDir);
   });
 
   // uniquifyLabelsWithSuffixes leaves already-unique labels untouched and only
@@ -63,8 +62,8 @@ export const buildRootLabels = (rootDirs: string[], cwd: string): string[] => {
  * and trimming redundant slashes.
  */
 export const joinDisplayPath = (rootLabel: string, filePath: string): string => {
-  const normalizedRootLabel = toDisplayPath(rootLabel).replace(/^\/+|\/+$/g, '') || 'root';
-  const normalizedFilePath = toDisplayPath(filePath).replace(/^\/+/, '');
+  const normalizedRootLabel = toPosixPath(rootLabel).replace(/^\/+|\/+$/g, '') || 'root';
+  const normalizedFilePath = toPosixPath(filePath).replace(/^\/+/, '');
   return normalizedFilePath ? `${normalizedRootLabel}/${normalizedFilePath}` : normalizedRootLabel;
 };
 
@@ -86,10 +85,10 @@ export const buildFileDisplayPath = ({
   switch (filePathStyle) {
     case 'cwd-relative': {
       const absolutePath = path.resolve(rootDir, filePath);
-      return toDisplayPath(path.relative(path.resolve(cwd), absolutePath)) || '.';
+      return toPosixPath(path.relative(path.resolve(cwd), absolutePath)) || '.';
     }
     case 'target-relative':
-      return rootLabel ? joinDisplayPath(rootLabel, filePath) : toDisplayPath(filePath);
+      return rootLabel ? joinDisplayPath(rootLabel, filePath) : toPosixPath(filePath);
     default:
       // Exhaustive: adding a new style to repomixOutputFilePathStyleSchema must
       // be handled here explicitly rather than silently falling through.

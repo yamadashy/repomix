@@ -1,5 +1,4 @@
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
@@ -8,6 +7,7 @@ import { calculateMetrics, createMetricsTaskRunner } from '../../../src/core/met
 import { __setTokenCountCacheEnvForTests, getRepoSeenMarkerPath } from '../../../src/core/metrics/tokenCountCache.js';
 import { getWorkerThreadCount } from '../../../src/shared/processConcurrency.js';
 import type { RepomixProgressCallback } from '../../../src/shared/types.js';
+import { createTempDir } from '../../testing/tempDir.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 // Stand-in for initTaskRunner: every created runner resolves tasks to 0 and
@@ -241,8 +241,10 @@ describe('createMetricsTaskRunner', () => {
     expect(result.taskRunner).toHaveProperty('run');
     expect(result.taskRunner).toHaveProperty('cleanup');
 
-    // warmupPromise should resolve without error
-    await expect(result.warmupPromise).resolves.toBeDefined();
+    // warmupPromise resolves to one result per prewarm task; the task count follows the host's CPU count,
+    // so assert that there is at least one task and that every task returned the mocked 0
+    const warmupResults = await result.warmupPromise;
+    expect(new Set(warmupResults as number[])).toEqual(new Set([0]));
   });
 
   it('should fire a warmup task with empty content', async () => {
@@ -281,15 +283,14 @@ describe('createMetricsTaskRunner — cache-aware prewarm count', () => {
   const OTHER_REPO_DIR = '/tmp/test-repo-prewarm-other';
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-prewarm-test-'));
+    tmpDir = await createTempDir('repomix-prewarm-test-');
     cacheFile = path.join(tmpDir, 'token-counts.json');
     // Enable the cache (no REPOMIX_TOKEN_CACHE=0) and point it at the temp file.
     __setTokenCountCacheEnvForTests({ REPOMIX_TOKEN_CACHE_PATH: cacheFile });
   });
 
-  afterEach(async () => {
+  afterEach(() => {
     __setTokenCountCacheEnvForTests();
-    await fs.rm(tmpDir, { recursive: true, force: true });
   });
 
   it('prewarms exactly 1 worker when shared cache + this-repo marker both exist (warm-likely)', async () => {

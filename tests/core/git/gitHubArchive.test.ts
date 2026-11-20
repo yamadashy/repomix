@@ -2,7 +2,7 @@ import { Transform, Writable } from 'node:stream';
 import { type pipeline as pipelineType, pipeline as realPipeline } from 'node:stream/promises';
 import type * as zlib from 'node:zlib';
 import type { extract as tarExtractType } from 'tar';
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { createArchiveEntryFilter as createArchiveEntryFilterType } from '../../../src/core/git/archiveEntryFilter.js';
 import {
   type ArchiveDownloadDeps,
@@ -25,7 +25,6 @@ describe('gitHubArchive', () => {
   let mockPipeline: MockedDeps<ArchiveDownloadDeps>['pipeline'];
 
   beforeEach(() => {
-    vi.clearAllMocks();
     silenceLogger();
 
     mockDeps = {
@@ -54,10 +53,6 @@ describe('gitHubArchive', () => {
         },
       }) as unknown as ReturnType<typeof zlib.createGunzip>,
     );
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('downloadGitHubArchive', () => {

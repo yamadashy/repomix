@@ -1,5 +1,5 @@
 import gitUrlParse, { type GitUrl } from 'git-url-parse';
-import { RepomixError } from '../../shared/errorHandle.js';
+import { getErrorMessage, RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { assertNotMetadataEndpoint } from './gitMetadataEndpoint.js';
 import { isExplicitRemoteUrl, isValidExplicitUrlOwnerRepo, isValidShorthand } from './gitRemoteUrl.js';
@@ -225,7 +225,7 @@ export const parseGitHubRepoInfo = (remoteValue: string): GitHubRepoInfo | null 
       }
     } catch (urlError) {
       // Fall back to git-url-parse if URL parsing fails
-      logger.trace('URL parsing failed, falling back to git-url-parse:', (urlError as Error).message);
+      logger.trace('URL parsing failed, falling back to git-url-parse:', getErrorMessage(urlError));
     }
 
     // Parse using git-url-parse for other cases
@@ -256,7 +256,7 @@ export const parseGitHubRepoInfo = (remoteValue: string): GitHubRepoInfo | null 
 
     return result;
   } catch (error) {
-    logger.trace('Failed to parse GitHub repo info:', (error as Error).message);
+    logger.trace('Failed to parse GitHub repo info:', getErrorMessage(error));
     return null;
   }
 };

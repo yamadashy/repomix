@@ -1,0 +1,10 @@
+# Example class
+class Example
+# Regular method
+def first
+⋮----
+=begin
+Block comment inside a class body
+spanning multiple lines
+=end
+def second

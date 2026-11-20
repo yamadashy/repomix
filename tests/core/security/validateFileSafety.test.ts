@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import type { RawFile } from '../../../src/core/file/fileTypes.js';
 import type { SuspiciousFileResult } from '../../../src/core/security/securityCheck.js';
@@ -47,10 +47,6 @@ describe('validateFileSafety', () => {
   });
 
   describe('git content warnings', () => {
-    afterEach(() => {
-      vi.restoreAllMocks();
-    });
-
     it('warns about each suspicious git diff/log entry with singular/plural form', async () => {
       const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
       const config: RepomixConfigMerged = {

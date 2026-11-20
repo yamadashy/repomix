@@ -1,9 +1,9 @@
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
 import { sortOutputFiles } from '../../../src/core/output/outputSort.js';
+import { createTempDir } from '../../testing/tempDir.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
 describe('outputSort', () => {
@@ -15,12 +15,8 @@ describe('outputSort', () => {
   let repoDir: string;
 
   beforeEach(async () => {
-    repoDir = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-output-sort-'));
+    repoDir = await createTempDir('repomix-output-sort-');
     await fs.mkdir(path.join(repoDir, '.git'));
-  });
-
-  afterEach(async () => {
-    await fs.rm(repoDir, { recursive: true, force: true });
   });
 
   describe('sort by git changes', () => {

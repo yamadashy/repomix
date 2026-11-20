@@ -1,0 +1,16 @@
+/* Complex selectors */
+body.dark-theme .container > div:first-child {
+  color: white;
+  background-color: #333;
+}
+
+.sidebar ul li a:hover,
+.sidebar ul li a:focus {
+  text-decoration: underline;
+  color: blue;
+}
+
+#main-content h1 + p::first-line {
+  font-weight: bold;
+  font-size: 1.2em;
+}

@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "ignorePatterns": [
-    "tests/integration-tests/**/*"
+    "tests/integration-tests/**/*",
+    "tests/core/treeSitter/fixtures/**/*"
   ]
 }

@@ -1,5 +1,5 @@
 import type fs from 'node:fs/promises';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { registerReadRepomixOutputTool } from '../../../src/mcp/tools/readRepomixOutputTool.js';
 import { logger } from '../../../src/shared/logger.js';
 import { type MockedDeps, mockOverloaded } from '../../testing/depsDoubles.js';
@@ -21,7 +21,6 @@ describe('readRepomixOutputTool', () => {
   let deps: MockedDeps<NonNullable<Parameters<typeof registerReadRepomixOutputTool>[2]>>;
 
   beforeEach(() => {
-    vi.resetAllMocks();
     vi.spyOn(logger, 'trace').mockImplementation(() => {});
     vi.spyOn(logger, 'error').mockImplementation(() => {});
     deps = {
@@ -37,10 +36,6 @@ describe('readRepomixOutputTool', () => {
     registerReadRepomixOutputTool(mockMcpServer.server, undefined, deps);
 
     toolHandler = mockMcpServer.toolHandler<ToolHandlerType>();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   it('should register the tool with correct parameters', () => {

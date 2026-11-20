@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RepomixConfigMerged } from '../../../src/config/configSchema.js';
 import type { GitLogResult } from '../../../src/core/git/gitLogHandle.js';
 import { calculateGitLogMetrics } from '../../../src/core/metrics/calculateGitLogMetrics.js';
@@ -60,10 +60,6 @@ describe('calculateGitLogMetrics', () => {
 
   beforeEach(() => {
     silenceLogger();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('when git logs are disabled', () => {
@@ -186,8 +182,7 @@ describe('calculateGitLogMetrics', () => {
         taskRunner: mockTaskRunner,
       });
 
-      expect(result.gitLogTokenCount).toBeGreaterThan(0);
-      expect(typeof result.gitLogTokenCount).toBe('number');
+      expect(result).toEqual({ gitLogTokenCount: 1003 });
     });
 
     it('should handle complex git log with multiple commits', async () => {
@@ -220,8 +215,7 @@ Date: Sun Dec 31 18:30:00 2022 +0000
         taskRunner: mockTaskRunner,
       });
 
-      expect(result.gitLogTokenCount).toBeGreaterThan(0);
-      expect(typeof result.gitLogTokenCount).toBe('number');
+      expect(result).toEqual({ gitLogTokenCount: 127 });
     });
   });
 
@@ -394,8 +388,7 @@ Date: Sun Dec 31 18:30:00 2022 +0000
         taskRunner: mockTaskRunner,
       });
 
-      expect(result.gitLogTokenCount).toBeGreaterThan(0);
-      expect(typeof result.gitLogTokenCount).toBe('number');
+      expect(result).toEqual({ gitLogTokenCount: 25 });
     });
 
     it('should handle log content with only whitespace', async () => {

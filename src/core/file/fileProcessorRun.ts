@@ -9,6 +9,7 @@ import pc from 'picocolors';
 import type { FileProcessor, RepomixConfigMerged } from '../../config/configSchema.js';
 import { RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
+import { toPosixPath } from '../../shared/pathUtils.js';
 import type { RepomixProgressCallback } from '../../shared/types.js';
 import type { RawFile } from './fileTypes.js';
 
@@ -127,7 +128,7 @@ const describeProcessorError = (error: unknown, timeout: number): string => {
  * First match wins — a file is transformed by at most one processor.
  */
 const matchProcessor = (filePath: string, processors: FileProcessor[]): FileProcessor | undefined => {
-  const normalizedPath = filePath.replace(/\\/g, '/');
+  const normalizedPath = toPosixPath(filePath);
   return processors.find((processor) => minimatch(normalizedPath, processor.pattern, { dot: true }));
 };
 

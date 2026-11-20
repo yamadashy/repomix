@@ -1,0 +1,10 @@
+// Multiple interfaces
+public class MultiImpl : IDisposable, IComparable, ICloneable {
+// Dispose method
+public void Dispose() {
+⋮----
+// CompareTo method
+public int CompareTo(object obj) {
+⋮----
+// Clone method
+public object Clone() {

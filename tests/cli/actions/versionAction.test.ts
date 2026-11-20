@@ -1,12 +1,8 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { runVersionAction } from '../../../src/cli/actions/versionAction.js';
 import { logger } from '../../../src/shared/logger.js';
 
 describe('versionAction', () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
   it('should print the correct version', async () => {
     const getVersion = vi.fn().mockResolvedValue('1.2.3');
 

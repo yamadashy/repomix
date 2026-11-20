@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FileInclusionLevel } from '../../../src/core/file/fileLevelResolve.js';
 import type { FileManipulator } from '../../../src/core/file/fileManipulate.js';
 import { applyLightweightTransforms, processFiles } from '../../../src/core/file/fileProcess.js';
@@ -34,10 +34,6 @@ describe('fileProcess inclusion levels (output.patterns)', () => {
   beforeEach(() => {
     silenceLogger();
     parseFile.mockResolvedValue('<<compressed>>');
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('processFiles', () => {

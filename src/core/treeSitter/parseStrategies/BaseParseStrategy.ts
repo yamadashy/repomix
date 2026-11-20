@@ -19,6 +19,19 @@ export interface ParseStrategy {
 }
 
 /**
+ * Last row that holds the node's text.
+ *
+ * Some grammars (e.g. Rust doc comments, C preprocessor lines) include the
+ * trailing newline in the node, so it ends at column 0 of the next row. That
+ * row holds none of the node's text; counting it would emit the next line
+ * twice and keep the node from merging with an adjacent chunk.
+ */
+export const getNodeEndRow = (node: Node): number => {
+  const { row, column } = node.endPosition;
+  return column === 0 && row > node.startPosition.row ? row - 1 : row;
+};
+
+/**
  * Result type for parse operations
  */
 export type ParseResult = {

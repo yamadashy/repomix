@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   execGitDiff,
   execGitLog,
@@ -16,6 +16,7 @@ import {
 } from '../../../src/core/git/gitCommand.js';
 import { logger } from '../../../src/shared/logger.js';
 import { silenceLogger } from '../../testing/loggerDoubles.js';
+import { createTempDir } from '../../testing/tempDir.js';
 
 const expectGitRemoteOpts = expect.objectContaining({
   timeout: 30000,
@@ -30,12 +31,7 @@ const expectGitProbeOpts = expect.objectContaining({
 
 describe('gitCommand', () => {
   beforeEach(() => {
-    vi.resetAllMocks();
     silenceLogger();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('execGitLogFilenames', () => {
@@ -176,19 +172,15 @@ file2.ts
     // guarantee is about what is left on disk rather than which git args ran.
     test('removes the clone .git so a cloned repository cannot supply git config', async () => {
       const mockFileExecAsync = vi.fn().mockResolvedValue({ stdout: '', stderr: '' });
-      const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'repomix-clone-git-'));
+      const directory = await createTempDir('repomix-clone-git-');
       await fs.mkdir(path.join(directory, '.git'), { recursive: true });
       await fs.writeFile(path.join(directory, '.git', 'config'), '[log]\n\tshowSignature = true\n');
 
-      try {
-        await execGitShallowClone('https://github.com/user/repo.git', directory, undefined, {
-          execFileAsync: mockFileExecAsync,
-        });
+      await execGitShallowClone('https://github.com/user/repo.git', directory, undefined, {
+        execFileAsync: mockFileExecAsync,
+      });
 
-        await expect(fs.access(path.join(directory, '.git'))).rejects.toThrow();
-      } finally {
-        await fs.rm(directory, { recursive: true, force: true });
-      }
+      await expect(fs.access(path.join(directory, '.git'))).rejects.toThrow();
     });
 
     test('should execute without branch option if not specified by user', async () => {
