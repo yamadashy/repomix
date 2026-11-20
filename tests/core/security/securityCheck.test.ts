@@ -5,7 +5,7 @@ import pc from 'picocolors';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RawFile } from '../../../src/core/file/fileTypes.js';
 import type { GitDiffResult } from '../../../src/core/git/gitDiffHandle.js';
-import { runSecurityCheck } from '../../../src/core/security/securityCheck.js';
+import { getSecurityCheckMaxWorkerThreads, runSecurityCheck } from '../../../src/core/security/securityCheck.js';
 import securityCheckWorker from '../../../src/core/security/workers/securityCheckWorker.js';
 import { logger, repomixLogLevels } from '../../../src/shared/logger.js';
 import type { WorkerOptions } from '../../../src/shared/processConcurrency.js';
@@ -29,9 +29,92 @@ const mockGetProcessConcurrency = () => 4;
 
 const mockInitTaskRunner = inlineInitTaskRunner(securityCheckWorker);
 
+describe('getSecurityCheckMaxWorkerThreads', () => {
+  it('keeps two workers for repositories of up to 600 items', () => {
+    expect(getSecurityCheckMaxWorkerThreads(1, 18, false)).toBe(2);
+    expect(getSecurityCheckMaxWorkerThreads(600, 18, false)).toBe(2);
+    expect(getSecurityCheckMaxWorkerThreads(601, 18, false)).toBe(3);
+  });
+
+  it('grows with the square root of the item count', () => {
+    expect(getSecurityCheckMaxWorkerThreads(2_000, 18, false)).toBe(4);
+    expect(getSecurityCheckMaxWorkerThreads(7_000, 18, false)).toBe(7);
+    expect(getSecurityCheckMaxWorkerThreads(12_000, 18, false)).toBe(9);
+  });
+
+  it('stops at half the cores, rounded down', () => {
+    expect(getSecurityCheckMaxWorkerThreads(100_000, 18, false)).toBe(9);
+    expect(getSecurityCheckMaxWorkerThreads(100_000, 9, false)).toBe(4);
+    expect(getSecurityCheckMaxWorkerThreads(100_000, 8, false)).toBe(4);
+    expect(getSecurityCheckMaxWorkerThreads(100_000, 6, false)).toBe(3);
+  });
+
+  it('keeps two workers on machines with five cores or fewer', () => {
+    expect(getSecurityCheckMaxWorkerThreads(100_000, 5, false)).toBe(2);
+    expect(getSecurityCheckMaxWorkerThreads(100_000, 4, false)).toBe(2);
+    expect(getSecurityCheckMaxWorkerThreads(100_000, 2, false)).toBe(2);
+  });
+
+  it('never exceeds the available cores', () => {
+    expect(getSecurityCheckMaxWorkerThreads(100_000, 1, false)).toBe(1);
+    expect(getSecurityCheckMaxWorkerThreads(100_000, 1, true)).toBe(1);
+  });
+
+  it('stays at two workers on Bun regardless of size and core count', () => {
+    expect(getSecurityCheckMaxWorkerThreads(100, 18, true)).toBe(2);
+    expect(getSecurityCheckMaxWorkerThreads(100_000, 8, true)).toBe(2);
+    expect(getSecurityCheckMaxWorkerThreads(100_000, 18, true)).toBe(2);
+  });
+});
+
 describe('runSecurityCheck', () => {
   beforeEach(() => {
     silenceLogger();
+  });
+
+  it('should size the worker pool from the process concurrency', async () => {
+    const inlineTaskRunner = inlineInitTaskRunner(securityCheckWorker);
+    const initTaskRunnerSpy = vi.fn(inlineTaskRunner) as typeof inlineTaskRunner;
+
+    await runSecurityCheck(mockFiles, () => {}, undefined, undefined, {
+      initTaskRunner: initTaskRunnerSpy,
+      getProcessConcurrency: () => 8,
+    });
+
+    expect(initTaskRunnerSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workerType: 'securityCheck',
+        numOfTasks: mockFiles.length,
+        maxWorkerThreads: 2,
+      }),
+    );
+  });
+
+  it('should size the worker pool from every item, including git diffs', async () => {
+    // 600 files alone stay at 2 workers; the git diff is the 601st item and tips it to 3.
+    // Sizing by batch count (13) would give 2 as well.
+    const files: RawFile[] = Array.from({ length: 600 }, (_, index) => ({
+      path: `file${index}.js`,
+      content: 'console.log("Hello World");',
+    }));
+    const gitDiffResult: GitDiffResult = {
+      workTreeDiffContent: 'diff --git a/file0.js b/file0.js',
+      stagedDiffContent: '',
+    };
+    const cleanTaskRunner = inlineInitTaskRunner(async (task: { items: unknown[] }) => task.items.map(() => null));
+    const initTaskRunnerSpy = vi.fn(cleanTaskRunner) as typeof cleanTaskRunner;
+
+    await runSecurityCheck(files, () => {}, gitDiffResult, undefined, {
+      initTaskRunner: initTaskRunnerSpy,
+      getProcessConcurrency: () => 18,
+    });
+
+    expect(initTaskRunnerSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        numOfTasks: 601,
+        maxWorkerThreads: 3,
+      }),
+    );
   });
 
   it('should identify files with security issues', async () => {
