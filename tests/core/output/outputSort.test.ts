@@ -191,5 +191,43 @@ describe('outputSort', () => {
       expect(second.map((file) => file.path)).toEqual([`src${sep}b.ts`, `src${sep}a.ts`]);
       expect(mockGetFileChangeCount).toHaveBeenCalledTimes(2);
     });
+
+    test('does not store counts from a fetch that started before the next run cleared the cache', async () => {
+      // Two packs of the same directory overlap in the MCP server: the second one
+      // clears the caches while the first one's `git log` is still running. The
+      // late answer describes the history the first run had, so keeping it would
+      // undo the clear.
+      const input: ProcessedFile[] = [
+        { path: `src${sep}a.ts`, content: 'a' },
+        { path: `src${sep}b.ts`, content: 'b' },
+      ];
+      let resolveStale: (counts: Record<string, number>) => void = () => {};
+      const staleFetch = new Promise<Record<string, number>>((resolve) => {
+        resolveStale = resolve;
+      });
+      const mockGetFileChangeCount = vi
+        .fn()
+        .mockImplementationOnce(() => staleFetch)
+        .mockResolvedValueOnce({ [`src${sep}a.ts`]: 9, [`src${sep}b.ts`]: 1 });
+      const deps = {
+        getFileChangeCount: mockGetFileChangeCount,
+        isGitInstalled: vi.fn().mockResolvedValue(true),
+      };
+
+      const firstRun = sortOutputFiles(input, mockConfig, deps);
+      await vi.waitFor(() => expect(mockGetFileChangeCount).toHaveBeenCalledTimes(1));
+
+      // The second pack starts and reads the current history.
+      await prefetchSortData(mockConfig, deps);
+
+      // The first pack's git log now answers with counts from before that.
+      resolveStale({ [`src${sep}a.ts`]: 1, [`src${sep}b.ts`]: 9 });
+      await firstRun;
+
+      const third = await sortOutputFiles(input, mockConfig, deps);
+
+      expect(third.map((file) => file.path)).toEqual([`src${sep}b.ts`, `src${sep}a.ts`]);
+      expect(mockGetFileChangeCount).toHaveBeenCalledTimes(2);
+    });
   });
 });
