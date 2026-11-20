@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795184740029,
+  "lastUpdate": 1795186785050,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -17363,6 +17363,51 @@ window.BENCHMARK_DATA = {
             "range": "±21",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1291ms, Q3: 1312ms\nAll times: 1277, 1278, 1281, 1281, 1291, 1291, 1295, 1297, 1297, 1301, 1301, 1306, 1308, 1309, 1311, 1312, 1315, 1344, 1346, 1349ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f81e70e1c605754dae35e1e5bc7336396405cef9",
+          "message": "Merge pull request #2052 from yamadashy/perf/security-check-worker-scaling\n\nperf(security): Scale security check workers with repository size",
+          "timestamp": "2026-11-20T23:58:03+09:00",
+          "tree_id": "ac641639e8447e54d9c287852d87a54a32b11178",
+          "url": "https://github.com/yamadashy/repomix/commit/f81e70e1c605754dae35e1e5bc7336396405cef9"
+        },
+        "date": 1795186784025,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1074,
+            "range": "±199",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 968ms, Q3: 1167ms\nAll times: 715, 868, 910, 913, 943, 944, 952, 968, 1027, 1037, 1043, 1048, 1060, 1061, 1069, 1074, 1097, 1100, 1102, 1106, 1138, 1166, 1167, 1191, 1208, 1215, 1216, 1276, 1334, 1632ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 887,
+            "range": "±34",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 883ms, Q3: 917ms\nAll times: 870, 875, 879, 881, 881, 883, 885, 885, 885, 887, 887, 889, 895, 899, 903, 917, 1012, 1022, 1024, 1034ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1020,
+            "range": "±13",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1013ms, Q3: 1026ms\nAll times: 996, 1000, 1010, 1012, 1012, 1013, 1016, 1018, 1019, 1020, 1020, 1021, 1022, 1023, 1023, 1026, 1026, 1034, 1034, 1045ms"
           }
         ]
       }
