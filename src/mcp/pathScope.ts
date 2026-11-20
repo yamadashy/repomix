@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { isPathWithin } from '../shared/pathUtils.js';
 
 /**
  * Raised when a caller-supplied path is not a valid plain-relative path inside
@@ -12,8 +13,7 @@ export class PathScopeError extends Error {
   }
 }
 
-const isInside = (root: string, candidate: string): boolean =>
-  candidate === root || candidate.startsWith(root + path.sep);
+const isInside = (root: string, candidate: string): boolean => isPathWithin(root, candidate);
 
 /**
  * True when `input` is not a plain relative path safely inside a root: an absolute
