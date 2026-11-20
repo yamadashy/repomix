@@ -1,7 +1,10 @@
 // Minimal XML serializer for the `--parsable-style` XML output.
 //
-// It reproduces, byte for byte, what fast-xml-builder 1.3.1 emitted for this input shape with
-// `{ ignoreAttributes: false }` and otherwise default options, so that the output stays unchanged:
+// It reproduces what fast-xml-builder 1.3.1 emitted for this input shape with
+// `{ ignoreAttributes: false }` and otherwise default options, so that the output stays unchanged,
+// with one deliberate difference: fast-xml-builder dropped the value of an attribute whose value
+// was the string "true" (a file named `true` came out as `<file path>`, which is not well-formed).
+// Attributes always keep their value here. The rules:
 //   - keys starting with `@_` are attributes, the `#text` key is text content, every other key is a
 //     child element; an array value repeats the element once per item
 //   - text and attribute values escape & > < ' " (as &amp; &gt; &lt; &apos; &quot;), including the
@@ -9,7 +12,6 @@
 //     `]]>` and lone surrogates are emitted as is, so the result is not guaranteed to be well-formed)
 //   - `undefined` values and `undefined` array items are omitted, and so is an empty array
 //   - an empty string yields an empty element (`<a></a>`), never a self-closing one
-//   - an attribute whose value is the string "true" is emitted without a value (`<file path>`)
 //   - text and children are emitted in key order, attributes always go on the start tag
 //   - there is no XML declaration, indentation or newline
 
@@ -40,11 +42,8 @@ const primitiveToString = (value: string | number | boolean): string =>
 
 const isElement = (value: XmlItem): value is XmlElement => typeof value === 'object';
 
-const serializeAttribute = (name: string, value: string | number | boolean): string => {
-  const escaped = escapeXml(primitiveToString(value));
-  // The library treats the string "true" as a boolean attribute and drops the value
-  return escaped === 'true' ? ` ${name}` : ` ${name}="${escaped}"`;
-};
+const serializeAttribute = (name: string, value: string | number | boolean): string =>
+  ` ${name}="${escapeXml(primitiveToString(value))}"`;
 
 const serializeItem = (name: string, item: XmlItem): string => {
   if (item === undefined) {

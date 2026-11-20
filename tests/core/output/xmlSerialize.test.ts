@@ -66,8 +66,10 @@ describe('serializeXml', () => {
       expect(serializeXml({ r: { '@_p': undefined, '#text': 'x' } })).toBe('<r>x</r>');
     });
 
-    test('emits the string "true" as a bare attribute', () => {
-      expect(serializeXml({ r: { '@_p': 'true', '#text': 'x' } })).toBe('<r p>x</r>');
+    // fast-xml-builder emitted `<r p>` here, which is not well-formed XML
+    test('keeps the value of an attribute whose value is "true"', () => {
+      expect(serializeXml({ r: { '@_p': 'true', '#text': 'x' } })).toBe('<r p="true">x</r>');
+      expect(serializeXml({ r: { '@_p': true, '#text': 'x' } })).toBe('<r p="true">x</r>');
     });
 
     test('keeps attributes on the start tag wherever they appear in the object', () => {
