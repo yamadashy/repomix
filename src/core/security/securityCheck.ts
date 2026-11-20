@@ -50,9 +50,13 @@ export const getSecurityCheckMaxWorkerThreads = (
   processConcurrency = defaultGetProcessConcurrency(),
   isBun = Boolean(process.versions.bun),
 ): number => {
+  if (isBun) {
+    return Math.max(1, Math.min(MIN_SECURITY_WORKER_CAP, processConcurrency));
+  }
+
   const threadsForItems = Math.ceil(Math.sqrt(numOfItems / SECURITY_TASKS_PER_SQUARED_THREAD));
   const coreCap = Math.max(MIN_SECURITY_WORKER_CAP, Math.floor(processConcurrency / 2));
-  const cap = isBun ? MIN_SECURITY_WORKER_CAP : Math.max(MIN_SECURITY_WORKER_CAP, Math.min(threadsForItems, coreCap));
+  const cap = Math.max(MIN_SECURITY_WORKER_CAP, Math.min(threadsForItems, coreCap));
   return Math.max(1, Math.min(cap, processConcurrency));
 };
 

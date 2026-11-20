@@ -85,7 +85,34 @@ describe('runSecurityCheck', () => {
       expect.objectContaining({
         workerType: 'securityCheck',
         numOfTasks: mockFiles.length,
-        maxWorkerThreads: getSecurityCheckMaxWorkerThreads(mockFiles.length, 8),
+        maxWorkerThreads: 2,
+      }),
+    );
+  });
+
+  it('should size the worker pool from every item, including git diffs', async () => {
+    // 600 files alone stay at 2 workers; the git diff is the 601st item and tips it to 3.
+    // Sizing by batch count (13) would give 2 as well.
+    const files: RawFile[] = Array.from({ length: 600 }, (_, index) => ({
+      path: `file${index}.js`,
+      content: 'console.log("Hello World");',
+    }));
+    const gitDiffResult: GitDiffResult = {
+      workTreeDiffContent: 'diff --git a/file0.js b/file0.js',
+      stagedDiffContent: '',
+    };
+    const cleanTaskRunner = inlineInitTaskRunner(async (task: { items: unknown[] }) => task.items.map(() => null));
+    const initTaskRunnerSpy = vi.fn(cleanTaskRunner) as typeof cleanTaskRunner;
+
+    await runSecurityCheck(files, () => {}, gitDiffResult, undefined, {
+      initTaskRunner: initTaskRunnerSpy,
+      getProcessConcurrency: () => 18,
+    });
+
+    expect(initTaskRunnerSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        numOfTasks: 601,
+        maxWorkerThreads: 3,
       }),
     );
   });
