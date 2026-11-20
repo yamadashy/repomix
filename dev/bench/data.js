@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794670722326,
+  "lastUpdate": 1795184740029,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -17318,6 +17318,51 @@ window.BENCHMARK_DATA = {
             "range": "±19",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1423ms, Q3: 1442ms\nAll times: 1404, 1405, 1409, 1416, 1418, 1423, 1428, 1431, 1432, 1432, 1433, 1433, 1435, 1438, 1440, 1442, 1444, 1452, 1469, 1480ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3df0d28c6c54b52e99362e84728a28f56f7bb763",
+          "message": "Merge pull request #2042 from yamadashy/refactor/remove-handlebars\n\nrefactor(core): Replace Handlebars templates with typed render functions",
+          "timestamp": "2026-11-20T23:23:39+09:00",
+          "tree_id": "95f60bf2970581fab4647786383acfd8e29a1989",
+          "url": "https://github.com/yamadashy/repomix/commit/3df0d28c6c54b52e99362e84728a28f56f7bb763"
+        },
+        "date": 1795184738647,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 976,
+            "range": "±134",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 909ms, Q3: 1043ms\nAll times: 855, 861, 880, 885, 886, 891, 899, 909, 912, 938, 952, 962, 963, 967, 972, 976, 977, 982, 984, 985, 1019, 1038, 1043, 1052, 1058, 1155, 1161, 1171, 1308, 1406ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 901,
+            "range": "±73",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 886ms, Q3: 959ms\nAll times: 877, 879, 882, 882, 884, 886, 890, 895, 895, 898, 901, 905, 907, 908, 956, 959, 965, 1003, 1021, 1109ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1301,
+            "range": "±21",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1291ms, Q3: 1312ms\nAll times: 1277, 1278, 1281, 1281, 1291, 1291, 1295, 1297, 1297, 1301, 1301, 1306, 1308, 1309, 1311, 1312, 1315, 1344, 1346, 1349ms"
           }
         ]
       }
