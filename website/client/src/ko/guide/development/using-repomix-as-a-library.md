@@ -104,4 +104,4 @@ Rolldown이나 esbuild 같은 도구로 repomix를 번들링할 때, 일부 의�
 
 ## 실제 사례
 
-Repomix 웹사이트([repomix.com](https://repomix.com))는 원격 저장소를 처리하기 위해 라이브러리로 Repomix를 사용합니다. [website/server/src/remoteRepo.ts](https://github.com/yamadashy/repomix/blob/main/website/server/src/remoteRepo.ts)에서 구현을 확인할 수 있습니다. 
+Repomix 웹사이트([repomix.com](https://repomix.com))는 원격 저장소를 처리하기 위해 라이브러리로 Repomix를 사용합니다. [website/server/src/domains/pack/remoteRepo.ts](https://github.com/yamadashy/repomix/blob/main/website/server/src/domains/pack/remoteRepo.ts)에서 구현을 확인할 수 있습니다. 

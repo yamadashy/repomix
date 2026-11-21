@@ -104,4 +104,4 @@ Pour un exemple fonctionnel, consultez [website/server/scripts/bundle.mjs](https
 
 ## Exemple concret
 
-Le site web de Repomix ([repomix.com](https://repomix.com)) utilise Repomix comme bibliothèque pour traiter les dépôts distants. Vous pouvez consulter l'implémentation dans [website/server/src/remoteRepo.ts](https://github.com/yamadashy/repomix/blob/main/website/server/src/remoteRepo.ts). 
+Le site web de Repomix ([repomix.com](https://repomix.com)) utilise Repomix comme bibliothèque pour traiter les dépôts distants. Vous pouvez consulter l'implémentation dans [website/server/src/domains/pack/remoteRepo.ts](https://github.com/yamadashy/repomix/blob/main/website/server/src/domains/pack/remoteRepo.ts). 

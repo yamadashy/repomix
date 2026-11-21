@@ -104,4 +104,4 @@ async function analyzeFiles(directory) {
 
 ## Реальный пример
 
-Сайт Repomix ([repomix.com](https://repomix.com)) использует Repomix как библиотеку для обработки удалённых репозиториев. Вы можете увидеть реализацию в [website/server/src/remoteRepo.ts](https://github.com/yamadashy/repomix/blob/main/website/server/src/remoteRepo.ts).
+Сайт Repomix ([repomix.com](https://repomix.com)) использует Repomix как библиотеку для обработки удалённых репозиториев. Вы можете увидеть реализацию в [website/server/src/domains/pack/remoteRepo.ts](https://github.com/yamadashy/repomix/blob/main/website/server/src/domains/pack/remoteRepo.ts).

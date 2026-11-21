@@ -124,7 +124,7 @@ JavaScript कॉन्फिगरेशन फ़ाइलें TypeScript �
 | `ignore.useDefaultPatterns`      | डिफ़ॉल्ट ignore पैटर्न (node_modules, .git, आदि) का उपयोग करना है या नहीं                                               | `true`                 |
 | `ignore.customPatterns`          | अतिरिक्त ignore पैटर्न [glob patterns](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) का उपयोग करके | `[]`                   |
 | `security.enableSecurityCheck`   | संवेदनशील जानकारी का पता लगाने के लिए Secretlint का उपयोग करके सुरक्षा जांच करनी है या नहीं                               | `true`                 |
-| `tokenCount.encoding`            | OpenAI संगत टोकन काउंट एन्कोडिंग (उदा., GPT-4o के लिए `o200k_base`, GPT-4/3.5 के लिए `cl100k_base`)। [gpt-tokenizer](https://github.com/nicolo-ribaudo/gpt-tokenizer) का उपयोग करता है। | `"o200k_base"`         |
+| `tokenCount.encoding`            | OpenAI संगत टोकन काउंट एन्कोडिंग (उदा., GPT-4o के लिए `o200k_base`, GPT-4/3.5 के लिए `cl100k_base`)। [gpt-tokenizer](https://github.com/niieani/gpt-tokenizer) का उपयोग करता है। | `"o200k_base"`         |
 
 कॉन्फिगरेशन फ़ाइल [JSON5](https://json5.org/) सिंटैक्स का समर्थन करती है, जो निम्नलिखित की अनुमति देता है:
 - टिप्पणियां (एकल-लाइन और मल्टी-लाइन दोनों)

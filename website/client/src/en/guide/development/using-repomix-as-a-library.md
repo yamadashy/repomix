@@ -104,4 +104,4 @@ For a working example, see [website/server/scripts/bundle.mjs](https://github.co
 
 ## Real-World Example
 
-The Repomix website ([repomix.com](https://repomix.com)) uses Repomix as a library to process remote repositories. You can see the implementation in [website/server/src/remoteRepo.ts](https://github.com/yamadashy/repomix/blob/main/website/server/src/remoteRepo.ts). 
+The Repomix website ([repomix.com](https://repomix.com)) uses Repomix as a library to process remote repositories. You can see the implementation in [website/server/src/domains/pack/remoteRepo.ts](https://github.com/yamadashy/repomix/blob/main/website/server/src/domains/pack/remoteRepo.ts). 
