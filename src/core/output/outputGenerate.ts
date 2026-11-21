@@ -21,7 +21,7 @@ import {
 import { renderMarkdownStyle } from './outputStyles/markdownStyle.js';
 import { renderPlainStyle } from './outputStyles/plainStyle.js';
 import { renderXmlStyle } from './outputStyles/xmlStyle.js';
-import { replaceInvalidXmlCharsInValue } from './xmlText.js';
+import { serializeXml } from './xmlSerialize.js';
 
 const getStyleRenderer = (style: string): ((renderContext: RenderContext) => string) => {
   switch (style) {
@@ -100,15 +100,6 @@ export const createRenderContext = (outputGeneratorContext: OutputGeneratorConte
 };
 
 const generateParsableXmlOutput = async (renderContext: RenderContext): Promise<string> => {
-  // Lazy-load fast-xml-builder (~3ms) — only used for parsable XML output (non-default)
-  const FastXmlBuilder = (await import('fast-xml-builder')).default;
-  const xmlBuilder = new FastXmlBuilder({
-    ignoreAttributes: false,
-    // Escaping alone can't make a control character legal in XML 1.0, so every text
-    // node and attribute (file contents and paths included) goes through this first.
-    tagValueProcessor: replaceInvalidXmlCharsInValue,
-    attributeValueProcessor: replaceInvalidXmlCharsInValue,
-  });
   const xmlDocument = {
     repomix: {
       file_summary: renderContext.fileSummaryEnabled
@@ -153,7 +144,7 @@ const generateParsableXmlOutput = async (renderContext: RenderContext): Promise<
     },
   };
   try {
-    return xmlBuilder.build(xmlDocument);
+    return serializeXml(xmlDocument);
   } catch (error) {
     throw new RepomixError(
       `Failed to generate XML output: ${error instanceof Error ? error.message : 'Unknown error'}`,
