@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { replaceInvalidXmlChars, replaceInvalidXmlCharsInValue } from '../../../src/core/output/xmlText.js';
+import { replaceInvalidXmlChars } from '../../../src/core/output/xmlText.js';
 
 describe('replaceInvalidXmlChars', () => {
   test('replaces every C0 control except tab, LF and CR', () => {
@@ -20,13 +20,5 @@ describe('replaceInvalidXmlChars', () => {
   test('keeps characters XML 1.0 allows', () => {
     const allowed = 'plain <&> "quoted" \u007F\u0085\u00A0 中文 😀 \uE000 �';
     expect(replaceInvalidXmlChars(allowed)).toBe(allowed);
-  });
-});
-
-describe('replaceInvalidXmlCharsInValue', () => {
-  test('sanitizes strings and passes other values through', () => {
-    expect(replaceInvalidXmlCharsInValue('path', 'a\fb')).toBe('a�b');
-    expect(replaceInvalidXmlCharsInValue('count', 42)).toBe(42);
-    expect(replaceInvalidXmlCharsInValue('missing', undefined)).toBeUndefined();
   });
 });

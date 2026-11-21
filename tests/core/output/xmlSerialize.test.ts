@@ -24,9 +24,16 @@ describe('serializeXml', () => {
       expect(serializeXml({ r: { a: '&amp; &lt; &#x41;' } })).toBe('<r><a>&amp;amp; &amp;lt; &amp;#x41;</a></r>');
     });
 
+    // fast-xml-builder emitted these characters as is, which is not well-formed XML
+    test('replaces characters XML 1.0 forbids with U+FFFD in text and attribute values', () => {
+      expect(serializeXml({ r: { '@_p': 'a\u0007b', '#text': 'c\fd', a: 'e\ud800f\uFFFF' } })).toBe(
+        '<r p="a\uFFFDb">c\uFFFDd<a>e\uFFFDf\uFFFD</a></r>',
+      );
+    });
+
     test('passes everything else through untouched', () => {
-      expect(serializeXml({ r: { a: ']]> <![CDATA[x]]>\r\n\t\u0001\u{1F600}\ud800 é' } })).toBe(
-        '<r><a>]]&gt; &lt;![CDATA[x]]&gt;\r\n\t\u0001\u{1F600}\ud800 é</a></r>',
+      expect(serializeXml({ r: { a: ']]> <![CDATA[x]]>\r\n\t\u007F\u{1F600}\uFFFD é' } })).toBe(
+        '<r><a>]]&gt; &lt;![CDATA[x]]&gt;\r\n\t\u007F\u{1F600}\uFFFD é</a></r>',
       );
     });
   });

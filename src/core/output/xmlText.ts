@@ -15,7 +15,3 @@ const INVALID_XML_CHARS_RE =
  * and leaves the surrounding text where it was.
  */
 export const replaceInvalidXmlChars = (text: string): string => text.replace(INVALID_XML_CHARS_RE, '\uFFFD');
-
-// fast-xml-builder value hook: values are strings except for the odd number or Date.
-export const replaceInvalidXmlCharsInValue = (_name: string, value: unknown): unknown =>
-  typeof value === 'string' ? replaceInvalidXmlChars(value) : value;
