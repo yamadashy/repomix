@@ -50,5 +50,14 @@ describe('patternUtils', () => {
       const result = splitPatterns(patterns);
       expect(result).toEqual(['src/**', 'tests/**', '**/*.js']);
     });
+
+    it('should drop segments that hold no pattern', () => {
+      // `--include "src/**, ,tests/**"` is a typo users actually type. An empty
+      // segment must not survive: globby matches every file for '', and an
+      // include list holding it silently disables the filter.
+      expect(splitPatterns('src/**, ,tests/**')).toEqual(['src/**', 'tests/**']);
+      expect(splitPatterns('src/**,   ')).toEqual(['src/**']);
+      expect(splitPatterns(' , ')).toEqual([]);
+    });
   });
 });
