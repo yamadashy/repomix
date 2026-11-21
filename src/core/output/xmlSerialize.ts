@@ -2,18 +2,24 @@
 //
 // It reproduces what fast-xml-builder 1.3.1 emitted for this input shape with
 // `{ ignoreAttributes: false }` and otherwise default options, so that the output stays unchanged,
-// with one deliberate difference: fast-xml-builder dropped the value of an attribute whose value
-// was the string "true" (a file named `true` came out as `<file path>`, which is not well-formed).
-// Attributes always keep their value here. The rules:
+// with two deliberate differences, both of which made fast-xml-builder's output not well-formed:
+//   - it dropped the value of an attribute whose value was the string "true" (a file named `true`
+//     came out as `<file path>`); attributes always keep their value here
+//   - it emitted characters XML 1.0 forbids as is (a form feed in a C file, an ANSI escape in a
+//     log); here each one becomes U+FFFD, see `replaceInvalidXmlChars`
+// The rules:
 //   - keys starting with `@_` are attributes, the `#text` key is text content, every other key is a
 //     child element; an array value repeats the element once per item
 //   - text and attribute values escape & > < ' " (as &amp; &gt; &lt; &apos; &quot;), including the
-//     `&` of an existing entity such as `&amp;`; nothing else is touched (control characters,
-//     `]]>` and lone surrogates are emitted as is, so the result is not guaranteed to be well-formed)
+//     `&` of an existing entity such as `&amp;`, after each character XML 1.0 forbids (C0 controls
+//     other than tab, LF and CR, lone surrogates, U+FFFE and U+FFFF) is replaced with U+FFFD;
+//     nothing else is touched
 //   - `undefined` values and `undefined` array items are omitted, and so is an empty array
 //   - an empty string yields an empty element (`<a></a>`), never a self-closing one
 //   - text and children are emitted in key order, attributes always go on the start tag
 //   - there is no XML declaration, indentation or newline
+
+import { replaceInvalidXmlChars } from './xmlText.js';
 
 export type XmlValue = string | number | boolean | undefined;
 
@@ -34,7 +40,7 @@ const ESCAPES: Record<string, string> = {
   '"': '&quot;',
 };
 
-const escapeXml = (value: string): string => value.replace(/[&><'"]/g, (char) => ESCAPES[char]);
+const escapeXml = (value: string): string => replaceInvalidXmlChars(value).replace(/[&><'"]/g, (char) => ESCAPES[char]);
 
 // String(-0) is '0'; the library keeps the sign
 const primitiveToString = (value: string | number | boolean): string =>
