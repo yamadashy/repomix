@@ -85,6 +85,41 @@ const stripCssPreprocessorComments = (content: string): string => {
   );
 };
 
+// Rust's quotes do not fit the C profile. A raw string (`r"..."`, `r#"..."#`, and the `b`/`c`
+// prefixed forms) has no escapes and may contain `"`, and a lifetime (`'a`) is a lone `'` that the
+// profile pairs with the next one as a string. Either way a later string is misread, and a `//` in
+// it (`"can't reach http://..."`) is cut as a comment together with the code after it. Mask every
+// string, char literal and lifetime, the same way as the URLs above, so that only comments are
+// left for the profile to find. Comments are consumed first so a quote inside one starts nothing,
+// and an unclosed string or comment runs to the end of input so the scan stays linear.
+const RUST_TOKEN_SCAN =
+  /\/\*[\s\S]*?(?:\*\/|$)|\/\/[^\n]*|\b[bc]?r(#*)"[\s\S]*?(?:"\1|$)|"(?:[^"\\]|\\[\s\S])*(?:"|$)|'(?:[^'\\\n]|\\(?:x[0-9A-Fa-f]{2}|u\{[0-9A-Fa-f_]+\}|[^\n]))'|'[\p{L}_][\p{L}\p{N}_]*/gu;
+
+const stripRustComments = (content: string): string => {
+  let marker = '__REPOMIX_RUST_';
+  while (content.includes(marker)) {
+    marker += '_';
+  }
+  const tokens: string[] = [];
+  const masked = content.replace(RUST_TOKEN_SCAN, (match) =>
+    match.startsWith('/') ? match : `${marker}${tokens.push(match) - 1}__`,
+  );
+  const stripped = strip(masked, {
+    language: 'c',
+    preserveNewlines: true,
+  });
+  return stripped.replace(
+    new RegExp(`${marker}(\\d+)__`, 'g'),
+    (placeholder, index) => tokens[Number(index)] ?? placeholder,
+  );
+};
+
+class RustManipulator extends BaseManipulator {
+  removeComments(content: string): string {
+    return rtrimLines(stripRustComments(content));
+  }
+}
+
 class CssManipulator extends BaseManipulator {
   removeComments(content: string): string {
     return rtrimLines(stripCssComments(content));
@@ -300,7 +335,7 @@ const manipulators: Record<string, FileManipulator> = {
   '.php': new StripCommentsManipulator('php'),
   '.py': new StripCommentsManipulator('python'),
   '.rb': new StripCommentsManipulator('ruby'),
-  '.rs': new StripCommentsManipulator('c'),
+  '.rs': new RustManipulator(),
   '.sass': new CssPreprocessorManipulator(),
   '.scss': new CssPreprocessorManipulator(),
   '.sh': new HashCommentManipulator('shell'),
