@@ -177,3 +177,20 @@ describe('skillStatistics', () => {
     });
   });
 });
+
+test('should count an empty file as zero lines, like the output generator does', () => {
+  // outputGenerate's calculateFileLineCounts records 0 for an empty file, so a
+  // statistics pass that falls back to splitting the content reports one line and
+  // disagrees with the file's own line count in the same output.
+  const files: ProcessedFile[] = [
+    { path: 'empty.ts', content: '' },
+    { path: 'one.ts', content: 'a' },
+  ];
+  const lineCounts = { 'empty.ts': 0, 'one.ts': 1 };
+
+  const result = calculateStatistics(files, lineCounts);
+
+  expect(result.totalLines).toBe(1);
+  expect(result.byFileType.find((s) => s.extension === '.ts')?.lineCount).toBe(1);
+  expect(result.largestFiles.find((f) => f.path === 'empty.ts')?.lines).toBe(0);
+});

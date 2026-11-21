@@ -120,7 +120,11 @@ export const calculateStatistics = (
   // Calculate stats by extension
   for (const file of processedFiles) {
     const ext = path.extname(file.path).toLowerCase() || '(no ext)';
-    const lines = fileLineCounts[file.path] || file.content.split('\n').length;
+    // A recorded 0 is a real count, not a missing one: outputGenerate's
+    // calculateFileLineCounts stores 0 for an empty file, and falling back to splitting
+    // the content would count that file as one line and disagree with its own total in
+    // the same output.
+    const lines = fileLineCounts[file.path] ?? file.content.split('\n').length;
 
     if (!statsByExt[ext]) {
       statsByExt[ext] = { fileCount: 0, lineCount: 0 };
@@ -144,7 +148,7 @@ export const calculateStatistics = (
   const largestFiles = processedFiles
     .map((file) => ({
       path: file.path,
-      lines: fileLineCounts[file.path] || file.content.split('\n').length,
+      lines: fileLineCounts[file.path] ?? file.content.split('\n').length,
     }))
     .sort((a, b) => b.lines - a.lines)
     .slice(0, 10);
