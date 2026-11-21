@@ -1,5 +1,6 @@
 import type fs from 'node:fs/promises';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { z } from 'zod';
 import {
   createRegexPattern,
   formatSearchResults,
@@ -456,6 +457,51 @@ describe('grepRepomixOutputTool', () => {
       registerGrepRepomixOutputTool(mockMcpServer.server, undefined, deps);
 
       toolHandler = mockMcpServer.toolHandler<ToolHandlerType>();
+    });
+
+    describe('context count input validation', () => {
+      const inputSchema = () =>
+        mockMcpServer.registerTool.mock.calls[0][1].inputSchema as z.ZodType<Record<string, unknown>>;
+
+      it.each(['contextLines', 'beforeLines', 'afterLines'])(
+        'should reject negative and fractional %s values',
+        (field) => {
+          for (const value of [-1, -0.5, 0.5, '-1', '0.5', Number.MAX_SAFE_INTEGER + 1, '9007199254740992']) {
+            const parsed = inputSchema().safeParse({ outputId: 'test-id', pattern: 'match', [field]: value });
+
+            expect(parsed.success, `${field}=${value}`).toBe(false);
+          }
+        },
+      );
+
+      it.each(['contextLines', 'beforeLines', 'afterLines'])(
+        'should accept nonnegative integer %s values and numeric strings',
+        (field) => {
+          for (const value of [0, 2, '0', '2', Number.MAX_SAFE_INTEGER, String(Number.MAX_SAFE_INTEGER)]) {
+            const parsed = inputSchema().parse({ outputId: 'test-id', pattern: 'match', [field]: value });
+
+            expect(parsed[field]).toBe(Number(value));
+          }
+        },
+      );
+
+      it('should preserve default context and explicit zero overrides', () => {
+        expect(inputSchema().parse({ outputId: 'test-id', pattern: 'match' })).toEqual({
+          outputId: 'test-id',
+          pattern: 'match',
+          contextLines: 0,
+          ignoreCase: false,
+        });
+        expect(
+          inputSchema().parse({
+            outputId: 'test-id',
+            pattern: 'match',
+            contextLines: 2,
+            beforeLines: '0',
+            afterLines: '0',
+          }),
+        ).toMatchObject({ contextLines: 2, beforeLines: 0, afterLines: 0 });
+      });
     });
 
     it('should register the tool with correct parameters', () => {
