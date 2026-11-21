@@ -52,6 +52,12 @@ hermes skills install https://raw.githubusercontent.com/yamadashy/repomix/main/s
 https://github.com/facebook/react"
 ```
 
+यह स्किल GitHub, GitLab (सेल्फ-होस्टेड इंस्टेंस और नेस्टेड ग्रुप सहित), Bitbucket, Azure DevOps और अन्य Git होस्ट को सपोर्ट करती है। HTTPS क्लोन URL या `git@gitlab.example.com:group/subgroup/project.git` जैसे SCP-शैली के SSH पते का उपयोग करें और पूरा नेमस्पेस तथा प्रोवाइडर के लिए विशिष्ट क्लोन पाथ बनाए रखें। `owner/repo` शॉर्टहैंड केवल GitHub के लिए है।
+
+ब्रांच, टैग, कमिट, फ़ाइल या डायरेक्टरी के वेब URL के लिए, यह स्किल क्लोन URL के साथ `--remote-branch <ref>` और ज़रूरत पड़ने पर `--include <path or glob>` का उपयोग करती है। वेब URL में दिया गया पाथ यह सीमित नहीं करता कि किन फ़ाइलों को पैक किया जाएगा।
+
+GitHub के अलावा अन्य रिमोट रिपॉजिटरी के लिए Git इंस्टॉल होना ज़रूरी है। प्राइवेट रिपॉजिटरी के लिए एनवायरनमेंट में Git क्रेडेंशियल या SSH कुंजियाँ कॉन्फ़िगर करें। यदि Repomix किसी पते के फ़ॉर्मेट को अस्वीकार करता है, तो समर्थित क्लोन URL या लोकल चेकआउट का उपयोग करें।
+
 #### लोकल कोडबेस का अन्वेषण करें
 
 ```text

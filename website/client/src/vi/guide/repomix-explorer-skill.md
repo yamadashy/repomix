@@ -52,6 +52,12 @@ Sau khi cài đặt, bạn có thể phân tích codebase bằng các hướng d
 https://github.com/facebook/react"
 ```
 
+Skill này hỗ trợ GitHub, GitLab (bao gồm các bản triển khai trên máy chủ riêng và các nhóm lồng nhau), Bitbucket, Azure DevOps và các nền tảng lưu trữ Git khác. Sử dụng URL clone qua HTTPS hoặc địa chỉ SSH theo kiểu SCP, chẳng hạn như `git@gitlab.example.com:group/subgroup/project.git`, đồng thời giữ nguyên namespace đầy đủ và đường dẫn clone riêng của nhà cung cấp. Cú pháp rút gọn `owner/repo` chỉ dành cho GitHub.
+
+Với các URL web trỏ đến branch, tag, commit, file hoặc thư mục, skill sử dụng URL clone kết hợp với `--remote-branch <ref>` và khi cần, `--include <path or glob>`. Đường dẫn trong URL web không giới hạn những file được đóng gói.
+
+Các repository từ xa ngoài GitHub yêu cầu phải cài đặt Git. Với repository riêng tư, hãy cấu hình thông tin xác thực Git hoặc khóa SSH trong môi trường. Nếu Repomix từ chối một định dạng địa chỉ, hãy dùng URL clone được hỗ trợ hoặc bản checkout cục bộ.
+
 #### Khám phá codebase cục bộ
 
 ```text

@@ -52,6 +52,12 @@ Nach der Installation können Sie Codebasen mit natürlichen Sprachanweisungen a
 https://github.com/facebook/react"
 ```
 
+Der Skill unterstützt GitHub, GitLab (einschließlich selbst gehosteter Instanzen und verschachtelter Gruppen), Bitbucket, Azure DevOps und andere Git-Hosts. Verwenden Sie HTTPS-Klon-URLs oder SSH-Adressen im SCP-Stil wie `git@gitlab.example.com:group/subgroup/project.git` und behalten Sie dabei den vollständigen Namespace sowie den anbieterspezifischen Klonpfad bei. Die Kurzform `owner/repo` gilt ausschließlich für GitHub.
+
+Bei Web-URLs für Branches, Tags, Commits, Dateien oder Verzeichnisse verwendet der Skill die Klon-URL mit `--remote-branch <ref>` und bei Bedarf `--include <path or glob>`. Ein Pfad in einer Web-URL schränkt die Auswahl der gepackten Dateien nicht ein.
+
+Für Remote-Repositories außerhalb von GitHub muss Git installiert sein. Konfigurieren Sie für private Repositories Git-Zugangsdaten oder SSH-Schlüssel in der Umgebung. Wenn Repomix ein Adressformat ablehnt, verwenden Sie eine unterstützte Klon-URL oder einen lokalen Checkout.
+
 #### Lokale Codebasen erkunden
 
 ```text
