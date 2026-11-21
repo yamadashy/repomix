@@ -15,12 +15,12 @@
     "cloud-deploy": "gcloud builds submit --config=cloudbuild.yaml ."
   },
   "dependencies": {
-    "@hono/node-server": "^2.1.6",
-    "@upstash/ratelimit": "^2.2.0",
+    "@hono/node-server": "^2.1.8",
+    "@upstash/ratelimit": "^2.2.1",
     "@upstash/redis": "^1.41.0",
     "fflate": "^0.8.3",
-    "hono": "^4.13.17",
-    "isbot": "^5.2.2",
+    "hono": "^4.13.18",
+    "isbot": "^5.2.3",
     "repomix": "github:yamadashy/repomix#main",
     "valibot": "^1.5.0",
     "winston": "^3.19.0"
@@ -32,7 +32,7 @@
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vitest": "^5.1.0",
-    "rolldown": "^1.3.0",
+    "rolldown": "^1.3.2",
     "rollup-plugin-swc3": "^0.12.1"
   }
 }
