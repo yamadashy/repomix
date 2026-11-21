@@ -12,6 +12,10 @@ const fileChangeCountsCache = new Map<string, Record<string, number>>();
 // Cache for git availability check per cwd
 const gitAvailabilityCache = new Map<string, boolean>();
 
+// Bumped whenever a run clears the caches for a directory, so a fetch that was
+// already in flight when the clear happened does not store its stale result.
+const cacheGenerations = new Map<string, number>();
+
 const buildCacheKey = (cwd: string, maxCommits: number | undefined): string => {
   return `${cwd}:${maxCommits ?? 'default'}`;
 };
@@ -47,7 +51,14 @@ const getFileChangeCounts = async (
 
   // Fetch from git log
   try {
+    // Anything that clears the caches while this fetch runs makes its result
+    // belong to an older run than the one that cleared them.
+    const generation = cacheGenerations.get(cwd) ?? 0;
     const fileChangeCounts = await deps.getFileChangeCount(cwd, maxCommits);
+    if ((cacheGenerations.get(cwd) ?? 0) !== generation) {
+      logger.trace('Discarding git file change counts read before the cache was cleared');
+      return fileChangeCounts;
+    }
     fileChangeCountsCache.set(cacheKey, fileChangeCounts);
 
     logger.trace('Git File change counts max commits:', maxCommits);
@@ -114,9 +125,29 @@ export const sortOutputFiles = async (
 };
 
 /**
+ * Forget what an earlier pack run cached for this directory.
+ *
+ * The caches live for the process, which is right for a one-shot CLI run and wrong
+ * for the MCP server: it runs the CLI once per tool call from a single long-lived
+ * process, so the counts a second `pack_codebase` used were the ones the first one
+ * read — however many commits landed in between — and files kept the order of a
+ * history that no longer existed. Same shape as the logger level the MCP runtime
+ * already restores per call.
+ */
+const clearSortCaches = (cwd: string): void => {
+  cacheGenerations.set(cwd, (cacheGenerations.get(cwd) ?? 0) + 1);
+  const prefix = `${cwd}:`;
+  for (const key of fileChangeCountsCache.keys()) {
+    if (key.startsWith(prefix)) fileChangeCountsCache.delete(key);
+  }
+  gitAvailabilityCache.delete(cwd);
+};
+
+/**
  * Pre-fetch git file change counts so that a later `sortOutputFiles` call
  * hits the in-memory cache instead of spawning git subprocesses on the
- * critical path.
+ * critical path. Called once at the start of a pack run, which is also where the
+ * previous run's counts are dropped.
  */
 export const prefetchSortData = async (
   config: RepomixConfigMerged,
@@ -126,6 +157,7 @@ export const prefetchSortData = async (
   },
 ): Promise<void> => {
   if (!config.output.git?.sortByChanges) return;
+  clearSortCaches(config.cwd);
   await getFileChangeCounts(config.cwd, config.output.git?.sortByChangesMaxCommits, deps);
 };
 
