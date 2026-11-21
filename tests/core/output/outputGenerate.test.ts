@@ -135,6 +135,79 @@ describe('outputGenerate', () => {
     expect(fileElements[1].textContent).toBe(mockProcessedFiles[1].content);
   });
 
+  test('parsable xml keeps awkward file paths and contents intact', async () => {
+    const mockConfig = createMockConfig({ output: { style: 'xml', parsableStyle: true } });
+    const mockProcessedFiles: ProcessedFile[] = [
+      // A file named `true` used to lose its path: `<file path>` is not well-formed XML
+      { path: 'true', content: 'x' },
+      { path: 'false', content: '' },
+      { path: `dir/a&b "c" 'd' <e>.ts`, content: `const s = "<a>" && '&amp;'; // ]]> end\n\ttab` },
+    ];
+
+    const output = await generateOutput([process.cwd()], mockConfig, mockProcessedFiles, []);
+
+    const doc = createStrictXmlParser().parseFromString(output, 'text/xml');
+    const fileElements = doc.documentElement?.getElementsByTagName('file');
+    if (!fileElements) throw new Error('documentElement is null');
+
+    expect(fileElements.length).toBe(mockProcessedFiles.length);
+    // generateOutput sorts files, so match them by path instead of by position
+    const contentByPath = new Map(
+      Array.from(fileElements, (element) => [element.getAttribute('path'), element.textContent]),
+    );
+    for (const file of mockProcessedFiles) {
+      expect(contentByPath.get(file.path)).toBe(file.content);
+    }
+  });
+
+  test('parsable xml round-trips header text, git diffs and git logs', async () => {
+    const mockConfig = createMockConfig({
+      output: {
+        style: 'xml',
+        parsableStyle: true,
+        headerText: 'Header & <h> "q"',
+        git: { includeDiffs: true, includeLogs: true },
+      },
+    });
+    const gitDiffResult = {
+      workTreeDiffContent: 'diff --git a/a.ts b/a.ts\n-if (a < b && c > d)\n+if ("x")',
+      stagedDiffContent: '',
+    };
+    const gitLogResult = {
+      logContent: 'unused',
+      commits: [
+        { date: '2026-01-02 03:04:05 +0900', message: 'feat: <first> & "second"', files: ['a&b.ts', 'true'] },
+        { date: '2026-01-01 00:00:00 +0000', message: 'chore: empty commit', files: [] },
+      ],
+    };
+
+    const output = await generateOutput(
+      [process.cwd()],
+      mockConfig,
+      [{ path: 'a.ts', content: 'a' }],
+      [],
+      gitDiffResult,
+      gitLogResult,
+    );
+
+    const repomix = createStrictXmlParser().parseFromString(output, 'text/xml').documentElement;
+    if (!repomix) throw new Error('documentElement is null');
+    const textOf = (tagName: string) => repomix.getElementsByTagName(tagName)[0]?.textContent;
+
+    expect(textOf('user_provided_header')).toBe('Header & <h> "q"');
+    expect(textOf('git_diff_work_tree')).toBe(gitDiffResult.workTreeDiffContent);
+    expect(textOf('git_diff_staged')).toBe('');
+
+    const commitElements = Array.from(repomix.getElementsByTagName('git_log_commit'));
+    expect(
+      commitElements.map((commit) => ({
+        date: commit.getElementsByTagName('date')[0]?.textContent,
+        message: commit.getElementsByTagName('message')[0]?.textContent,
+        files: Array.from(commit.getElementsByTagName('files'), (file) => file.textContent),
+      })),
+    ).toEqual(gitLogResult.commits);
+  });
+
   test('generateOutput should write correct content to file (parsable markdown style)', async () => {
     const mockConfig = createMockConfig({
       output: {

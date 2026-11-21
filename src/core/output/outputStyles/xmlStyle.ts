@@ -4,7 +4,7 @@ import type { RenderContext } from '../outputGeneratorTypes.js';
 import { renderEach } from '../outputStyleUtils.js';
 
 // Values are inserted verbatim, without XML escaping: this style has always emitted
-// raw content (`--parsable-style` XML goes through fast-xml-builder instead).
+// raw content (`--parsable-style` XML is escaped by xmlSerialize.ts instead).
 // Each section carries its own trailing newline(s); the bare '\n' entries in
 // renderXmlStyle are fixed separators emitted even when a neighbouring section is
 // disabled. The caller trims the result.
