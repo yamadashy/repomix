@@ -183,17 +183,21 @@ describe('ignoreFileFilter', () => {
       '!bang/.gitignore': 'q.txt\n',
       '!bang/q.txt': '',
       '!bang/r.txt': '',
-      'a*b/.gitignore': 'x.txt\n',
-      'a*b/x.txt': '',
     });
 
-    expect(await searchBothWays()).toEqual([
-      '!bang/.gitignore',
-      '!bang/r.txt',
-      'a*b/.gitignore',
-      'sp[1]/.gitignore',
-      'sp[1]/keep.txt',
-    ]);
+    expect(await searchBothWays()).toEqual(['!bang/.gitignore', '!bang/r.txt', 'sp[1]/.gitignore', 'sp[1]/keep.txt']);
+  });
+
+  // Windows does not allow `*` in file names.
+  test.skipIf(process.platform === 'win32')('applies rules inside a directory whose name contains *', async () => {
+    await writeFiles({
+      'a*b/.gitignore': 'x.txt\n',
+      'a*b/x.txt': '',
+      'a*b/y.txt': '',
+      'axb/x.txt': '',
+    });
+
+    expect(await searchBothWays()).toEqual(['a*b/.gitignore', 'a*b/y.txt', 'axb/x.txt']);
   });
 
   test('prunes ignored directories during the walk', async () => {
