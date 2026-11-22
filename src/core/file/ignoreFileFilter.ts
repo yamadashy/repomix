@@ -147,7 +147,9 @@ export const createIgnoreFileFilter = (
 
   const buildNode = async (dir: string, dirents: Dirent[] | undefined): Promise<RuleNode> => {
     const { baseDir, knownNode } = await setup();
-    const parent = dir === cwd ? knownNode : await getNode(path.dirname(dir), undefined);
+    const parentDir = path.dirname(dir);
+    // `parentDir === dir` is the filesystem root: never look further up than that.
+    const parent = dir === cwd || parentDir === dir ? knownNode : await getNode(parentDir, undefined);
     if (!parent.readsIgnoreFiles) return parent;
     if (dir !== cwd) {
       if (UNREAD_IGNORE_FILE_DIR_NAMES.has(path.basename(dir))) return { ...parent, readsIgnoreFiles: false };
@@ -192,7 +194,11 @@ export const createIgnoreFileFilter = (
     const relBase = path.relative(baseDir, dir);
     if (isOutside(relBase)) return undefined;
     // Inside the git root but outside the cwd only the parent-chain .gitignore rules apply.
-    const node = isOutside(path.relative(cwd, dir)) ? knownNode : await getNode(dir, dirents);
+    // Inside the cwd, the directory is rebuilt from the cwd's own spelling: on Windows a result
+    // may spell the cwd differently (`c:\` for `C:\`), and the walk up from a directory has to
+    // arrive at `cwd` itself.
+    const relCwd = path.relative(cwd, dir);
+    const node = isOutside(relCwd) ? knownNode : await getNode(relCwd ? path.join(cwd, relCwd) : cwd, dirents);
     if (!node.matcher) return undefined;
     return { matcher: node.matcher, prefix: relBase ? `${toPosix(relBase)}/` : '' };
   };
@@ -219,7 +225,8 @@ export const createIgnoreFileFilter = (
       const resultPath = typeof result === 'string' ? result : result.path;
       const slashIndex = resultPath.lastIndexOf('/');
       return {
-        dirKey: slashIndex < 0 ? '.' : resultPath.slice(0, slashIndex) || '/',
+        // The slash is kept so that a file in a root resolves to that root (`/`, `C:/`).
+        dirKey: slashIndex < 0 ? '.' : resultPath.slice(0, slashIndex + 1),
         name: resultPath.slice(slashIndex + 1),
       };
     });

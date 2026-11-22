@@ -239,6 +239,33 @@ describe('ignoreFileFilter', () => {
     ).toEqual(['deep/er/ok.txt', 'missing/file.txt']);
   });
 
+  test('leaves absolute results outside the cwd alone, including a file in the filesystem root', async () => {
+    await writeFiles({ '.gitignore': '*.txt\n', 'a.txt': '' });
+    const filter = createIgnoreFileFilter(tempDir, { useGitignore: true, useDotIgnore: true });
+    const rootFile = `${path.parse(tempDir).root.replace(/\\/g, '/')}outside.txt`;
+    const inside = `${tempDir.replace(/\\/g, '/')}/a.txt`;
+
+    expect(await filter.filterResults([rootFile, inside], 'files')).toEqual([rootFile]);
+  });
+
+  // Windows paths are case-insensitive, so an absolute pattern can spell the cwd differently.
+  test.runIf(isWindows)('applies rules to absolute results that spell the cwd in another case', async () => {
+    await writeFiles({ '.gitignore': 'secret.txt\n', 'sub/secret.txt': '', 'sub/ok.txt': '', 'secret.txt': '' });
+    const filter = createIgnoreFileFilter(tempDir, { useGitignore: true, useDotIgnore: true });
+    const posixTempDir = tempDir.replace(/\\/g, '/');
+    const otherCase =
+      posixTempDir[0] === posixTempDir[0].toLowerCase()
+        ? posixTempDir[0].toUpperCase() + posixTempDir.slice(1)
+        : posixTempDir[0].toLowerCase() + posixTempDir.slice(1);
+
+    expect(
+      await filter.filterResults(
+        [`${otherCase}/sub/secret.txt`, `${otherCase}/sub/ok.txt`, `${otherCase}/secret.txt`],
+        'files',
+      ),
+    ).toEqual([`${otherCase}/sub/ok.txt`]);
+  });
+
   test('tests directories with a trailing slash so directory-only rules apply', async () => {
     await writeFiles({
       '.gitignore': 'out/\n',
