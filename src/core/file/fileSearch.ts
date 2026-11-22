@@ -1,4 +1,4 @@
-import type { Stats } from 'node:fs';
+import nodeFs, { type Stats } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { type Options as GlobbyOptions, type GlobEntry, globby } from 'globby';
@@ -11,6 +11,7 @@ import { logger } from '../../shared/logger.js';
 import { toPosixPath } from '../../shared/pathUtils.js';
 import { redactUrl } from '../../shared/urlRedact.js';
 import { sortPaths } from './filePathSort.js';
+import { createIgnoreFileFilter } from './ignoreFileFilter.js';
 import { checkDirectoryPermissions, type PermissionCheckResult, PermissionError } from './permissionCheck.js';
 
 // A leading `!` marks a negation; `\!` is an escaped literal `!` and is not one. Like fast-glob,
@@ -41,8 +42,8 @@ export interface FileSearchResult {
 const EMPTY_DIR_CHECK_CONCURRENCY = 20;
 const IGNORE_CONTROL_FILE_NAMES = new Set(['.gitignore', '.ignore', '.repomixignore']);
 
-// Whether a path is an ignore-control file whose rules globby loads. Such files must stay
-// visible to the ignore machinery even when an ignore pattern also matches them.
+// Whether a path is an ignore-control file, whose rules ignoreFileFilter.ts applies. Ignore
+// patterns that match such files are applied after the search instead of during it.
 export const isIgnoreControlFile = (filePath: string): boolean =>
   IGNORE_CONTROL_FILE_NAMES.has(path.posix.basename(toPosixPath(filePath)));
 
@@ -241,14 +242,9 @@ export const searchFiles = async (
   }
 
   try {
-    const { adjustedIgnorePatterns, ignoreFilePatterns, deferredIgnorePatterns } = await prepareIgnoreContext(
-      rootDir,
-      config,
-      deps,
-    );
+    const { adjustedIgnorePatterns, deferredIgnorePatterns } = await prepareIgnoreContext(rootDir, config, deps);
 
     logger.trace('Ignore patterns:', adjustedIgnorePatterns);
-    logger.trace('Ignore file patterns:', ignoreFilePatterns);
     logger.trace('Deferred ignore patterns:', deferredIgnorePatterns);
 
     // Start with configured include patterns
@@ -284,7 +280,6 @@ export const searchFiles = async (
 
     logger.trace('Include patterns with explicit files:', includePatterns);
     logger.trace('Ignore patterns:', adjustedIgnorePatterns);
-    logger.trace('Ignore file patterns (for globby):', ignoreFilePatterns);
 
     const handleGlobbyError = (error: unknown): never => {
       // Handle EPERM errors specifically
@@ -312,13 +307,14 @@ export const searchFiles = async (
       // by their Dirent type in one pass. We use `dirent.isFile()` (not `!isDirectory()`)
       // to match the previous `onlyFiles: true` semantics for symlinks and other non-file
       // non-directory entries (which are excluded in both implementations).
-      const entries: GlobEntry[] = await deps
-        .globby(includePatterns, {
-          ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
-          onlyFiles: false,
-          objectMode: true,
-        })
-        .catch(handleGlobbyError);
+      const entries: GlobEntry[] = await globbyWithIgnoreFiles(
+        includePatterns,
+        { ...createBaseGlobbyOptions(rootDir, adjustedIgnorePatterns), onlyFiles: false, objectMode: true },
+        'entries',
+        rootDir,
+        config,
+        deps,
+      ).catch(handleGlobbyError);
 
       const files: string[] = [];
       const directories: string[] = [];
@@ -342,12 +338,14 @@ export const searchFiles = async (
       logger.debug(`[empty dirs] Filtered to ${emptyDirPaths.length} empty directories in ${filterTime}ms`);
     } else {
       filePaths = filterDeferredIgnoredFiles(
-        await deps
-          .globby(includePatterns, {
-            ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
-            onlyFiles: true,
-          })
-          .catch(handleGlobbyError),
+        await globbyWithIgnoreFiles(
+          includePatterns,
+          { ...createBaseGlobbyOptions(rootDir, adjustedIgnorePatterns), onlyFiles: true },
+          'files',
+          rootDir,
+          config,
+          deps,
+        ).catch(handleGlobbyError),
         deferredIgnorePatterns,
       );
 
@@ -435,7 +433,7 @@ export const parseIgnoreContent = (content: string): string[] => {
 // Git matches an exclude pattern that has no slash in it against names at any depth,
 // whereas globby matches a bare pattern only at the top level of `cwd`. Without this,
 // `secret.txt` in .git/info/exclude leaves `sub/secret.txt` packed, even though the
-// identical pattern in .gitignore is respected at depth by globby's gitignore support.
+// identical pattern in .gitignore is respected at depth by the ignore-file handling.
 // Negations are skipped by the caller and never reach here.
 export const gitExcludePatternToGlob = (pattern: string): string => {
   // A leading or inner slash anchors the pattern to the repository root. The exclude
@@ -456,17 +454,14 @@ export const gitExcludePatternToGlob = (pattern: string): string => {
  *
  * @param rootDir The root directory to search
  * @param config The merged configuration
- * @returns Object containing adjusted ignore patterns and ignore file patterns
+ * @returns Object containing adjusted ignore patterns and deferred ignore patterns
  */
 const prepareIgnoreContext = async (
   rootDir: string,
   config: RepomixConfigMerged,
   deps: FileSearchDeps,
-): Promise<{ adjustedIgnorePatterns: string[]; ignoreFilePatterns: string[]; deferredIgnorePatterns: string[] }> => {
-  const [ignorePatterns, ignoreFilePatterns] = await Promise.all([
-    getIgnorePatterns(rootDir, config, deps),
-    getIgnoreFilePatterns(config),
-  ]);
+): Promise<{ adjustedIgnorePatterns: string[]; deferredIgnorePatterns: string[] }> => {
+  const ignorePatterns = await getIgnorePatterns(rootDir, config, deps);
 
   // Keep ignore-control files visible to globby so their rules are loaded, then filter them from final file lists.
   const deferredIgnorePatterns: string[] = [];
@@ -497,27 +492,65 @@ const prepareIgnoreContext = async (
     }
   }
 
-  return { adjustedIgnorePatterns, ignoreFilePatterns, deferredIgnorePatterns };
+  return { adjustedIgnorePatterns, deferredIgnorePatterns };
 };
 
 /**
  * Creates base globby options with common ignore patterns.
  * Returns options that can be extended with specific settings like onlyFiles or onlyDirectories.
+ * Ignore files (.gitignore, .ignore, .repomixignore) are applied by globbyWithIgnoreFiles.
  */
 const createBaseGlobbyOptions = (
   rootDir: string,
-  config: RepomixConfigMerged,
   ignorePatterns: string[],
-  ignoreFilePatterns: string[],
 ): Omit<GlobbyOptions, 'onlyFiles' | 'onlyDirectories'> => ({
   cwd: rootDir,
   ignore: ignorePatterns,
-  gitignore: config.ignore.useGitignore,
-  ignoreFiles: ignoreFilePatterns,
   absolute: false,
   dot: true,
   followSymbolicLinks: false,
 });
+
+/**
+ * Runs globby with the ignore files of rootDir applied (see ignoreFileFilter.ts): the filter's
+ * readdir hook prunes ignored entries during the walk, and every result is then checked by the
+ * filter itself, so the result does not depend on whether the walker used the hook.
+ * `kind` states what the options make globby return: files, directories, or objectMode entries.
+ */
+function globbyWithIgnoreFiles(
+  patterns: string[],
+  options: GlobbyOptions & { objectMode: true },
+  kind: 'entries',
+  rootDir: string,
+  config: RepomixConfigMerged,
+  deps: FileSearchDeps,
+): Promise<GlobEntry[]>;
+function globbyWithIgnoreFiles(
+  patterns: string[],
+  options: GlobbyOptions,
+  kind: 'files' | 'directories',
+  rootDir: string,
+  config: RepomixConfigMerged,
+  deps: FileSearchDeps,
+): Promise<string[]>;
+async function globbyWithIgnoreFiles(
+  patterns: string[],
+  options: GlobbyOptions,
+  kind: 'files' | 'directories' | 'entries',
+  rootDir: string,
+  config: RepomixConfigMerged,
+  deps: FileSearchDeps,
+): Promise<string[] | GlobEntry[]> {
+  const ignoreFileFilter = createIgnoreFileFilter(rootDir, {
+    useGitignore: config.ignore.useGitignore,
+    useDotIgnore: config.ignore.useDotIgnore,
+  });
+  const results: (string | GlobEntry)[] = await deps.globby(patterns, {
+    ...options,
+    fs: { ...nodeFs, readdir: ignoreFileFilter.readdir } as unknown as GlobbyOptions['fs'],
+  });
+  return ignoreFileFilter.filterResults(results, kind) as Promise<string[] | GlobEntry[]>;
+}
 
 export const getIgnoreFilePatterns = async (config: RepomixConfigMerged): Promise<string[]> => {
   const ignoreFilePatterns: string[] = [];
@@ -633,12 +666,16 @@ export const listDirectories = async (
   config: RepomixConfigMerged,
   deps: FileSearchDeps = defaultFileSearchDeps,
 ): Promise<string[]> => {
-  const { adjustedIgnorePatterns, ignoreFilePatterns } = await prepareIgnoreContext(rootDir, config, deps);
+  const { adjustedIgnorePatterns } = await prepareIgnoreContext(rootDir, config, deps);
 
-  const directories = await deps.globby(['**/*'], {
-    ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
-    onlyDirectories: true,
-  });
+  const directories = await globbyWithIgnoreFiles(
+    ['**/*'],
+    { ...createBaseGlobbyOptions(rootDir, adjustedIgnorePatterns), onlyDirectories: true },
+    'directories',
+    rootDir,
+    config,
+    deps,
+  );
 
   return sortPaths(directories);
 };
@@ -656,16 +693,16 @@ export const listFiles = async (
   config: RepomixConfigMerged,
   deps: FileSearchDeps = defaultFileSearchDeps,
 ): Promise<string[]> => {
-  const { adjustedIgnorePatterns, ignoreFilePatterns, deferredIgnorePatterns } = await prepareIgnoreContext(
+  const { adjustedIgnorePatterns, deferredIgnorePatterns } = await prepareIgnoreContext(rootDir, config, deps);
+
+  const files = await globbyWithIgnoreFiles(
+    ['**/*'],
+    { ...createBaseGlobbyOptions(rootDir, adjustedIgnorePatterns), onlyFiles: true },
+    'files',
     rootDir,
     config,
     deps,
   );
-
-  const files = await deps.globby(['**/*'], {
-    ...createBaseGlobbyOptions(rootDir, config, adjustedIgnorePatterns, ignoreFilePatterns),
-    onlyFiles: true,
-  });
 
   return sortPaths(filterDeferredIgnoredFiles(files, deferredIgnorePatterns));
 };
