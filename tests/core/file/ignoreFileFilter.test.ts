@@ -426,5 +426,15 @@ describe('ignoreFileFilter', () => {
         ignoreCase ? ['.gitignore', 'kept.js'] : ['.gitignore', 'BUILD/x.js', 'kept.js', 'readme.txt'],
       );
     });
+
+    // Git opens `.gitignore` by name, so a file spelled `.GITIGNORE` is found where the
+    // filesystem ignores case and is an unrelated file where it does not.
+    test('reads an ignore file spelled in another case exactly when the filesystem folds case', async () => {
+      await writeFiles({ 'sub/.GITIGNORE': 'x.txt\n', 'sub/x.txt': '', 'sub/y.txt': '' });
+      const ignoreCase = await isCaseInsensitiveDirectory(tempDir);
+      expect(await searchBothWays()).toEqual(
+        ignoreCase ? ['sub/.GITIGNORE', 'sub/y.txt'] : ['sub/.GITIGNORE', 'sub/x.txt', 'sub/y.txt'],
+      );
+    });
   });
 });

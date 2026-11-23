@@ -93,7 +93,12 @@ export const createIgnoreFileFilter = (
 
   // Lazily initialised so that a mocked walker returning nothing never touches the filesystem.
   let setupPromise:
-    | Promise<{ baseDir: string; knownNode: RuleNode; createMatcher: (patterns: string[]) => Ignore | undefined }>
+    | Promise<{
+        baseDir: string;
+        knownNode: RuleNode;
+        ignoreCase: boolean;
+        createMatcher: (patterns: string[]) => Ignore | undefined;
+      }>
     | undefined;
   const setup = () => {
     setupPromise ??= (async () => {
@@ -130,6 +135,7 @@ export const createIgnoreFileFilter = (
       );
       return {
         baseDir,
+        ignoreCase,
         createMatcher,
         knownNode: { patterns, matcher: createMatcher(patterns), readsIgnoreFiles: true },
       };
@@ -143,7 +149,7 @@ export const createIgnoreFileFilter = (
   const knownRealDirs = new Set<string>();
 
   const buildNode = async (dir: string, dirents: Dirent[] | undefined): Promise<RuleNode> => {
-    const { baseDir, knownNode, createMatcher } = await setup();
+    const { baseDir, knownNode, ignoreCase, createMatcher } = await setup();
     const parentDir = path.dirname(dir);
     // `parentDir === dir` is the filesystem root: never look further up than that.
     const parent = dir === cwd || parentDir === dir ? knownNode : await getNode(parentDir, undefined);
@@ -160,12 +166,13 @@ export const createIgnoreFileFilter = (
     }
     const entries = dirents ?? (await fs.readdir(dir, { withFileTypes: true }).catch(() => [] as Dirent[]));
     // Only regular files are read: git does not follow a symlinked ignore file. The cwd's
-    // `.gitignore` was already read with the chain.
+    // `.gitignore` was already read with the chain. Git opens ignore files by name, so where the
+    // filesystem ignores case a file spelled `.GITIGNORE` is read too.
     const present = new Set(
       entries
-        .filter((entry) => ignoreFileNames.has(entry.name) && entry.isFile())
-        .map((entry) => entry.name)
-        .filter((name) => !(dir === cwd && name === GITIGNORE)),
+        .filter((entry) => entry.isFile())
+        .map((entry) => (ignoreCase ? entry.name.toLowerCase() : entry.name))
+        .filter((name) => ignoreFileNames.has(name) && !(dir === cwd && name === GITIGNORE)),
     );
     if (present.size === 0) return parent;
     const ignoreFiles = IGNORE_FILE_PRECEDENCE.filter((name) => present.has(name));
