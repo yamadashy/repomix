@@ -261,7 +261,7 @@ Repomix, paketleme işlemi sırasında belirli dosyaları veya dizinleri hariç 
 1. Özel kalıplar (`ignore.customPatterns`)
 2. Yoksayma dosyaları (`.repomixignore`, `.ignore`, `.gitignore` ve `.git/info/exclude`):
    - İç içe dizinlerde, daha derin dizinlerdeki dosyalar daha yüksek önceliğe sahiptir
-   - Aynı dizinde ise bu dosyalar belirli bir sıra gözetilmeksizin birleştirilir
+   - Aynı dizinde ise önce `.gitignore`, sonra `.ignore`, ardından `.repomixignore` uygulanır ve sonraki dosyalar önceki dosyaları geçersiz kılar
 3. Varsayılan kalıplar (`ignore.useDefaultPatterns` true ise ve `--no-default-patterns` kullanılmıyorsa)
 
 Bu yaklaşım, projenizin ihtiyaçlarına göre esnek dosya hariç tutma yapılandırmasına olanak tanır. Güvenlik açısından hassas dosyaların ve büyük ikili dosyaların hariç tutulmasını sağlayarak oluşturulan paket dosyasının boyutunu optimize etmeye ve gizli bilgilerin sızmasını önlemeye yardımcı olur.

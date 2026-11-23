@@ -243,7 +243,7 @@ Repomix cung cấp nhiều cách để chỉ định file nào nên được ign
 1. Mẫu tùy chỉnh (`ignore.customPatterns`)
 2. File ignore (`.repomixignore`, `.ignore`, `.gitignore`, và `.git/info/exclude`):
    - Khi trong các thư mục lồng nhau, file ở thư mục sâu hơn có ưu tiên cao hơn
-   - Khi trong cùng thư mục, các file này được hợp nhất không theo thứ tự cụ thể
+   - Khi trong cùng thư mục, `.gitignore` được áp dụng trước, sau đó đến `.ignore`, rồi `.repomixignore`, và các file sau ghi đè các file trước
 3. Mẫu mặc định (nếu `ignore.useDefaultPatterns` là true và không sử dụng `--no-default-patterns`)
 
 Ví dụ về `.repomixignore`:

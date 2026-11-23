@@ -243,7 +243,7 @@ Repomix menyediakan beberapa cara untuk menentukan file mana yang harus diabaika
 1. Pola kustom (`ignore.customPatterns`)
 2. File ignore (`.repomixignore`, `.ignore`, `.gitignore`, dan `.git/info/exclude`):
    - Ketika berada di direktori bersarang, file di direktori yang lebih dalam memiliki prioritas lebih tinggi
-   - Ketika berada di direktori yang sama, file-file ini digabungkan tanpa urutan tertentu
+   - Ketika berada di direktori yang sama, `.gitignore` diterapkan lebih dulu, lalu `.ignore`, kemudian `.repomixignore`, dan file yang belakangan menimpa file sebelumnya
 3. Pola default (jika `ignore.useDefaultPatterns` adalah true dan tidak menggunakan `--no-default-patterns`)
 
 Contoh `.repomixignore`:

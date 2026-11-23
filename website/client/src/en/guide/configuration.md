@@ -261,7 +261,7 @@ Repomix offers multiple methods to set ignore patterns for excluding specific fi
 1. Custom patterns (`ignore.customPatterns`)
 2. Ignore files (`.repomixignore`, `.ignore`, `.gitignore`, and `.git/info/exclude`):
    - When in nested directories, files in deeper directories have higher priority
-   - When in the same directory, these files are merged in no particular order
+   - When in the same directory, `.gitignore` is applied first, then `.ignore`, then `.repomixignore`, and later files override earlier ones
 3. Default patterns (if `ignore.useDefaultPatterns` is true and `--no-default-patterns` is not used)
 
 This approach allows for flexible file exclusion configuration based on your project's needs. It helps optimize the size of the generated pack file by ensuring the exclusion of security-sensitive files and large binary files, while preventing the leakage of confidential information.

@@ -261,7 +261,7 @@ Repomix offre diversi metodi per definire pattern di esclusione per escludere fi
 1. Pattern personalizzati (`ignore.customPatterns`)
 2. File di esclusione (`.repomixignore`, `.ignore`, `.gitignore`, e `.git/info/exclude`):
    - Quando sono in directory annidate, i file nelle directory più profonde hanno priorità maggiore
-   - Quando sono nella stessa directory, questi file sono uniti senza ordine particolare
+   - Quando sono nella stessa directory, viene applicato prima `.gitignore`, poi `.ignore`, poi `.repomixignore`, e i file successivi sovrascrivono quelli precedenti
 3. Pattern predefiniti (se `ignore.useDefaultPatterns` è true e `--no-default-patterns` non è usato)
 
 Questo approccio permette una configurazione flessibile dell'esclusione dei file in base alle esigenze del progetto. Aiuta a ottimizzare la dimensione del file impacchettato generato garantendo l'esclusione di file sensibili alla sicurezza e grandi file binari, mentre previene la fuga di informazioni confidenziali.
