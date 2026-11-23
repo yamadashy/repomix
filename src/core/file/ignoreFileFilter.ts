@@ -26,9 +26,10 @@ import { parseIgnoreFileLines, rebaseIgnorePattern } from './ignoreFileRules.js'
 // for the ignore-file search), so their rules must not be applied either.
 const UNREAD_IGNORE_FILE_DIR_NAMES = new Set(['node_modules', 'flow-typed', 'coverage', '.git']);
 const GITIGNORE = '.gitignore';
+// The order in which the ignore files of a directory that cannot be listed are applied.
+const IGNORE_FILE_NAME_ORDER = [GITIGNORE, '.ignore', '.repomixignore'];
 
 interface RuleNode {
-  patterns: string[];
   matcher: Ignore | undefined;
   // false below a symlinked directory: globby's ignore-file search did not follow symlinks.
   readsIgnoreFiles: boolean;
@@ -49,8 +50,17 @@ const toPosix = (value: string): string => (path.sep === '\\' ? value.replace(/\
 const isOutside = (relativePath: string): boolean =>
   relativePath === '..' || relativePath.startsWith(`..${path.sep}`) || path.isAbsolute(relativePath);
 
-const createMatcher = (patterns: string[]): Ignore | undefined =>
-  patterns.length > 0 ? ignore().add(patterns) : undefined;
+// A directory's matcher holds its parent's rules followed by its own. Adding the parent matcher
+// (rather than its pattern strings) makes the `ignore` package share the parent's rule objects,
+// whose regular expressions are compiled once on first use. Rebuilding from strings gave every
+// directory with an ignore file its own compiled copy of every ancestor rule, so a large root
+// .gitignore times many nested ignore files cost far more time and memory than globby did.
+const createMatcher = (parent: Ignore | undefined, patterns: string[]): Ignore | undefined => {
+  if (patterns.length === 0) return parent;
+  const matcher = ignore();
+  if (parent) matcher.add(parent);
+  return matcher.add(patterns);
+};
 
 export const createIgnoreFileFilter = (
   rootDir: string,
@@ -88,7 +98,9 @@ export const createIgnoreFileFilter = (
 
   const toPatterns = (contents: (string | undefined)[], base: string): string[] =>
     contents.flatMap((content) =>
-      content === undefined ? [] : parseIgnoreFileLines(content).map((line) => rebaseIgnorePattern(line, base)),
+      content === undefined
+        ? []
+        : parseIgnoreFileLines(content).flatMap((line) => rebaseIgnorePattern(line, base) ?? []),
     );
 
   // Lazily initialised so that a mocked walker returning nothing never touches the filesystem.
@@ -120,7 +132,7 @@ export const createIgnoreFileFilter = (
       const patterns = chain.flatMap((dir, index) =>
         toPatterns([contents[index]], toPosix(path.relative(baseDir, dir))),
       );
-      return { baseDir, knownNode: { patterns, matcher: createMatcher(patterns), readsIgnoreFiles: true } };
+      return { baseDir, knownNode: { matcher: createMatcher(undefined, patterns), readsIgnoreFiles: true } };
     })();
     return setupPromise;
   };
@@ -146,18 +158,35 @@ export const createIgnoreFileFilter = (
         if (!isRealDir) return { ...parent, readsIgnoreFiles: false };
       }
     }
-    const entries = dirents ?? (await fs.readdir(dir, { withFileTypes: true }).catch(() => [] as Dirent[]));
     // Several ignore files in one directory are applied in directory listing order, as globby's
     // ignore-file search returned them. The cwd's `.gitignore` was already read with the chain.
-    const ignoreFiles = entries.filter(
-      (entry) => ignoreFileNames.has(entry.name) && entry.isFile() && !(dir === cwd && entry.name === GITIGNORE),
-    );
-    if (ignoreFiles.length === 0) return parent;
-    const contents = await Promise.all(ignoreFiles.map((entry) => readIgnoreFile(path.join(dir, entry.name))));
+    const isWanted = (name: string) => ignoreFileNames.has(name) && !(dir === cwd && name === GITIGNORE);
+    let ignoreFileNamesHere: string[];
+    const entries = dirents ?? (await fs.readdir(dir, { withFileTypes: true }).catch(() => undefined));
+    if (entries) {
+      ignoreFileNamesHere = entries
+        .filter((entry) => isWanted(entry.name) && entry.isFile())
+        .map((entry) => entry.name);
+    } else {
+      // The directory cannot be listed (e.g. execute-only permissions), but a static pattern or a
+      // --stdin path can still name a file inside it. Its ignore files may still be readable by
+      // name, and git reads them that way, so probe for each one instead of ignoring them.
+      const names = IGNORE_FILE_NAME_ORDER.filter(isWanted);
+      const isFile = await Promise.all(
+        names.map((name) =>
+          fs.lstat(path.join(dir, name)).then(
+            (stats) => stats.isFile(),
+            () => false,
+          ),
+        ),
+      );
+      ignoreFileNamesHere = names.filter((_, index) => isFile[index]);
+    }
+    if (ignoreFileNamesHere.length === 0) return parent;
+    const contents = await Promise.all(ignoreFileNamesHere.map((name) => readIgnoreFile(path.join(dir, name))));
     const added = toPatterns(contents, toPosix(path.relative(baseDir, dir)));
     if (added.length === 0) return parent;
-    const patterns = [...parent.patterns, ...added];
-    return { patterns, matcher: createMatcher(patterns), readsIgnoreFiles: true };
+    return { matcher: createMatcher(parent.matcher, added), readsIgnoreFiles: true };
   };
 
   const getNode = (dir: string, dirents: Dirent[] | undefined): Promise<RuleNode> => {
@@ -230,9 +259,10 @@ export const createIgnoreFileFilter = (
       const resolved = dirs.get(dirKey);
       if (!resolved) return true;
       const rel = resolved.prefix + name;
-      if (resolved.matcher.ignores(rel)) return false;
-      // A directory is also tested with a trailing slash so directory-only rules apply.
-      return !(isDirectory(result) && resolved.matcher.ignores(`${rel}/`));
+      // A directory is tested only with a trailing slash, as in the readdir hook: that applies
+      // directory-only rules, and re-inclusions like `!*/` after `*`, which the path without the
+      // slash would miss. Rules without a trailing slash match it either way.
+      return !resolved.matcher.ignores(isDirectory(result) ? `${rel}/` : rel);
     });
   };
 

@@ -321,13 +321,90 @@ describe('ignoreFileFilter', () => {
     expect(await searchBothWays()).toEqual(['.gitignore', 'kept.txt']);
   });
 
+  test('applies ancestor rules before a directory’s own rules, in both directions', async () => {
+    // Each directory's matcher is built on top of its parent's. Many root rules, so that a
+    // matcher rebuilt in the wrong order would be noticed; sibling directories must not see
+    // each other's rules.
+    const rootRules = Array.from({ length: 200 }, (_, index) => `generated-${index}.txt`);
+    await writeFiles({
+      '.gitignore': [...rootRules, '*.log', '!keep.tmp'].join('\n'),
+      'a/.gitignore': '!a.log\n*.tmp\n',
+      'a/b/.ignore': 'a.log\n!generated-7.txt\n',
+      'a/a.log': '',
+      'a/keep.tmp': '',
+      'a/generated-7.txt': '',
+      'a/b/a.log': '',
+      'a/b/generated-7.txt': '',
+      'a/b/generated-8.txt': '',
+      'c/a.log': '',
+      'c/keep.tmp': '',
+      'c/generated-7.txt': '',
+    });
+
+    expect(await searchBothWays()).toEqual([
+      '.gitignore',
+      'a/.gitignore',
+      // re-included by a/.gitignore
+      'a/a.log',
+      'a/b/.ignore',
+      // re-included by a/b/.ignore; generated-8 stays ignored by the root rules
+      'a/b/generated-7.txt',
+      // the root's `!keep.tmp` does not override the later `*.tmp` in a/; c/ keeps it
+      'c/keep.tmp',
+    ]);
+  });
+
+  test('a directory re-included by a directory-only negation is kept', async () => {
+    // `*` ignores every path, `!*/` re-includes the directories. The directory itself must be
+    // tested as a directory (`a/`), as git does; tested as `a` it stayed ignored by `*`.
+    await writeFiles({ '.gitignore': '*\n!*/\n!*.txt\n', 'a/b/c.txt': '', 'a/b/d.log': '' });
+
+    expect(await searchBothWays({ kind: 'directories' })).toEqual(['a', 'a/b']);
+    expect(await searchBothWays()).toEqual(['a/b/c.txt']);
+  });
+
+  test('a nested rule that normalises to its own directory does not re-include it', async () => {
+    // Rebased with path.join, `!../` became `!ignored/`: the walk had already pruned `ignored/`,
+    // but without the readdir hook the file inside was re-included. Git never matches `..`.
+    await writeFiles({ '.gitignore': 'ignored/\n', 'ignored/.gitignore': '!../\n!x/..\n', 'ignored/f.txt': '' });
+
+    expect(await searchBothWays()).toEqual(['.gitignore']);
+  });
+
+  test('rules with `.`, `..` or empty segments match nothing, also in a directory named `!...`', async () => {
+    // Normalised, `*/x/..` and `.` became `\!bang/*` and `\!bang/**`, ignoring the whole
+    // directory; git (and globby, which read `!bang/*` as a negation) kept both files.
+    await writeFiles({
+      '!bang/.gitignore': '*/x/..\n',
+      '!bang/f.txt': '',
+      'dot/.gitignore': '.\n./f.txt\nsub//g.txt\n',
+      'dot/f.txt': '',
+      'dot/sub/g.txt': '',
+    });
+
+    expect(await searchBothWays()).toEqual([
+      '!bang/.gitignore',
+      '!bang/f.txt',
+      'dot/.gitignore',
+      'dot/f.txt',
+      'dot/sub/g.txt',
+    ]);
+  });
+
+  test('only trailing spaces are stripped from a rule, as in git', async () => {
+    // A trailing tab is part of the rule, so `tab.txt<TAB>` does not match `tab.txt`.
+    await writeFiles({ '.gitignore': 'tab.txt\t\nspace.txt  \r\n', 'tab.txt': '', 'space.txt': '' });
+
+    expect(await searchBothWays()).toEqual(['.gitignore', 'tab.txt']);
+  });
+
   describe('intentional differences from globby (matching git)', () => {
     test('a `../x` rule in a nested .gitignore does not escape its directory', async () => {
       // globby joined `dotdot` and `../normal2.txt` into the root rule `normal2.txt` and ignored
       // the root file; git never matches `..`, and `git check-ignore` keeps the file.
       await writeFiles({ 'dotdot/.gitignore': '../normal2.txt\n', 'normal2.txt': '', 'dotdot/normal2.txt': '' });
       expect(await searchBothWays()).toEqual(['dotdot/.gitignore', 'dotdot/normal2.txt', 'normal2.txt']);
-      expect(rebaseIgnorePattern('../normal2.txt', 'dotdot')).toBe('dotdot/../normal2.txt');
+      expect(rebaseIgnorePattern('../normal2.txt', 'dotdot')).toBeUndefined();
     });
 
     test('a directory-only rule does not exclude a regular file of the same name', async () => {
