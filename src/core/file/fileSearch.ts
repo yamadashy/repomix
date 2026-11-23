@@ -559,11 +559,12 @@ export const getIgnoreFilePatterns = async (config: RepomixConfigMerged): Promis
   // directories have higher priority, following the behavior of ripgrep and fd.
   // For example, `src/.ignore` patterns override `./.ignore` patterns.
   //
-  // Multiple ignore files in the same directory (.gitignore, .ignore, .repomixignore)
-  // are all merged together. The order in this array does not affect priority.
+  // Multiple ignore files in the same directory are applied as .gitignore, then .ignore,
+  // then .repomixignore, later ones overriding earlier ones (see ignoreFileFilter.ts).
+  // The order in this array does not affect priority.
   //
-  // .gitignore files are handled by globby's gitignore option (not ignoreFiles)
-  // to properly respect parent directory .gitignore files, matching Git's behavior.
+  // .gitignore is not listed here: the search applies it separately, including the
+  // .gitignore files of parent directories up to the git root, matching Git's behavior.
   //
   // These ignore files apply whether or not customPatterns is defined in the config.
 

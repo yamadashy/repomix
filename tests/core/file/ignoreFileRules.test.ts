@@ -9,11 +9,14 @@ describe('ignoreFileRules', () => {
       ['a byte order mark', '\uFEFFa\nb', ['a', 'b']],
       ['blank lines and comments', '\n# comment\na\n\n', ['a']],
       ['an escaped leading #', '\\#a\n', ['\\#a']],
-      ['unescaped trailing whitespace', 'a  \nb\t\n', ['a', 'b']],
+      ['unescaped trailing spaces', 'a  \nb \n', ['a', 'b']],
+      ['a trailing tab, which git keeps', 'a\t\nb\t \n', ['a\t', 'b\t']],
+      ['a CR at the end of the file', 'a\r', ['a']],
+      ['only one CR before LF', 'a\r\r\n', ['a\r']],
       ['a backslash-escaped trailing space', 'a\\ \n', ['a\\ ']],
       ['an escaped space followed by more spaces', 'a\\   \n', ['a\\ ']],
       ['an escaped backslash before trailing spaces', 'a\\\\  \n', ['a\\\\']],
-      ['whitespace-only lines', '   \n\t\n', []],
+      ['space-only lines', '   \n\n', []],
       ['leading whitespace, which is significant', '  a\n', ['  a']],
     ])('handles %s', (_name, content, expected) => {
       expect(parseIgnoreFileLines(content)).toEqual(expected);
@@ -56,8 +59,22 @@ describe('ignoreFileRules', () => {
       ['!../x', 'dir', '!dir/../x'],
       ['/../x', 'dir', 'dir/../x'],
       ['sub/../../x', 'dir', 'dir/sub/../../x'],
-    ])('keeps %j from %j below its directory', (pattern, base, expected) => {
-      expect(rebaseIgnorePattern(pattern, base)).toBe(expected);
+      ['sub/../x', 'dir', 'dir/sub/../x'],
+      ['./x', 'dir', 'dir/./x'],
+      ['a//b', 'dir', 'dir/a//b'],
+      ['//x', 'dir', 'dir//x'],
+      ['x/..', 'dir', 'dir/x/..'],
+      ['/', 'dir', 'dir/**//'],
+      ['!/', 'dir', '!dir/**//'],
+    ])(
+      'keeps %j from %j as written below its directory, so it matches nothing as in git',
+      (pattern, base, expected) => {
+        expect(rebaseIgnorePattern(pattern, base)).toBe(expected);
+      },
+    );
+
+    test('leaves a lone `!` alone, so that it re-includes nothing', () => {
+      expect(rebaseIgnorePattern('!', 'dir')).toBe('!');
     });
   });
 });

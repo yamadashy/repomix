@@ -3,9 +3,9 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { type Options as GlobbyOptions, type GlobEntry, globby } from 'globby';
-import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { isCaseInsensitiveDirectory } from '../../../src/core/file/caseInsensitiveDirectory.js';
 import { createIgnoreFileFilter } from '../../../src/core/file/ignoreFileFilter.js';
-import { rebaseIgnorePattern } from '../../../src/core/file/ignoreFileRules.js';
 import { isWindows } from '../../testing/testUtils.js';
 
 const baseGlobOptions = { dot: true, followSymbolicLinks: false, absolute: false } as const;
@@ -97,7 +97,7 @@ describe('ignoreFileFilter', () => {
     await writeFiles({
       '.gitignore': 'root-ignored.txt\n/pkg/anchored.txt\n',
       'pkg/.gitignore': 'pkg-ignored.txt\n',
-      // .ignore / .repomixignore above the cwd are not read, as with globby.
+      // .ignore / .repomixignore above the cwd are not read.
       '.ignore': 'not-applied.txt\n',
       'pkg/root-ignored.txt': '',
       'pkg/anchored.txt': '',
@@ -145,34 +145,93 @@ describe('ignoreFileFilter', () => {
     expect(noDotIgnore).not.toContain('by-repomixignore.txt');
   });
 
-  test('applies several ignore files in one directory, later ones overriding earlier ones', async () => {
+  test('applies several ignore files in one directory as .gitignore, then .ignore, then .repomixignore', async () => {
     await writeFiles({
+      // Each later file overrides the earlier ones.
       'sub/.gitignore': '*.txt\n',
+      'sub/.ignore': '!other.txt\n',
       'sub/.repomixignore': '!keep.txt\n',
       'sub/a.txt': '',
       'sub/keep.txt': '',
+      'sub/other.txt': '',
+      'rev/.gitignore': '!*.txt\n',
+      'rev/.ignore': '!b.txt\n',
+      'rev/.repomixignore': '*.txt\n',
+      'rev/b.txt': '',
     });
+    const expected = [
+      'rev/.gitignore',
+      'rev/.ignore',
+      'rev/.repomixignore',
+      'sub/.gitignore',
+      'sub/.ignore',
+      'sub/.repomixignore',
+      'sub/keep.txt',
+      'sub/other.txt',
+    ];
+    expect(await searchBothWays()).toEqual(expected);
 
-    // Directory listing order decides which file is applied later; on common filesystems
-    // `.gitignore` is listed before `.repomixignore`.
-    expect(await searchBothWays()).toEqual(['sub/.gitignore', 'sub/.repomixignore', 'sub/keep.txt']);
+    // The same whatever order the filesystem lists a directory in: here every listing the filter
+    // reads, in the hook and on its own, comes back reversed.
+    const realReaddir = nodeFs.readdir;
+    const realReaddirPromise = fs.readdir;
+    const reverse = <T>(entries: T[] | undefined): T[] | undefined => entries?.slice().reverse();
+    const callbackSpy = vi
+      .spyOn(nodeFs, 'readdir')
+      .mockImplementation(((
+        dirPath: string,
+        options: unknown,
+        callback: (error: NodeJS.ErrnoException | null, entries?: unknown[]) => void,
+      ) =>
+        realReaddir(
+          dirPath,
+          options as never,
+          ((error: NodeJS.ErrnoException | null, entries?: unknown[]) => callback(error, reverse(entries))) as never,
+        )) as unknown as typeof nodeFs.readdir);
+    const promiseSpy = vi
+      .spyOn(fs, 'readdir')
+      .mockImplementation((async (...args: Parameters<typeof fs.readdir>) =>
+        reverse((await realReaddirPromise(...args)) as unknown[])) as unknown as typeof fs.readdir);
+    try {
+      expect(await searchBothWays()).toEqual(expected);
+      expect(callbackSpy).toHaveBeenCalled();
+      expect(promiseSpy).toHaveBeenCalled();
+    } finally {
+      callbackSpy.mockRestore();
+      promiseSpy.mockRestore();
+    }
   });
 
-  test('does not read ignore files under node_modules, coverage, flow-typed or .git', async () => {
+  test('reads ignore files inside node_modules, coverage and flow-typed, as git does', async () => {
     const files: Record<string, string> = {};
-    for (const dir of ['node_modules/m', 'coverage', 'pkg/flow-typed', '.git/x']) {
+    for (const dir of ['node_modules/m', 'coverage', 'pkg/flow-typed']) {
       files[`${dir}/.gitignore`] = '*.txt\n';
-      files[`${dir}/nested/.gitignore`] = '*.txt\n';
+      files[`${dir}/nested/.gitignore`] = '*.js\n';
       files[`${dir}/a.txt`] = '';
-      files[`${dir}/nested/b.txt`] = '';
+      files[`${dir}/nested/b.js`] = '';
+      files[`${dir}/nested/c.md`] = '';
     }
     await writeFiles(files);
 
     const result = await searchBothWays();
-    for (const dir of ['node_modules/m', 'coverage', 'pkg/flow-typed', '.git/x']) {
-      expect(result).toContain(`${dir}/a.txt`);
-      expect(result).toContain(`${dir}/nested/b.txt`);
+    for (const dir of ['node_modules/m', 'coverage', 'pkg/flow-typed']) {
+      expect(result).not.toContain(`${dir}/a.txt`);
+      expect(result).not.toContain(`${dir}/nested/b.js`);
+      expect(result).toContain(`${dir}/nested/c.md`);
     }
+  });
+
+  test('does not read ignore files inside .git', async () => {
+    await writeFiles({
+      '.git/x/.gitignore': '*.txt\n',
+      '.git/x/a.txt': '',
+      'sub/.git/.gitignore': '*.txt\n',
+      'sub/.git/b.txt': '',
+    });
+
+    const result = await searchBothWays();
+    expect(result).toContain('.git/x/a.txt');
+    expect(result).toContain('sub/.git/b.txt');
   });
 
   test('applies rules inside directories whose names contain glob syntax or a leading !', async () => {
@@ -308,32 +367,64 @@ describe('ignoreFileFilter', () => {
     expect(await searchBothWays({ patterns: ['symdir/linkd/**'] })).toEqual([]);
   });
 
-  describe('intentional differences from globby (matching git)', () => {
-    test('a `../x` rule in a nested .gitignore does not escape its directory', async () => {
-      // globby joined `dotdot` and `../normal2.txt` into the root rule `normal2.txt` and ignored
-      // the root file; git never matches `..`, and `git check-ignore` keeps the file.
-      await writeFiles({ 'dotdot/.gitignore': '../normal2.txt\n', 'normal2.txt': '', 'dotdot/normal2.txt': '' });
-      expect(await searchBothWays()).toEqual(['dotdot/.gitignore', 'dotdot/normal2.txt', 'normal2.txt']);
-      expect(rebaseIgnorePattern('../normal2.txt', 'dotdot')).toBe('dotdot/../normal2.txt');
-    });
+  test('a `../x` rule in a nested .gitignore does not escape its directory', async () => {
+    // Git never matches `..`, so the root file stays.
+    await writeFiles({ 'dotdot/.gitignore': '../normal2.txt\n', 'normal2.txt': '', 'dotdot/normal2.txt': '' });
+    expect(await searchBothWays()).toEqual(['dotdot/.gitignore', 'dotdot/normal2.txt', 'normal2.txt']);
+  });
 
-    test('a directory-only rule does not exclude a regular file of the same name', async () => {
-      // globby's traversal pruning turned `thing/` into `**/thing/**`, which also excluded a
-      // regular file named `thing`; git only ignores directories for `thing/`.
-      await writeFiles({
-        'onlydir/.gitignore': 'thing/\n',
-        'onlydir/thing': '',
-        'onlydir2/.gitignore': 'thing/\n',
-        'onlydir2/thing/f': '',
-      });
-      expect(await searchBothWays()).toEqual(['onlydir/.gitignore', 'onlydir/thing', 'onlydir2/.gitignore']);
+  test('rules with `.`, `..` or empty components match nothing, in nested and top-level files', async () => {
+    await writeFiles({
+      '.gitignore': './top.txt\nsub/../top2.txt\nb//c\n/\n',
+      'top.txt': '',
+      'top2.txt': '',
+      'b/c': '',
+      'a/.gitignore': './x.txt\nsub/../y.txt\nd//e\nw/..\n',
+      'a/x.txt': '',
+      'a/y.txt': '',
+      'a/d/e': '',
+      'a/w/f': '',
     });
+    expect(await searchBothWays()).toEqual([
+      '.gitignore',
+      'a/.gitignore',
+      'a/d/e',
+      'a/w/f',
+      'a/x.txt',
+      'a/y.txt',
+      'b/c',
+      'top.txt',
+      'top2.txt',
+    ]);
+  });
 
-    test('rules in `sp[1]/` do not apply to `sp1/`', async () => {
-      // globby put the unescaped directory name in front of each rule, so `sp[1]/**/*.dat` also
-      // matched `sp1/z.dat`; git applies `sp[1]/.gitignore` only inside `sp[1]/`.
-      await writeFiles({ 'sp[1]/.gitignore': '*.dat\n', 'sp[1]/z.dat': '', 'sp1/z.dat': '' });
-      expect(await searchBothWays()).toEqual(['sp1/z.dat', 'sp[1]/.gitignore']);
+  test('a lone `!` re-includes nothing', async () => {
+    await writeFiles({ '.gitignore': 'n/*\n', 'n/.gitignore': '!\n', 'n/f': '', 'n/sub/f': '' });
+    expect(await searchBothWays()).toEqual(['.gitignore']);
+  });
+
+  test('a directory-only rule does not exclude a regular file of the same name', async () => {
+    await writeFiles({
+      'onlydir/.gitignore': 'thing/\n',
+      'onlydir/thing': '',
+      'onlydir2/.gitignore': 'thing/\n',
+      'onlydir2/thing/f': '',
+    });
+    expect(await searchBothWays()).toEqual(['onlydir/.gitignore', 'onlydir/thing', 'onlydir2/.gitignore']);
+  });
+
+  test('rules in `sp[1]/` do not apply to `sp1/`', async () => {
+    await writeFiles({ 'sp[1]/.gitignore': '*.dat\n', 'sp[1]/z.dat': '', 'sp1/z.dat': '' });
+    expect(await searchBothWays()).toEqual(['sp1/z.dat', 'sp[1]/.gitignore']);
+  });
+
+  describe('case sensitivity follows the filesystem, as core.ignorecase does in git', () => {
+    test('matches rules case-insensitively exactly when the filesystem folds case', async () => {
+      await writeFiles({ '.gitignore': 'build/\nREADME.TXT\n', 'BUILD/x.js': '', 'readme.txt': '', 'kept.js': '' });
+      const ignoreCase = await isCaseInsensitiveDirectory(tempDir);
+      expect(await searchBothWays()).toEqual(
+        ignoreCase ? ['.gitignore', 'kept.js'] : ['.gitignore', 'BUILD/x.js', 'kept.js', 'readme.txt'],
+      );
     });
   });
 });
