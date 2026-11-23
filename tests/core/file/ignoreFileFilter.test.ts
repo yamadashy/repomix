@@ -275,35 +275,38 @@ describe('ignoreFileFilter', () => {
     expect(await searchBothWays({ kind: 'directories' })).toEqual(['src']);
   });
 
-  (isWindows ? test.skip : test)(
-    'treats symlinks like globby did: a directory-only rule matches a symlink to a directory only',
-    async () => {
-      await writeFiles({
-        'symdir/.gitignore': 'linkd/\nlinkf/\n',
-        'symdir/plain.txt': '',
-        'target/index.ts': '',
-        'target.txt': '',
-      });
-      await fs.symlink('../target', path.join(tempDir, 'symdir/linkd'));
-      await fs.symlink('../target.txt', path.join(tempDir, 'symdir/linkf'));
-      const filter = createIgnoreFileFilter(tempDir, { useGitignore: true, useDotIgnore: true });
+  (isWindows ? test.skip : test)('treats a symlink as a file, so a directory-only rule does not match it', async () => {
+    await writeFiles({
+      'symdir/.gitignore': 'linkd/\nlinkf/\n',
+      'symdir/plain.txt': '',
+      'target/index.ts': '',
+      'target.txt': '',
+    });
+    await fs.symlink('../target', path.join(tempDir, 'symdir/linkd'));
+    await fs.symlink('../target.txt', path.join(tempDir, 'symdir/linkf'));
+    const filter = createIgnoreFileFilter(tempDir, { useGitignore: true, useDotIgnore: true });
 
-      // objectMode is the only mode that returns symlink entries; directory-ness follows the link.
-      const entries: GlobEntry[] = await globby(['symdir/*'], {
-        ...baseGlobOptions,
-        cwd: tempDir,
-        onlyFiles: false,
-        objectMode: true,
-        fs: { ...nodeFs, readdir: filter.readdir } as unknown as GlobbyOptions['fs'],
-      });
-      const kept = await filter.filterResults(entries, 'entries');
-      expect(kept.map((entry) => entry.path).sort()).toEqual(['symdir/.gitignore', 'symdir/linkf', 'symdir/plain.txt']);
+    // objectMode is the only mode that returns symlink entries. fileSearch drops them afterwards,
+    // so whether the filter keeps them does not change what gets packed.
+    const entries: GlobEntry[] = await globby(['symdir/*'], {
+      ...baseGlobOptions,
+      cwd: tempDir,
+      onlyFiles: false,
+      objectMode: true,
+      fs: { ...nodeFs, readdir: filter.readdir } as unknown as GlobbyOptions['fs'],
+    });
+    const kept = await filter.filterResults(entries, 'entries');
+    expect(kept.map((entry) => entry.path).sort()).toEqual([
+      'symdir/.gitignore',
+      'symdir/linkd',
+      'symdir/linkf',
+      'symdir/plain.txt',
+    ]);
 
-      // A pattern whose static base is the symlinked directory reads through it; the rule still
-      // ignores everything below `symdir/linkd/`.
-      expect(await searchBothWays({ patterns: ['symdir/linkd/**'] })).toEqual([]);
-    },
-  );
+    // A pattern whose static base is the symlinked directory reads through it; the rule still
+    // ignores everything below `symdir/linkd/`.
+    expect(await searchBothWays({ patterns: ['symdir/linkd/**'] })).toEqual([]);
+  });
 
   describe('intentional differences from globby (matching git)', () => {
     test('a `../x` rule in a nested .gitignore does not escape its directory', async () => {

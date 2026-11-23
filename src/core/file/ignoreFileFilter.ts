@@ -1,4 +1,4 @@
-import nodeFs, { type Dirent, type Stats } from 'node:fs';
+import nodeFs, { type Dirent } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { GlobEntry } from 'globby';
@@ -26,20 +26,6 @@ import { parseIgnoreFileLines, rebaseIgnorePattern } from './ignoreFileRules.js'
 // for the ignore-file search), so their rules must not be applied either.
 const UNREAD_IGNORE_FILE_DIR_NAMES = new Set(['node_modules', 'flow-typed', 'coverage', '.git']);
 const GITIGNORE = '.gitignore';
-
-export interface IgnoreFileFilterDeps {
-  readdir: (dirPath: string) => Promise<Dirent[]>;
-  readFile: (filePath: string, encoding: 'utf8') => Promise<string>;
-  stat: (filePath: string) => Promise<Stats>;
-  lstat: (filePath: string) => Promise<Stats>;
-}
-
-const defaultDeps: IgnoreFileFilterDeps = {
-  readdir: (dirPath) => fs.readdir(dirPath, { withFileTypes: true }),
-  readFile: fs.readFile,
-  stat: fs.stat,
-  lstat: fs.lstat,
-};
 
 interface RuleNode {
   patterns: string[];
@@ -69,7 +55,6 @@ const createMatcher = (patterns: string[]): Ignore | undefined =>
 export const createIgnoreFileFilter = (
   rootDir: string,
   options: { useGitignore: boolean; useDotIgnore: boolean },
-  deps: IgnoreFileFilterDeps = defaultDeps,
 ): IgnoreFileFilter => {
   const cwd = path.resolve(rootDir);
   const ignoreFileNames = new Set(['.repomixignore']);
@@ -78,7 +63,7 @@ export const createIgnoreFileFilter = (
 
   const readIgnoreFile = async (filePath: string): Promise<string | undefined> => {
     try {
-      return await deps.readFile(filePath, 'utf8');
+      return await fs.readFile(filePath, 'utf8');
     } catch (error) {
       const code = (error as NodeJS.ErrnoException)?.code;
       if (code === 'ENOENT' || code === 'ENOTDIR') {
@@ -92,7 +77,7 @@ export const createIgnoreFileFilter = (
   const findGitRoot = async (): Promise<string | undefined> => {
     for (let dir = cwd; ; dir = path.dirname(dir)) {
       try {
-        const stats = await deps.stat(path.join(dir, '.git'));
+        const stats = await fs.stat(path.join(dir, '.git'));
         if (stats.isDirectory() || stats.isFile()) return dir;
       } catch {
         // Not here; keep looking upwards.
@@ -125,7 +110,7 @@ export const createIgnoreFileFilter = (
       const contents = await Promise.all(
         chain.map(async (dir) => {
           const filePath = path.join(dir, GITIGNORE);
-          const isFile = await deps.lstat(filePath).then(
+          const isFile = await fs.lstat(filePath).then(
             (stats) => stats.isFile(),
             () => false,
           );
@@ -154,14 +139,14 @@ export const createIgnoreFileFilter = (
     if (dir !== cwd) {
       if (UNREAD_IGNORE_FILE_DIR_NAMES.has(path.basename(dir))) return { ...parent, readsIgnoreFiles: false };
       if (!knownRealDirs.has(dir)) {
-        const isRealDir = await deps.lstat(dir).then(
+        const isRealDir = await fs.lstat(dir).then(
           (stats) => stats.isDirectory(),
           () => false,
         );
         if (!isRealDir) return { ...parent, readsIgnoreFiles: false };
       }
     }
-    const entries = dirents ?? (await deps.readdir(dir).catch(() => [] as Dirent[]));
+    const entries = dirents ?? (await fs.readdir(dir, { withFileTypes: true }).catch(() => [] as Dirent[]));
     // Several ignore files in one directory are applied in directory listing order, as globby's
     // ignore-file search returned them. The cwd's `.gitignore` was already read with the chain.
     const ignoreFiles = entries.filter(
@@ -230,37 +215,25 @@ export const createIgnoreFileFilter = (
         name: resultPath.slice(slashIndex + 1),
       };
     });
-    const dirs = new Map<string, { dir: string; resolved: Awaited<ReturnType<typeof resolveDir>> }>();
+    const dirs = new Map<string, Awaited<ReturnType<typeof resolveDir>>>();
     await Promise.all(
       [...new Set(splitPaths.map(({ dirKey }) => dirKey))].map(async (dirKey) => {
-        const dir = path.resolve(cwd, dirKey);
-        dirs.set(dirKey, { dir, resolved: await resolveDir(dir) });
+        dirs.set(dirKey, await resolveDir(path.resolve(cwd, dirKey)));
       }),
     );
-    // Directory-ness as globby's filter saw it: a stat, which follows symlinks. Only objectMode
-    // results can be symlinks; onlyFiles / onlyDirectories never return one.
-    const isDirectory = (result: string | GlobEntry, absPath: () => string): boolean | Promise<boolean> => {
-      if (kind !== 'entries') return kind === 'directories';
-      const { dirent } = result as GlobEntry;
-      if (!dirent.isSymbolicLink()) return dirent.isDirectory();
-      return deps.stat(absPath()).then(
-        (stats) => stats.isDirectory(),
-        () => false,
-      );
-    };
-    const decide = (result: string | GlobEntry, index: number): boolean | Promise<boolean> => {
+    // A symlink counts as a file, as in the readdir hook. Only objectMode returns symlinks, and
+    // fileSearch drops them from its results either way.
+    const isDirectory = (result: string | GlobEntry): boolean =>
+      typeof result === 'string' ? kind === 'directories' : result.dirent.isDirectory();
+    return results.filter((result, index) => {
       const { dirKey, name } = splitPaths[index];
-      const { dir, resolved } = dirs.get(dirKey) ?? {};
-      if (!resolved || !dir) return true;
+      const resolved = dirs.get(dirKey);
+      if (!resolved) return true;
       const rel = resolved.prefix + name;
       if (resolved.matcher.ignores(rel)) return false;
-      const directory = isDirectory(result, () => path.join(dir, name));
-      const keepDirectory = (isDir: boolean) => !(isDir && resolved.matcher.ignores(`${rel}/`));
-      return typeof directory === 'boolean' ? keepDirectory(directory) : directory.then(keepDirectory);
-    };
-    // Only objectMode results may need a stat; keep the common case free of per-result promises.
-    const keep = kind === 'entries' ? await Promise.all(results.map(decide)) : results.map(decide);
-    return results.filter((_, index) => keep[index]);
+      // A directory is also tested with a trailing slash so directory-only rules apply.
+      return !(isDirectory(result) && resolved.matcher.ignores(`${rel}/`));
+    });
   };
 
   return {
