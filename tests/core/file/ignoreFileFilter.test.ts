@@ -308,6 +308,19 @@ describe('ignoreFileFilter', () => {
     expect(await searchBothWays({ patterns: ['symdir/linkd/**'] })).toEqual([]);
   });
 
+  test('a lone `!` in a nested ignore file re-includes nothing', async () => {
+    // As in git: `bang/*` stays in force for everything below `bang/`.
+    await writeFiles({
+      '.gitignore': 'bang/*\n',
+      'bang/.gitignore': '!\n',
+      'bang/f.txt': '',
+      'bang/sub/f.txt': '',
+      'kept.txt': '',
+    });
+
+    expect(await searchBothWays()).toEqual(['.gitignore', 'kept.txt']);
+  });
+
   describe('intentional differences from globby (matching git)', () => {
     test('a `../x` rule in a nested .gitignore does not escape its directory', async () => {
       // globby joined `dotdot` and `../normal2.txt` into the root rule `normal2.txt` and ignored

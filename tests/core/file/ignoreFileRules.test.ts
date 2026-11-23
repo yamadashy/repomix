@@ -39,6 +39,10 @@ describe('ignoreFileRules', () => {
       expect(rebaseIgnorePattern(pattern, base)).toBe(expected);
     });
 
+    test('leaves a lone `!` alone, so it re-includes nothing', () => {
+      expect(rebaseIgnorePattern('!', 'dir')).toBe('!');
+    });
+
     test.each([
       ['x.txt', 'sp[1]', 'sp\\[1\\]/**/x.txt'],
       ['x.txt', 'a*b', 'a\\*b/**/x.txt'],

@@ -49,6 +49,11 @@ export const rebaseIgnorePattern = (pattern: string, base: string): string => {
   const escapedBase = escapeDirectoryForGitignore(base);
   const isNegative = pattern.startsWith('!');
   const cleanPattern = isNegative ? pattern.slice(1) : pattern;
+  // A lone `!` is no rule at all. Rebased it would become `!base/**`, re-including everything
+  // below the directory; kept as it is, the `ignore` package drops it, as git does.
+  if (!cleanPattern) {
+    return pattern;
+  }
   const slashIndex = cleanPattern.indexOf('/');
   const hasNonTrailingSlash = slashIndex !== -1 && slashIndex !== cleanPattern.length - 1;
   let result: string;
