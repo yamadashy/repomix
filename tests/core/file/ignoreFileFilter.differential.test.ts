@@ -83,7 +83,8 @@ describe.skipIf(!isGitAvailable)('ignoreFileFilter: every change from globby mov
 
   afterAll(async () => {
     await fs.rm(tempDir, { recursive: true, force: true });
-  });
+    // Removing the trees of a large REPOMIX_IGNORE_DIFF_CASES run takes longer than the default.
+  }, 600_000);
 
   const writeTree = async (fixture: Fixture, withGitDir: boolean): Promise<string> => {
     const dir = path.join(tempDir, `t${counter++}`);
@@ -295,6 +296,13 @@ const PLAIN_NAMES = [
   '.hidden',
   '-dash',
   'a.b.c',
+  // Shapes common in real ignore files (editor backups, compiled files, cache directories).
+  'x.pyc',
+  'q.Cache',
+  'b~',
+  '.#a',
+  '_.swp',
+  'report.1.json',
 ];
 // Gitignore syntax in names; the ones Windows cannot hold only elsewhere.
 const PORTABLE_SPECIAL_NAMES = ['sp[1]', 'sp1', '!b', '#h', 'd e', '..a'];
@@ -315,6 +323,13 @@ const GLOB_SEGMENTS = [
   '.*',
   'k*',
   '*[!.]*',
+  // Seen in real ignore files: several classes in one segment, ranges, members of three or more.
+  '*.py[cod]',
+  '*.[Cc]ache',
+  '[._]*.s[a-v][a-z]',
+  'report.[0-9]*.json',
+  '*~',
+  '.#*',
 ];
 const LEADS = ['', '', '', '', '!', '!', '!', '/', '/', '**/', './', '../', '\\!', '\\#', '!/', '!**/'];
 const TRAILS = ['', '', '', '', '/', '/', '/', ' ', '\\ ', '\t', '/..', '/.', '//', '/**', '/*', '/**/*'];
@@ -337,7 +352,7 @@ const generateRule = (random: Random, below: string[]): string => {
       .join('/');
   } else {
     const segment = () => (random.chance(0.5) ? escapeName(random.pick(NAMES)) : random.pick(GLOB_SEGMENTS));
-    body = Array.from({ length: random.pick([1, 1, 2, 2, 3]) }, segment).join('/');
+    body = Array.from({ length: random.pick([1, 1, 2, 2, 3, 4]) }, segment).join('/');
   }
   // No `a**` (see above).
   return `${random.pick(LEADS)}${body}${random.pick(TRAILS)}`.replace(/([^/*])\*\*/g, '$1*');
