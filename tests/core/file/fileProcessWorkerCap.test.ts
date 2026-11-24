@@ -1,3 +1,4 @@
+import os from 'node:os';
 import { describe, expect, it, vi } from 'vitest';
 import type { FileManipulator } from '../../../src/core/file/fileManipulate.js';
 import { processFiles } from '../../../src/core/file/fileProcess.js';
@@ -14,14 +15,19 @@ vi.mock('../../../src/core/treeSitter/parseFile.js', () => ({
 
 const noopManipulator = (): FileManipulator | null => null;
 
-/** Stub `process.versions.bun` for the duration of `fn`, restoring it afterwards. */
+/** Stub `process.versions.bun` and `os.availableParallelism` for `fn`, restoring both afterwards. */
 async function withBun<T>(fn: () => Promise<T>): Promise<T> {
   const hadBun = Object.hasOwn(process.versions, 'bun');
   const original = process.versions.bun;
   Object.defineProperty(process.versions, 'bun', { value: '1.2.0', configurable: true });
+  // Pin the CPU count so the cap assertion is deterministic regardless of the
+  // runner's core count. With 18 cores, half-cores = 9, so the sqrt-based cap
+  // (1 for one compressed file, 3 for 400) is the binding value in both tests.
+  const parallelismSpy = vi.spyOn(os, 'availableParallelism').mockReturnValue(18);
   try {
     return await fn();
   } finally {
+    parallelismSpy.mockRestore();
     if (hadBun) {
       Object.defineProperty(process.versions, 'bun', { value: original, configurable: true });
     } else {
