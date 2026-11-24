@@ -155,16 +155,17 @@ export const processFiles = async (
     // Phase 1: Heavy processing via workers (removeComments, compress)
     logger.trace(`Starting file processing for ${leveledFiles.length} files using worker pool`);
 
+    // Only compressed files load the tree-sitter WASM in a worker. On Bun that WASM is
+    // compiled per worker, so the square-root worker cap must be sized by the number of
+    // files that actually pay the warm-up, not by the total file count. Sizing by the
+    // total count over-provisions workers when only a small subset is compressed via
+    // output.patterns (e.g. 100 compressed out of 6000 -> cap 9 instead of 2).
+    const compressCount = leveledFiles.filter((entry) => entry.level === 'compress').length;
+
     const taskRunner = deps.initTaskRunner<FileProcessTask, ProcessedFile>({
       numOfTasks: leveledFiles.length,
       workerType: 'fileProcess',
       runtime: 'worker_threads',
-      // Only compressed files load the tree-sitter WASM in a worker. On Bun that WASM is
-// compiled per worker, so the square-root worker cap must be sized by the number of
-// files that actually pay the warm-up, not by the total file count. Sizing by the
-// total count over-provisions workers when only a small subset is compressed via
-// output.patterns (e.g. 100 compressed out of 6000 -> cap 9 instead of 2).
-const compressCount = leveledFiles.filter((entry) => entry.level === 'compress').length;
       maxWorkerThreads: getFileProcessMaxWorkerThreads(needsCompression, compressCount),
       signal,
     });
