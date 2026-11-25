@@ -66,6 +66,11 @@ const calculateFileLineCounts = (processedFiles: ProcessedFile[]): Record<string
 };
 
 export const createRenderContext = (outputGeneratorContext: OutputGeneratorContext): RenderContext => {
+  // fileLineCounts (skill output only) and markdownCodeBlockDelimiter (Markdown and
+  // skill output only) each scan every file's content, so they are computed on
+  // first read and memoized instead of eagerly for every style.
+  let fileLineCounts: Record<string, number> | undefined;
+  let markdownCodeBlockDelimiter: string | undefined;
   return {
     generationHeader: generateHeader(outputGeneratorContext.config, outputGeneratorContext.generationDate),
     summaryPurpose: generateSummaryPurpose(outputGeneratorContext.config),
@@ -79,17 +84,23 @@ export const createRenderContext = (outputGeneratorContext: OutputGeneratorConte
     instruction: outputGeneratorContext.instruction,
     treeString: outputGeneratorContext.treeString,
     processedFiles: outputGeneratorContext.processedFiles,
-    fileLineCounts: calculateFileLineCounts(outputGeneratorContext.processedFiles),
+    get fileLineCounts() {
+      fileLineCounts ??= calculateFileLineCounts(outputGeneratorContext.processedFiles);
+      return fileLineCounts;
+    },
     fileSummaryEnabled: outputGeneratorContext.config.output.fileSummary,
     directoryStructureEnabled: outputGeneratorContext.config.output.directoryStructure,
     filesEnabled: outputGeneratorContext.config.output.files,
     escapeFileContent: outputGeneratorContext.config.output.parsableStyle,
-    markdownCodeBlockDelimiter: calculateMarkdownDelimiter([
-      ...outputGeneratorContext.processedFiles.map((file) => file.content),
-      outputGeneratorContext.treeString,
-      outputGeneratorContext.gitDiffResult?.workTreeDiffContent,
-      outputGeneratorContext.gitDiffResult?.stagedDiffContent,
-    ]),
+    get markdownCodeBlockDelimiter() {
+      markdownCodeBlockDelimiter ??= calculateMarkdownDelimiter([
+        ...outputGeneratorContext.processedFiles.map((file) => file.content),
+        outputGeneratorContext.treeString,
+        outputGeneratorContext.gitDiffResult?.workTreeDiffContent,
+        outputGeneratorContext.gitDiffResult?.stagedDiffContent,
+      ]);
+      return markdownCodeBlockDelimiter;
+    },
     gitDiffEnabled: outputGeneratorContext.config.output.git?.includeDiffs,
     gitDiffWorkTree: outputGeneratorContext.gitDiffResult?.workTreeDiffContent,
     gitDiffStaged: outputGeneratorContext.gitDiffResult?.stagedDiffContent,
@@ -97,6 +108,24 @@ export const createRenderContext = (outputGeneratorContext: OutputGeneratorConte
     gitLogContent: outputGeneratorContext.gitLogResult?.logContent,
     gitLogCommits: outputGeneratorContext.gitLogResult?.commits,
   };
+};
+
+// Same result as `${rendered.trim()}\n` without copying the whole output. The
+// renderers return a flat string, so trim() alone is a cheap slice of it, but
+// appending '\n' creates a cons string that is flattened into a second full-size
+// copy as soon as it is written or searched. The rendered output nearly always has
+// a '\n' right after the trimmed content, so the result is then a slice that keeps
+// it. trimStart()/trimEnd() strip exactly the same characters as trim().
+export const trimAndTerminateOutput = (rendered: string): string => {
+  const end = rendered.trimEnd().length;
+  if (end === 0) {
+    return '\n';
+  }
+  const start = rendered.length - rendered.trimStart().length;
+  if (rendered.charCodeAt(end) === 0x0a) {
+    return rendered.slice(start, end + 1);
+  }
+  return `${rendered.slice(start, end)}\n`;
 };
 
 const generateParsableXmlOutput = async (renderContext: RenderContext): Promise<string> => {
@@ -214,7 +243,7 @@ const generateTemplateOutput = async (
 ): Promise<string> => {
   try {
     const render = getStyleRenderer(config.output.style);
-    return `${render(renderContext).trim()}\n`;
+    return trimAndTerminateOutput(render(renderContext));
   } catch (error) {
     if (error instanceof RangeError && error.message === 'Invalid string length') {
       let largeFilesInfo = '';
