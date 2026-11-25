@@ -125,7 +125,7 @@ export const generateSkillReferences = async (
 
   // Generate each section separately
   const references: SkillReferences = {
-    summary: generateSummarySection(renderContext, statisticsSection),
+    summary: generateSummarySection(renderContext, statisticsSection, techStacks.length > 0),
     structure: generateStructureSection(renderContext, filePathsByRoot),
     files: generateFilesSection(renderContext),
     techStack: techStackMd,
