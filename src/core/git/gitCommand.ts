@@ -5,6 +5,7 @@ import { promisify } from 'node:util';
 import { getErrorMessage, RepomixError } from '../../shared/errorHandle.js';
 import { logger } from '../../shared/logger.js';
 import { redactErrorMessage, redactUrl } from '../../shared/urlRedact.js';
+import { remoteUrlPrefixes } from './gitRemoteUrl.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -281,13 +282,18 @@ export const validateGitUrl = (url: string): void => {
     throw new RepomixError(`Invalid repository URL. URL contains potentially dangerous parameters: ${redactUrl(url)}`);
   }
 
-  // Check if the URL starts with git@ or https://
-  if (!(url.startsWith('git@') || url.startsWith('https://'))) {
-    throw new RepomixError(`Invalid URL protocol for '${redactUrl(url)}'. URL must start with 'git@' or 'https://'`);
+  // The same prefixes the CLI uses to recognise an explicit remote URL. One list, so a
+  // value accepted there is not rejected here: `git://` and `ssh://` were detected as
+  // remotes, entered the remote path, and then failed at the first git command with
+  // "Invalid URL protocol" — a URL the tool itself had just called valid.
+  if (!remoteUrlPrefixes.some((prefix) => url.startsWith(prefix))) {
+    throw new RepomixError(
+      `Invalid URL protocol for '${redactUrl(url)}'. URL must start with one of: ${remoteUrlPrefixes.map((prefix) => `'${prefix}'`).join(', ')}`,
+    );
   }
 
   try {
-    if (url.startsWith('https://')) {
+    if (url.includes('://')) {
       new URL(url);
     }
   } catch (error: unknown) {
