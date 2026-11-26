@@ -54,6 +54,12 @@ Once installed, you can analyze codebases with natural language instructions.
 https://github.com/facebook/react"
 ```
 
+The skill supports GitHub, GitLab (including self-hosted instances and nested groups), Bitbucket, Azure DevOps, and other Git hosts. Use HTTPS clone URLs or SCP-style SSH addresses such as `git@gitlab.example.com:group/subgroup/project.git`, preserving the full namespace and provider-specific clone path. The `owner/repo` shorthand is GitHub-only.
+
+For branch, tag, commit, file, or directory web URLs, the skill uses the clone URL with `--remote-branch <ref>` and, when needed, `--include <path or glob>`. A path in a web URL does not restrict which files are packed.
+
+Non-GitHub remotes require Git to be installed. For private repositories, configure Git credentials or SSH keys in the environment. If Repomix rejects an address format, use a supported clone URL or a local checkout.
+
 #### Explore local codebases
 
 ```text
