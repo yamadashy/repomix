@@ -85,6 +85,89 @@ const stripCssPreprocessorComments = (content: string): string => {
   );
 };
 
+// Rust's quotes and comments do not fit the C profile. A raw string (`r"..."`, `r#"..."#`, and the
+// `b`/`c` prefixed forms) has no escapes and may contain `"`, a lifetime (`'a`) is a lone `'` that
+// the profile pairs with the next one as a string, and block comments nest. Any of these makes a
+// later string misread, and a `//` in it (`"can't reach http://..."`) is cut as a comment together
+// with the code after it. Scan the file once instead: keep every string, char literal and lifetime
+// as is, and drop comments (a block comment leaves only its newlines). An unclosed string or
+// comment runs to the end of input.
+const RUST_RAW_STRING_START = /[bc]?r(#*)"/y;
+const RUST_CHAR_LITERAL = /'(?:[^'\\\n]|\\(?:x[0-9A-Fa-f]{2}|u\{[0-9A-Fa-f_]+\}|[^\n]))'/y;
+const RUST_LIFETIME = /'[\p{L}_][\p{L}\p{N}_]*/uy;
+const RUST_IDENT_CHAR = /[\p{L}\p{N}_]/u;
+
+const matchAt = (pattern: RegExp, content: string, index: number): RegExpExecArray | null => {
+  pattern.lastIndex = index;
+  return pattern.exec(content);
+};
+
+const stripRustComments = (content: string): string => {
+  const length = content.length;
+  let result = '';
+  let copied = 0;
+  let i = 0;
+  while (i < length) {
+    const char = content[i];
+    const next = content[i + 1];
+    if (char === '/' && next === '/') {
+      result += content.slice(copied, i);
+      const newline = content.indexOf('\n', i);
+      i = newline === -1 ? length : newline;
+      copied = i;
+    } else if (char === '/' && next === '*') {
+      result += content.slice(copied, i);
+      let depth = 1;
+      let end = i + 2;
+      while (end < length && depth > 0) {
+        if (content[end] === '/' && content[end + 1] === '*') {
+          depth++;
+          end += 2;
+        } else if (content[end] === '*' && content[end + 1] === '/') {
+          depth--;
+          end += 2;
+        } else {
+          end++;
+        }
+      }
+      result += content.slice(i, end).replace(/[^\n]/g, '');
+      i = Math.min(end, length);
+      copied = i;
+    } else if (char === '"') {
+      i++;
+      while (i < length && content[i] !== '"') {
+        i += content[i] === '\\' ? 2 : 1;
+      }
+      i = Math.min(i + 1, length);
+    } else if (char === "'") {
+      const literal = matchAt(RUST_CHAR_LITERAL, content, i) ?? matchAt(RUST_LIFETIME, content, i);
+      i += literal ? literal[0].length : 1;
+    } else {
+      const atWordStart = i === 0 || !RUST_IDENT_CHAR.test(content[i - 1]);
+      // A raw identifier such as `r#r` is a name, so a quote right after it opens a plain string
+      if (atWordStart && char === 'r' && next === '#' && RUST_IDENT_CHAR.test(content[i + 2] ?? '')) {
+        i += 2;
+        while (i < length && RUST_IDENT_CHAR.test(content[i])) i++;
+        continue;
+      }
+      const raw = atWordStart && 'bcr'.includes(char) ? matchAt(RUST_RAW_STRING_START, content, i) : null;
+      if (raw) {
+        const close = content.indexOf(`"${raw[1]}`, i + raw[0].length);
+        i = close === -1 ? length : close + 1 + raw[1].length;
+      } else {
+        i++;
+      }
+    }
+  }
+  return result + content.slice(copied);
+};
+
+class RustManipulator extends BaseManipulator {
+  removeComments(content: string): string {
+    return rtrimLines(stripRustComments(content));
+  }
+}
+
 class CssManipulator extends BaseManipulator {
   removeComments(content: string): string {
     return rtrimLines(stripCssComments(content));
@@ -300,7 +383,7 @@ const manipulators: Record<string, FileManipulator> = {
   '.php': new StripCommentsManipulator('php'),
   '.py': new StripCommentsManipulator('python'),
   '.rb': new StripCommentsManipulator('ruby'),
-  '.rs': new StripCommentsManipulator('c'),
+  '.rs': new RustManipulator(),
   '.sass': new CssPreprocessorManipulator(),
   '.scss': new CssPreprocessorManipulator(),
   '.sh': new HashCommentManipulator('shell'),

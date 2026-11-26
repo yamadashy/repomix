@@ -1282,6 +1282,88 @@ a: "x
     });
   });
 
+  describe('Rust keeps strings, char literals and lifetimes intact', () => {
+    // The C profile reads these as ordinary quotes, so a `//` in a later string was cut as a
+    // comment together with the code after it.
+    test('keeps raw strings that contain quotes or `//`', () => {
+      const manipulator = getFileManipulator('test.rs');
+      const input = [
+        'let re = Regex::new(r#"^"?(\\w+)$"#); // optional quote',
+        'let s = r#"say "hi" // twice"#; // greeting',
+        'let bytes = br##"say "#hi"##; // bytes',
+        'let url = "https://example.com"; // trailing',
+      ].join('\n');
+      expect(manipulator?.removeComments(input)).toBe(
+        [
+          'let re = Regex::new(r#"^"?(\\w+)$"#);',
+          'let s = r#"say "hi" // twice"#;',
+          'let bytes = br##"say "#hi"##;',
+          'let url = "https://example.com";',
+        ].join('\n'),
+      );
+    });
+
+    test('does not pair a lifetime with a later apostrophe', () => {
+      const manipulator = getFileManipulator('test.rs');
+      const input = [
+        "fn get<'a>(key: &'a str) -> Option<&'a str> { // lookup",
+        '    let msg = "can\'t reach https://example.com"; // why',
+        "    let quote = '\"'; let tick = '\\''; // chars",
+        "    'outer: loop { break 'outer; } // label",
+        '    None',
+        '}',
+      ].join('\n');
+      expect(manipulator?.removeComments(input)).toBe(
+        [
+          "fn get<'a>(key: &'a str) -> Option<&'a str> {",
+          '    let msg = "can\'t reach https://example.com";',
+          "    let quote = '\"'; let tick = '\\'';",
+          "    'outer: loop { break 'outer; }",
+          '    None',
+          '}',
+        ].join('\n'),
+      );
+    });
+
+    test('still removes comments that mention quotes', () => {
+      const manipulator = getFileManipulator('test.rs');
+      const input = '// don\'t use r"raw" here\n/* it\'s "quoted" */ let x = 1;';
+      expect(manipulator?.removeComments(input)).toBe('\n let x = 1;');
+    });
+
+    test('removes nested block comments whole', () => {
+      const manipulator = getFileManipulator('test.rs');
+      const input = [
+        '/* outer /* inner */ note" */',
+        'fn main() { let s = "/*"; let keep = 1; }',
+        '/* Use /* nested */ \\" to escape a quote. */ const URL: &str = "https://example.com";',
+      ].join('\n');
+      expect(manipulator?.removeComments(input)).toBe(
+        ['', 'fn main() { let s = "/*"; let keep = 1; }', ' const URL: &str = "https://example.com";'].join('\n'),
+      );
+    });
+
+    test('keeps an unclosed string that ends in a backslash', () => {
+      const manipulator = getFileManipulator('test.rs');
+      const input = 'let s = "http://example.com\\';
+      expect(manipulator?.removeComments(input)).toBe(input);
+    });
+
+    test('does not read a raw identifier as a raw string prefix', () => {
+      const manipulator = getFileManipulator('test.rs');
+      const input = 'discard!(r#r"\\" // literal"); fn keep() {} // c';
+      expect(manipulator?.removeComments(input)).toBe('discard!(r#r"\\" // literal"); fn keep() {}');
+    });
+
+    test('handles a very long string literal', () => {
+      const manipulator = getFileManipulator('test.rs');
+      const literal = `"${'a'.repeat(10_000_000)}"`;
+      expect(manipulator?.removeComments(`const FIXTURE: &str = ${literal}; // fixture`)).toBe(
+        `const FIXTURE: &str = ${literal};`,
+      );
+    });
+  });
+
   describe('Vue and Svelte strip each section with its own language', () => {
     test('keeps `//` in Vue markup and style, and keeps script tag attributes', () => {
       const manipulator = getFileManipulator('App.vue');
