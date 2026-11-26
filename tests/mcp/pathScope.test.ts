@@ -139,6 +139,12 @@ describe('resolveWithinRoot', () => {
       path.join(ROOT, 'new-file.ts'),
     );
   });
+
+  test('accepts descendants when workspace root is a filesystem root', async () => {
+    const fsRoot = path.parse(process.cwd()).root;
+    const expected = path.join(fsRoot, 'repomix-root-probe.txt');
+    await expect(resolveWithinRoot(fsRoot, 'repomix-root-probe.txt', { realpath: idRealpath })).resolves.toBe(expected);
+  });
 });
 
 describe('toVirtualPath', () => {
