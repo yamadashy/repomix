@@ -106,8 +106,12 @@ const PYTHON_FRAMEWORKS: Record<string, string> = {
 };
 
 const detectPythonFramework = (name: string, frameworks: string[]): void => {
-  const framework = PYTHON_FRAMEWORKS[name.toLowerCase()];
-  if (framework !== undefined) frameworks.push(framework);
+  const key = name.toLowerCase();
+  // A requirement is free text, so it can name an `Object.prototype` member. Reading the
+  // table by key alone answered `constructor` with a function, and that function was then
+  // listed as a framework next to Django and Flask.
+  if (!Object.hasOwn(PYTHON_FRAMEWORKS, key)) return;
+  frameworks.push(PYTHON_FRAMEWORKS[key]);
 };
 
 function parseRequirementsTxt(content: string): Partial<TechStackInfo> {

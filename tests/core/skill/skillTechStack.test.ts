@@ -489,6 +489,16 @@ tokio = { version = "1.0", features = ["full"] }`,
       expect(result.dependencies.map((dep) => dep.name)).toEqual(['flask']);
     });
 
+    test('should not read an Object.prototype member as a Python framework', () => {
+      // A requirement name is free text, so `constructor` and `toString` are legal lines.
+      // The table was read by key alone, which answered both with inherited functions that
+      // then showed up in the summary as frameworks.
+      const result = detectSingle('requirements.txt', 'constructor==1.0\ntoString\ndjango==5.0');
+
+      expect(result.frameworks).toEqual(['Django']);
+      expect(result.dependencies.map((dep) => dep.name)).toEqual(['constructor', 'toString', 'django']);
+    });
+
     test('should parse quoted entries in a [project.dependencies] table of pyproject.toml', () => {
       const result = detectSingle(
         'pyproject.toml',
