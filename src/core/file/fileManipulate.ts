@@ -85,33 +85,77 @@ const stripCssPreprocessorComments = (content: string): string => {
   );
 };
 
-// Rust's quotes do not fit the C profile. A raw string (`r"..."`, `r#"..."#`, and the `b`/`c`
-// prefixed forms) has no escapes and may contain `"`, and a lifetime (`'a`) is a lone `'` that the
-// profile pairs with the next one as a string. Either way a later string is misread, and a `//` in
-// it (`"can't reach http://..."`) is cut as a comment together with the code after it. Mask every
-// string, char literal and lifetime, the same way as the URLs above, so that only comments are
-// left for the profile to find. Comments are consumed first so a quote inside one starts nothing,
-// and an unclosed string or comment runs to the end of input so the scan stays linear.
-const RUST_TOKEN_SCAN =
-  /\/\*[\s\S]*?(?:\*\/|$)|\/\/[^\n]*|\b[bc]?r(#*)"[\s\S]*?(?:"\1|$)|"(?:[^"\\]|\\[\s\S])*(?:"|$)|'(?:[^'\\\n]|\\(?:x[0-9A-Fa-f]{2}|u\{[0-9A-Fa-f_]+\}|[^\n]))'|'[\p{L}_][\p{L}\p{N}_]*/gu;
+// Rust's quotes and comments do not fit the C profile. A raw string (`r"..."`, `r#"..."#`, and the
+// `b`/`c` prefixed forms) has no escapes and may contain `"`, a lifetime (`'a`) is a lone `'` that
+// the profile pairs with the next one as a string, and block comments nest. Any of these makes a
+// later string misread, and a `//` in it (`"can't reach http://..."`) is cut as a comment together
+// with the code after it. Scan the file once instead: keep every string, char literal and lifetime
+// as is, and drop comments (a block comment leaves only its newlines). An unclosed string or
+// comment runs to the end of input.
+const RUST_RAW_STRING_START = /[bc]?r(#*)"/y;
+const RUST_CHAR_LITERAL = /'(?:[^'\\\n]|\\(?:x[0-9A-Fa-f]{2}|u\{[0-9A-Fa-f_]+\}|[^\n]))'/y;
+const RUST_LIFETIME = /'[\p{L}_][\p{L}\p{N}_]*/uy;
+const RUST_IDENT_CHAR = /[\p{L}\p{N}_]/u;
+
+const matchAt = (pattern: RegExp, content: string, index: number): RegExpExecArray | null => {
+  pattern.lastIndex = index;
+  return pattern.exec(content);
+};
 
 const stripRustComments = (content: string): string => {
-  let marker = '__REPOMIX_RUST_';
-  while (content.includes(marker)) {
-    marker += '_';
+  const length = content.length;
+  let result = '';
+  let copied = 0;
+  let i = 0;
+  while (i < length) {
+    const char = content[i];
+    const next = content[i + 1];
+    if (char === '/' && next === '/') {
+      result += content.slice(copied, i);
+      const newline = content.indexOf('\n', i);
+      i = newline === -1 ? length : newline;
+      copied = i;
+    } else if (char === '/' && next === '*') {
+      result += content.slice(copied, i);
+      let depth = 1;
+      let end = i + 2;
+      while (end < length && depth > 0) {
+        if (content[end] === '/' && content[end + 1] === '*') {
+          depth++;
+          end += 2;
+        } else if (content[end] === '*' && content[end + 1] === '/') {
+          depth--;
+          end += 2;
+        } else {
+          end++;
+        }
+      }
+      result += content.slice(i, end).replace(/[^\n]/g, '');
+      i = Math.min(end, length);
+      copied = i;
+    } else if (char === '"') {
+      i++;
+      while (i < length && content[i] !== '"') {
+        i += content[i] === '\\' ? 2 : 1;
+      }
+      i = Math.min(i + 1, length);
+    } else if (char === "'") {
+      const literal = matchAt(RUST_CHAR_LITERAL, content, i) ?? matchAt(RUST_LIFETIME, content, i);
+      i += literal ? literal[0].length : 1;
+    } else {
+      const raw =
+        (i === 0 || !RUST_IDENT_CHAR.test(content[i - 1])) && 'bcr'.includes(char)
+          ? matchAt(RUST_RAW_STRING_START, content, i)
+          : null;
+      if (raw) {
+        const close = content.indexOf(`"${raw[1]}`, i + raw[0].length);
+        i = close === -1 ? length : close + 1 + raw[1].length;
+      } else {
+        i++;
+      }
+    }
   }
-  const tokens: string[] = [];
-  const masked = content.replace(RUST_TOKEN_SCAN, (match) =>
-    match.startsWith('/') ? match : `${marker}${tokens.push(match) - 1}__`,
-  );
-  const stripped = strip(masked, {
-    language: 'c',
-    preserveNewlines: true,
-  });
-  return stripped.replace(
-    new RegExp(`${marker}(\\d+)__`, 'g'),
-    (placeholder, index) => tokens[Number(index)] ?? placeholder,
-  );
+  return result + content.slice(copied);
 };
 
 class RustManipulator extends BaseManipulator {

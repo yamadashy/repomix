@@ -1327,8 +1327,34 @@ a: "x
 
     test('still removes comments that mention quotes', () => {
       const manipulator = getFileManipulator('test.rs');
-      const input = '// don\'t use r"raw" here\n/* it\'s "quoted" */ let x = 1;\nlet y = __REPOMIX_RUST_0__; // keep';
-      expect(manipulator?.removeComments(input)).toBe('\n let x = 1;\nlet y = __REPOMIX_RUST_0__;');
+      const input = '// don\'t use r"raw" here\n/* it\'s "quoted" */ let x = 1;';
+      expect(manipulator?.removeComments(input)).toBe('\n let x = 1;');
+    });
+
+    test('removes nested block comments whole', () => {
+      const manipulator = getFileManipulator('test.rs');
+      const input = [
+        '/* outer /* inner */ note" */',
+        'fn main() { let s = "/*"; let keep = 1; }',
+        '/* Use /* nested */ \\" to escape a quote. */ const URL: &str = "https://example.com";',
+      ].join('\n');
+      expect(manipulator?.removeComments(input)).toBe(
+        ['', 'fn main() { let s = "/*"; let keep = 1; }', ' const URL: &str = "https://example.com";'].join('\n'),
+      );
+    });
+
+    test('keeps an unclosed string that ends in a backslash', () => {
+      const manipulator = getFileManipulator('test.rs');
+      const input = 'let s = "http://example.com\\';
+      expect(manipulator?.removeComments(input)).toBe(input);
+    });
+
+    test('handles a very long string literal', () => {
+      const manipulator = getFileManipulator('test.rs');
+      const literal = `"${'a'.repeat(10_000_000)}"`;
+      expect(manipulator?.removeComments(`const FIXTURE: &str = ${literal}; // fixture`)).toBe(
+        `const FIXTURE: &str = ${literal};`,
+      );
     });
   });
 
