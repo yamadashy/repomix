@@ -13,6 +13,7 @@ import {
   execGitVersion,
   execLsRemote,
   execLsRemoteHead,
+  validateGitUrl,
 } from '../../../src/core/git/gitCommand.js';
 import { logger } from '../../../src/shared/logger.js';
 import { silenceLogger } from '../../testing/loggerDoubles.js';
@@ -509,6 +510,26 @@ file.txt`;
       ).rejects.toThrow('Invalid repository URL. URL contains potentially dangerous parameters');
 
       expect(mockFileExecAsync).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('validateGitUrl accepts every prefix the CLI detects as a remote', () => {
+    // `isExplicitRemoteUrl` lists https://, git@, ssh:// and git://, so each of them sends
+    // the run down the remote path. validateGitUrl only allowed the first two, so `git://`
+    // and `ssh://` were called valid by the detector and then refused at the first git
+    // command — an explicit remote URL that could never be cloned.
+    test.each([
+      ['https://github.com/user/repo.git'],
+      ['git@github.com:user/repo.git'],
+      ['git://github.com/user/repo.git'],
+      ['ssh://git@github.com/user/repo.git'],
+    ])('should accept %s', (url) => {
+      expect(() => validateGitUrl(url)).not.toThrow();
+    });
+
+    test('should still refuse a protocol the detector does not recognise', () => {
+      // `file://` reads the host's own filesystem and is not in the remote list.
+      expect(() => validateGitUrl('file:///etc/passwd')).toThrow('Invalid URL protocol');
     });
   });
 
