@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795430067951,
+  "lastUpdate": 1795697081409,
   "repoUrl": "https://github.com/yamadashy/repomix",
   "entries": {
     "Repomix Performance": [
@@ -17543,6 +17543,51 @@ window.BENCHMARK_DATA = {
             "range": "±23",
             "unit": "ms",
             "extra": "Median of 20 runs\nQ1: 1054ms, Q3: 1077ms\nAll times: 1033, 1047, 1048, 1052, 1053, 1054, 1056, 1059, 1059, 1059, 1062, 1063, 1065, 1070, 1075, 1077, 1077, 1079, 1093, 1094ms"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "koukun0120@gmail.com",
+            "name": "Kazuki Yamada",
+            "username": "yamadashy"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "98154fcbc9ba0d212d7f5649a7a463b128e58c09",
+          "message": "Merge pull request #2070 from yamadashy/feat/secretlint-v14\n\nperf(security): Upgrade to Secretlint v14 and use its built-in recommend preset",
+          "timestamp": "2026-11-26T21:43:00+09:00",
+          "tree_id": "ea4e6fe06b22f34d8f9fa1e0cb9dfed64e50e2f0",
+          "url": "https://github.com/yamadashy/repomix/commit/98154fcbc9ba0d212d7f5649a7a463b128e58c09"
+        },
+        "date": 1795697080452,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Repomix Pack (macOS)",
+            "value": 1075,
+            "range": "±253",
+            "unit": "ms",
+            "extra": "Median of 30 runs\nQ1: 958ms, Q3: 1211ms\nAll times: 816, 822, 857, 867, 909, 914, 930, 958, 1025, 1036, 1041, 1054, 1058, 1063, 1074, 1075, 1088, 1094, 1102, 1131, 1178, 1193, 1211, 1243, 1255, 1266, 1302, 1413, 1508, 1650ms"
+          },
+          {
+            "name": "Repomix Pack (Linux)",
+            "value": 753,
+            "range": "±89",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 748ms, Q3: 837ms\nAll times: 738, 740, 745, 746, 747, 748, 748, 748, 753, 753, 753, 755, 762, 784, 795, 837, 839, 843, 866, 869ms"
+          },
+          {
+            "name": "Repomix Pack (Windows)",
+            "value": 1337,
+            "range": "±29",
+            "unit": "ms",
+            "extra": "Median of 20 runs\nQ1: 1327ms, Q3: 1356ms\nAll times: 1307, 1313, 1314, 1323, 1327, 1327, 1328, 1331, 1332, 1337, 1337, 1339, 1339, 1351, 1353, 1356, 1365, 1366, 1377, 1394ms"
           }
         ]
       }
