@@ -104,4 +104,4 @@ Per un esempio funzionante, consulta [website/server/scripts/bundle.mjs](https:/
 
 ## Esempio Reale
 
-Il sito web di Repomix ([repomix.com](https://repomix.com)) usa Repomix come libreria per elaborare repository remoti. Puoi consultare l'implementazione in [website/server/src/remoteRepo.ts](https://github.com/yamadashy/repomix/blob/main/website/server/src/remoteRepo.ts).
+Il sito web di Repomix ([repomix.com](https://repomix.com)) usa Repomix come libreria per elaborare repository remoti. Puoi consultare l'implementazione in [website/server/src/domains/pack/remoteRepo.ts](https://github.com/yamadashy/repomix/blob/main/website/server/src/domains/pack/remoteRepo.ts).

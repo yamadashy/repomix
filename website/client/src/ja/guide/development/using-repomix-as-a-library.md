@@ -104,4 +104,4 @@ RolldownやesbuildなどのツールでRepomixをバンドルする場合、一�
 
 ## 実世界の例
 
-Repomixウェブサイト（[repomix.com](https://repomix.com)）では、ライブラリとしてRepomixを使用してリモートリポジトリを処理しています。実装は[website/server/src/remoteRepo.ts](https://github.com/yamadashy/repomix/blob/main/website/server/src/remoteRepo.ts)で確認できます。 
+Repomixウェブサイト（[repomix.com](https://repomix.com)）では、ライブラリとしてRepomixを使用してリモートリポジトリを処理しています。実装は[website/server/src/domains/pack/remoteRepo.ts](https://github.com/yamadashy/repomix/blob/main/website/server/src/domains/pack/remoteRepo.ts)で確認できます。 

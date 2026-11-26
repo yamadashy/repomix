@@ -124,7 +124,7 @@ I file di configurazione JavaScript funzionano allo stesso modo di TypeScript, s
 | `ignore.useDefaultPatterns`      | Se usare i pattern di ignore predefiniti (node_modules, .git, ecc.)                                    | `true`                 |
 | `ignore.customPatterns`          | Pattern aggiuntivi da ignorare usando [pattern glob](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax) | `[]`                   |
 | `security.enableSecurityCheck`   | Se eseguire controlli di sicurezza usando Secretlint per rilevare informazioni sensibili   | `true`                 |
-| `tokenCount.encoding`            | Encoding del conteggio token compatibile con OpenAI (ad es., `o200k_base` per GPT-4o, `cl100k_base` per GPT-4/3.5). Utilizza [gpt-tokenizer](https://github.com/nicolo-ribaudo/gpt-tokenizer). | `"o200k_base"`         |
+| `tokenCount.encoding`            | Encoding del conteggio token compatibile con OpenAI (ad es., `o200k_base` per GPT-4o, `cl100k_base` per GPT-4/3.5). Utilizza [gpt-tokenizer](https://github.com/niieani/gpt-tokenizer). | `"o200k_base"`         |
 
 Il file di configurazione supporta la sintassi [JSON5](https://json5.org/), che permette:
 - Commenti (sia su singola riga che su più righe)

@@ -124,7 +124,7 @@ JavaScript設定ファイルはTypeScriptと同様に機能し、`defineConfig`�
 | `ignore.useDefaultPatterns`      | デフォルトの除外パターン（node_modules、.gitなど）を使用するかどうか                                                       | `true`                 |
 | `ignore.customPatterns`          | 追加の除外パターン（[globパターン](https://github.com/mrmlnc/fast-glob?tab=readme-ov-file#pattern-syntax)を使用）          | `[]`                   |
 | `security.enableSecurityCheck`   | Secretlintを使用して機密情報を検出するセキュリティチェックを実行するかどうか                                               | `true`                 |
-| `tokenCount.encoding`            | OpenAI互換のトークンカウントエンコーディング（GPT-4oの場合は`o200k_base`、GPT-4/3.5の場合は`cl100k_base`）。[gpt-tokenizer](https://github.com/nicolo-ribaudo/gpt-tokenizer)を使用。 | `"o200k_base"`         |
+| `tokenCount.encoding`            | OpenAI互換のトークンカウントエンコーディング（GPT-4oの場合は`o200k_base`、GPT-4/3.5の場合は`cl100k_base`）。[gpt-tokenizer](https://github.com/niieani/gpt-tokenizer)を使用。 | `"o200k_base"`         |
 
 設定ファイルは[JSON5](https://json5.org/)構文をサポートしており、以下が可能です：
 - コメント（単一行および複数行）
