@@ -167,15 +167,18 @@ const dartBlockCommentEnd = (content: string, at: number): number => {
 // escapes, and a triple-quoted one is closed by three matching quotes; a single-quoted
 // literal cannot span a line, so an unterminated one stops there.
 //
-// A single-line literal may still hold a multi-line `${...}`: Dart's lexer keeps reading
-// the expression across newlines, and only the literal's own text is bound to the line.
-// The scan therefore carries an interpolation depth, and the newline rule only applies at
-// depth zero. Nested literals inside the expression are skipped whole, so a quote or a `}`
-// inside one of them does not close the outer literal or the interpolation early.
+// Every non-raw literal can hold a `${...}`, a triple-quoted one included: Dart's lexer
+// keeps reading the expression across newlines, and only a single-line literal's own text
+// is bound to the line. The scan therefore carries an interpolation depth, and the newline
+// rule only applies to a single-line literal at depth zero. Nested literals inside the
+// expression are skipped whole, so a quote or a `}` inside one of them does not close the
+// outer literal or the interpolation early. Comments inside the expression are skipped the
+// same way: a `// note` runs to the end of its line, and a `/* … */` may even nest, so a `}`
+// written in one must not count as the end of the interpolation.
 const dartLiteralEnd = (content: string, quoteAt: number, raw: boolean): number => {
   const quote = content[quoteAt];
   const close = content.startsWith(quote.repeat(3), quoteAt) ? quote.repeat(3) : quote;
-  const interpolates = !raw && close.length === 1;
+  const interpolates = !raw;
   let index = quoteAt + close.length;
   let depth = 0;
   while (index < content.length) {
@@ -189,6 +192,15 @@ const dartLiteralEnd = (content: string, quoteAt: number, raw: boolean): number 
       continue;
     }
     if (depth > 0) {
+      if (content.startsWith('//', index)) {
+        const newline = content.indexOf('\n', index + 2);
+        index = newline === -1 ? content.length : newline + 1;
+        continue;
+      }
+      if (content.startsWith('/*', index)) {
+        index = skipDartBlockComment(content, index);
+        continue;
+      }
       if (content[index] === '{') {
         depth += 1;
         index += 1;
@@ -211,6 +223,27 @@ const dartLiteralEnd = (content: string, quoteAt: number, raw: boolean): number 
     index += 1;
   }
   return content.length;
+};
+
+// The index just past a `/* … */` comment. Dart lets them nest, so the closing `*/` has to
+// match the depth rather than end the first one found.
+const skipDartBlockComment = (content: string, start: number): number => {
+  let depth = 1;
+  let index = start + 2;
+  while (index < content.length && depth > 0) {
+    if (content.startsWith('/*', index)) {
+      depth += 1;
+      index += 2;
+      continue;
+    }
+    if (content.startsWith('*/', index)) {
+      depth -= 1;
+      index += 2;
+      continue;
+    }
+    index += 1;
+  }
+  return index;
 };
 
 class DartManipulator extends BaseManipulator {

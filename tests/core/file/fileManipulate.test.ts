@@ -964,6 +964,56 @@ print(label);`,
 print(label);`,
     },
     {
+      name: 'Dart triple-quoted literal keeps a multi-line interpolation comment',
+      ext: '.dart',
+      input: `var text = '''
+\${a
+  + b // still inside the expression
+}
+''';
+print(text);`,
+      expected: `var text = '''
+\${a
+  + b // still inside the expression
+}
+''';
+print(text);`,
+    },
+    {
+      name: 'Dart interpolation ignores a line comment that holds a brace',
+      ext: '.dart',
+      input: `var s = '\${a // }
+  + b} tail // kept';
+print(s);`,
+      expected: `var s = '\${a // }
+  + b} tail // kept';
+print(s);`,
+    },
+    {
+      name: 'Dart interpolation keeps a nested block comment that holds a brace',
+      ext: '.dart',
+      input: `var a = '\${x /* ' */ + y}';
+var b = 1; // dropped`,
+      expected: `var a = '\${x /* ' */ + y}';
+var b = 1;`,
+    },
+    {
+      name: 'Dart triple-quoted literal keeps an interpolation that holds the same quotes',
+      ext: '.dart',
+      input: `var s = '''\${'''a // b'''} tail // kept''';
+print(s);`,
+      expected: `var s = '''\${'''a // b'''} tail // kept''';
+print(s);`,
+    },
+    {
+      name: 'Dart interpolation skips a nested block comment',
+      ext: '.dart',
+      input: `var a = '\${x /* /* ' */ } */ + y}';
+var b = 1; // dropped`,
+      expected: `var a = '\${x /* /* ' */ } */ + y}';
+var b = 1;`,
+    },
+    {
       name: 'Shell script comment removal',
       ext: '.sh',
       input: `
