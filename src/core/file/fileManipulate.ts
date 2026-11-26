@@ -143,10 +143,14 @@ const stripRustComments = (content: string): string => {
       const literal = matchAt(RUST_CHAR_LITERAL, content, i) ?? matchAt(RUST_LIFETIME, content, i);
       i += literal ? literal[0].length : 1;
     } else {
-      const raw =
-        (i === 0 || !RUST_IDENT_CHAR.test(content[i - 1])) && 'bcr'.includes(char)
-          ? matchAt(RUST_RAW_STRING_START, content, i)
-          : null;
+      const atWordStart = i === 0 || !RUST_IDENT_CHAR.test(content[i - 1]);
+      // A raw identifier such as `r#r` is a name, so a quote right after it opens a plain string
+      if (atWordStart && char === 'r' && next === '#' && RUST_IDENT_CHAR.test(content[i + 2] ?? '')) {
+        i += 2;
+        while (i < length && RUST_IDENT_CHAR.test(content[i])) i++;
+        continue;
+      }
+      const raw = atWordStart && 'bcr'.includes(char) ? matchAt(RUST_RAW_STRING_START, content, i) : null;
       if (raw) {
         const close = content.indexOf(`"${raw[1]}`, i + raw[0].length);
         i = close === -1 ? length : close + 1 + raw[1].length;

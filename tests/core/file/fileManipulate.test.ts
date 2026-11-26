@@ -1349,6 +1349,12 @@ a: "x
       expect(manipulator?.removeComments(input)).toBe(input);
     });
 
+    test('does not read a raw identifier as a raw string prefix', () => {
+      const manipulator = getFileManipulator('test.rs');
+      const input = 'discard!(r#r"\\" // literal"); fn keep() {} // c';
+      expect(manipulator?.removeComments(input)).toBe('discard!(r#r"\\" // literal"); fn keep() {}');
+    });
+
     test('handles a very long string literal', () => {
       const manipulator = getFileManipulator('test.rs');
       const literal = `"${'a'.repeat(10_000_000)}"`;
