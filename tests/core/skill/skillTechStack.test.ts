@@ -416,6 +416,43 @@ tokio = { version = "1.0", features = ["full"] }`,
       expect(result.dependencies).toContainEqual({ name: 'torch', version: '2.1.0' });
     });
 
+    test('should name the distribution behind a URL requirement, not its scheme', () => {
+      // `git+https://…#egg=requests` used to be read as a dependency called `git`: the
+      // scheme matched the old `name==version` pattern, and the package itself was lost.
+      const result = detectSingle(
+        'requirements.txt',
+        [
+          'flask==3.0.0',
+          'git+https://github.com/psf/requests.git@main#egg=requests',
+          'https://example.com/pkg/thing-1.0-py3-none-any.whl',
+          'pkg[all]==1.0',
+          'fastapi @ https://example.com/fastapi-0.1.0.whl',
+        ].join('\n'),
+      );
+
+      expect(result.dependencies).toEqual([
+        { name: 'flask', version: '3.0.0' },
+        { name: 'requests', version: undefined },
+        { name: 'thing', version: undefined },
+        { name: 'pkg', version: '1.0' },
+        { name: 'fastapi', version: undefined },
+      ]);
+    });
+
+    test('should name a VCS requirement that has no #egg fragment', () => {
+      const result = detectSingle('requirements.txt', 'git+https://github.com/psf/requests.git');
+
+      expect(result.dependencies).toEqual([{ name: 'requests', version: undefined }]);
+    });
+
+    test('should not invent a dependency for a path requirement', () => {
+      // `-e` is an editable install and a directory URL names no distribution, so neither
+      // is a library; the old pattern read them as dependencies called `e` and `vendor`.
+      const result = detectSingle('requirements.txt', '-e ./local\nfile:../vendor/\nflask==3.0.0');
+
+      expect(result.dependencies.map((dep) => dep.name)).toEqual(['flask']);
+    });
+
     test('should parse quoted entries in a [project.dependencies] table of pyproject.toml', () => {
       const result = detectSingle(
         'pyproject.toml',

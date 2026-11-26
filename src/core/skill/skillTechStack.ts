@@ -101,11 +101,23 @@ function parseRequirementsTxt(content: string): Partial<TechStackInfo> {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('-')) continue;
 
-    // Parse package==version or package>=version format
-    const match = trimmed.match(/^([a-zA-Z0-9_-]+)([=<>!~]+)?(.+)?$/);
+    // pip also accepts a bare URL, a VCS URL and a local path as a requirement. Reading
+    // those with the `name==version` pattern below took the scheme for a name: a
+    // `git+https://...#egg=requests` line became a dependency called `git` and dropped
+    // `requests`, and a wheel URL became one called `https`.
+    if (REQUIREMENT_URL_START.test(trimmed) || trimmed.startsWith('.') || trimmed.startsWith('/')) {
+      const fromUrl = requirementNameFromUrl(trimmed);
+      if (fromUrl !== undefined) dependencies.push({ name: fromUrl });
+      continue;
+    }
+
+    // Parse package==version or package>=version format. Extras (`pkg[all]==1.0`) belong to
+    // neither the name nor the version, and `name @ url` is a direct reference, not a pin.
+    const match = trimmed.match(REQUIREMENT_NAME);
     if (match) {
       const name = match[1];
-      const version = match[3];
+      const rest = match[3] ?? '';
+      const version = rest.startsWith('@') ? undefined : rest.replace(/^[=<>!~]+\s*/, '') || undefined;
       dependencies.push({ name, version });
 
       // Detect frameworks
@@ -119,6 +131,33 @@ function parseRequirementsTxt(content: string): Partial<TechStackInfo> {
 
   return { dependencies, frameworks: [...new Set(frameworks)] };
 }
+
+// A requirement that is a URL rather than `name==version`: `https://`, `file:`, and the
+// VCS schemes pip prefixes with `git+`, `hg+`, `svn+` or `bzr+`.
+const REQUIREMENT_URL_START = /^[a-z][a-z0-9+.-]*:/i;
+
+// `name`, then optional extras, then whatever follows it (`==1.0`, `@ url`, `; marker`).
+const REQUIREMENT_NAME = /^([A-Za-z0-9][A-Za-z0-9._-]*)\s*(\[[^\]]*\])?\s*(.*)$/;
+
+// The distribution a URL requirement installs. `#egg=` names it outright; otherwise the
+// last path segment does (`.../requests.git`, `.../thing-1.0-py3-none-any.whl`), with the
+// archive suffix and the version dropped. A URL that names no distribution — a bare `file:`
+// path, a directory — yields nothing rather than a dependency called `https`.
+const requirementNameFromUrl = (requirement: string): string | undefined => {
+  const egg = /[#&]egg=([A-Za-z0-9][A-Za-z0-9._-]*)/.exec(requirement);
+  if (egg) return egg[1];
+  const pathPart = requirement.split(/[#?]/)[0].replace(/\/+$/, '');
+  const last = pathPart.slice(pathPart.lastIndexOf('/') + 1);
+  // Only a segment that carries a distribution's archive suffix names one. Anything else
+  // is a directory or a path pip resolves at install time, and guessing a name from it
+  // would put `wheels` or `local` in the dependency table.
+  if (!/\.(?:git|whl|zip|tgz|tar\.gz|tar\.bz2)$/i.test(last)) return undefined;
+  const base = last.replace(/\.(?:git|whl|zip|tgz|tar\.gz|tar\.bz2)$/i, '');
+  // `thing-1.0-py3-none-any` and `thing-1.0`: the name stops before the version.
+  const name = /^[A-Za-z0-9][A-Za-z0-9._]*/.exec(base)?.[0];
+  if (name === undefined || !/[A-Za-z]/.test(name)) return undefined;
+  return name;
+};
 
 // Matches a TOML table header line such as `[project]` or `[[tool.foo]]`. Dependency strings
 // with extras like `"fastapi[all]"` start with a quote, so they are not mistaken for headers.
