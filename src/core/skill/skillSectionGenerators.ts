@@ -9,10 +9,25 @@ import { renderEach } from '../output/outputStyleUtils.js';
 import { joinDisplayPath } from '../packager/rootDisplayPath.js';
 
 /**
+ * The `tech-stacks.md` row of the file table. `tech-stacks.md` is only written when the
+ * packed files contain a dependency manifest (see `writeSkillOutput.ts`), so the row is
+ * gated on the same flag: listing a file that was never written leaves the summary as the
+ * one index in the skill pointing at nothing.
+ */
+const TECH_STACK_FILE_ROW =
+  '| `tech-stacks.md` | Languages, frameworks, and dependencies per package (search with `## Tech Stack: <path>`) |\n';
+
+/**
  * Generates the summary section for skill output.
  * Contains purpose, file format, usage guidelines, notes, and project statistics.
+ * `hasTechStack` defaults to false: a caller that does not know whether the file was
+ * written should not claim it exists.
  */
-export const generateSummarySection = (context: RenderContext, statisticsSection?: string): string => {
+export const generateSummarySection = (
+  context: RenderContext,
+  statisticsSection?: string,
+  hasTechStack = false,
+): string => {
   // Values are inserted verbatim; the result is trimmed.
   const summary = `${context.generationHeader}
 
@@ -31,8 +46,7 @@ This skill contains the following reference files:
 |------|----------|
 | \`project-structure.md\` | Directory tree with line counts per file |
 | \`files.md\` | All file contents (search with \`## File: <path>\`) |
-| \`tech-stacks.md\` | Languages, frameworks, and dependencies per package (search with \`## Tech Stack: <path>\`) |
-| \`summary.md\` | This file - purpose and format explanation |
+${hasTechStack ? TECH_STACK_FILE_ROW : ''}| \`summary.md\` | This file - purpose and format explanation |
 
 ## Usage Guidelines
 
