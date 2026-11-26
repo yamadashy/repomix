@@ -97,6 +97,161 @@ class CssPreprocessorManipulator extends BaseManipulator {
   }
 }
 
+// Dart raw strings (`r"..."`, `r'''...'''`) open on an `r` prefix. The `c` strip profile
+// reads that prefix as an identifier, so the following quote never starts a string and a
+// `//` inside the literal is cut as a comment — corrupting e.g. `r"https://example.com/a//b"`
+// into `r"https:`. Masking the literals before stripping cannot do this safely: a regex
+// cannot tell `/* r' prefix */` from a literal, so it swallowed the comment terminator, and
+// it only ever saw the two-quote form of a raw string. Read the source the way Dart's own
+// lexer does instead — literals copied verbatim, both comment forms dropped (Dart nests
+// block comments), newlines kept so the packed output keeps its line structure.
+const stripDartComments = (content: string): string => {
+  let out = '';
+  let at = 0;
+  while (at < content.length) {
+    if (content.startsWith('//', at)) {
+      const end = content.indexOf('\n', at);
+      at = end === -1 ? content.length : end;
+      continue;
+    }
+    if (content.startsWith('/*', at)) {
+      const end = dartBlockCommentEnd(content, at);
+      // Newlines stay: the profile this replaces preserves them too.
+      out += content.slice(at, end).replace(/[^\n]/g, '');
+      at = end;
+      continue;
+    }
+    const raw = isDartRawPrefix(content, at);
+    const quoteAt = raw ? at + 1 : at;
+    if (content[quoteAt] === "'" || content[quoteAt] === '"') {
+      const end = dartLiteralEnd(content, quoteAt, raw);
+      out += content.slice(at, end);
+      at = end;
+      continue;
+    }
+    out += content[at];
+    at += 1;
+  }
+  return out;
+};
+
+// `r` immediately before a quote, and not the tail of an identifier (`bar"x"`).
+const isDartRawPrefix = (content: string, at: number): boolean =>
+  content[at] === 'r' &&
+  (content[at + 1] === "'" || content[at + 1] === '"') &&
+  !/[A-Za-z0-9_$]/.test(content[at - 1] ?? '');
+
+// Where a block comment ends. Dart nests them, so the closing marker that counts is the one
+// that brings the depth back to zero; an unterminated comment runs to the end of the file.
+const dartBlockCommentEnd = (content: string, at: number): number => {
+  let depth = 1;
+  let index = at + 2;
+  while (index < content.length) {
+    if (content.startsWith('/*', index)) {
+      depth += 1;
+      index += 2;
+      continue;
+    }
+    if (content.startsWith('*/', index)) {
+      depth -= 1;
+      index += 2;
+      if (depth === 0) return index;
+      continue;
+    }
+    index += 1;
+  }
+  return content.length;
+};
+
+// Where a string literal ends, from the index of its first quote. A raw literal has no
+// escapes, and a triple-quoted one is closed by three matching quotes; a single-quoted
+// literal cannot span a line, so an unterminated one stops there.
+//
+// Every non-raw literal can hold a `${...}`, a triple-quoted one included: Dart's lexer
+// keeps reading the expression across newlines, and only a single-line literal's own text
+// is bound to the line. The scan therefore carries an interpolation depth, and the newline
+// rule only applies to a single-line literal at depth zero. Nested literals inside the
+// expression are skipped whole, so a quote or a `}` inside one of them does not close the
+// outer literal or the interpolation early. Comments inside the expression are skipped the
+// same way: a `// note` runs to the end of its line, and a `/* … */` may even nest, so a `}`
+// written in one must not count as the end of the interpolation.
+const dartLiteralEnd = (content: string, quoteAt: number, raw: boolean): number => {
+  const quote = content[quoteAt];
+  const close = content.startsWith(quote.repeat(3), quoteAt) ? quote.repeat(3) : quote;
+  const interpolates = !raw;
+  let index = quoteAt + close.length;
+  let depth = 0;
+  while (index < content.length) {
+    if (!raw && content[index] === '\\') {
+      index += 2;
+      continue;
+    }
+    if (interpolates && depth === 0 && content.startsWith('${', index)) {
+      depth = 1;
+      index += 2;
+      continue;
+    }
+    if (depth > 0) {
+      if (content.startsWith('//', index)) {
+        const newline = content.indexOf('\n', index + 2);
+        index = newline === -1 ? content.length : newline + 1;
+        continue;
+      }
+      if (content.startsWith('/*', index)) {
+        index = skipDartBlockComment(content, index);
+        continue;
+      }
+      if (content[index] === '{') {
+        depth += 1;
+        index += 1;
+        continue;
+      }
+      if (content[index] === '}') {
+        depth -= 1;
+        index += 1;
+        continue;
+      }
+      if (content[index] === "'" || content[index] === '"') {
+        index = dartLiteralEnd(content, index, isDartRawPrefix(content, index - 1));
+        continue;
+      }
+      index += 1;
+      continue;
+    }
+    if (content.startsWith(close, index)) return index + close.length;
+    if (close.length === 1 && content[index] === '\n') return index;
+    index += 1;
+  }
+  return content.length;
+};
+
+// The index just past a `/* … */` comment. Dart lets them nest, so the closing `*/` has to
+// match the depth rather than end the first one found.
+const skipDartBlockComment = (content: string, start: number): number => {
+  let depth = 1;
+  let index = start + 2;
+  while (index < content.length && depth > 0) {
+    if (content.startsWith('/*', index)) {
+      depth += 1;
+      index += 2;
+      continue;
+    }
+    if (content.startsWith('*/', index)) {
+      depth -= 1;
+      index += 2;
+      continue;
+    }
+    index += 1;
+  }
+  return index;
+};
+
+class DartManipulator extends BaseManipulator {
+  removeComments(content: string): string {
+    return rtrimLines(stripDartComments(content));
+  }
+}
+
 // Matches a shell heredoc opener (`<<EOF`, `<<-EOF`, `<<'EOF'`, `<<"EOF"`), excluding the
 // `<<<` herestring operator via the lookaround guards.
 const HEREDOC_START = /(?<!<)<<(?!<)(-?)\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\2/;
@@ -286,7 +441,7 @@ const manipulators: Record<string, FileManipulator> = {
   '.cxx': new StripCommentsManipulator('cpp'),
   '.cs': new StripCommentsManipulator('csharp'),
   '.css': new CssManipulator(),
-  '.dart': new StripCommentsManipulator('c'),
+  '.dart': new DartManipulator(),
   '.go': new StripCommentsManipulator('go'),
   '.html': new StripCommentsManipulator('html'),
   '.java': new StripCommentsManipulator('java'),
