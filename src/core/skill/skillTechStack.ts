@@ -520,7 +520,7 @@ function parseToolVersions(content: string): RuntimeVersion[] {
     if (parts.length >= 2) {
       const tool = parts[0].toLowerCase();
       const version = parts[1];
-      const runtime = runtimeNameMap[tool] || tool;
+      const runtime = Object.hasOwn(runtimeNameMap, tool) ? runtimeNameMap[tool] : tool;
       versions.push({ runtime, version });
     }
   }
@@ -548,7 +548,7 @@ export const detectTechStack = (processedFiles: ProcessedFile[]): TechStackInfo[
   const packageDirs = new Set<string>();
   for (const file of processedFiles) {
     const fileName = file.path.split('/').pop() || file.path;
-    if (DEPENDENCY_FILES[fileName]) {
+    if (Object.hasOwn(DEPENDENCY_FILES, fileName)) {
       packageDirs.add(getDirPath(file.path));
     }
   }
@@ -579,7 +579,8 @@ export const detectTechStack = (processedFiles: ProcessedFile[]): TechStackInfo[
     if (!result) continue;
 
     // Check dependency files
-    const config = DEPENDENCY_FILES[fileName];
+    // Own keys only: a file named `constructor` or `toString` must not match Object.prototype.
+    const config = Object.hasOwn(DEPENDENCY_FILES, fileName) ? DEPENDENCY_FILES[fileName] : undefined;
     if (config) {
       result.languages.push(config.language);
 
@@ -599,7 +600,7 @@ export const detectTechStack = (processedFiles: ProcessedFile[]): TechStackInfo[
     }
 
     // Check version manager files
-    const versionParser = VERSION_FILES[fileName];
+    const versionParser = Object.hasOwn(VERSION_FILES, fileName) ? VERSION_FILES[fileName] : undefined;
     if (versionParser) {
       const versions = versionParser(file.content);
       result.runtimeVersions.push(...versions);
