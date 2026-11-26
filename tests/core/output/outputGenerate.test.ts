@@ -3,7 +3,12 @@ import process from 'node:process';
 import { DOMParser } from '@xmldom/xmldom';
 import { describe, expect, test, vi } from 'vitest';
 import type { ProcessedFile } from '../../../src/core/file/fileTypes.js';
-import { buildOutputGeneratorContext, generateOutput } from '../../../src/core/output/outputGenerate.js';
+import {
+  buildOutputGeneratorContext,
+  createRenderContext,
+  generateOutput,
+  trimAndTerminateOutput,
+} from '../../../src/core/output/outputGenerate.js';
 import { RepomixError } from '../../../src/shared/errorHandle.js';
 import { createMockConfig } from '../../testing/testUtils.js';
 
@@ -619,5 +624,118 @@ describe('buildOutputGeneratorContext', () => {
     );
     await expect(promise).rejects.toBeInstanceOf(RepomixError);
     await expect(promise).rejects.toThrow(/Failed to build full directory structure.*list failed/);
+  });
+});
+
+describe('trimAndTerminateOutput', () => {
+  // Every code point String.prototype.trim strips: WhiteSpace (incl. Zs) and LineTerminator.
+  const trimmedCodePoints = [
+    0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x20, 0xa0, 0x1680, 0x2000, 0x2001, 0x2002, 0x2003, 0x2004, 0x2005, 0x2006, 0x2007,
+    0x2008, 0x2009, 0x200a, 0x2028, 0x2029, 0x202f, 0x205f, 0x3000, 0xfeff,
+  ];
+  // Similar characters that trim keeps.
+  const keptCodePoints = [0x85, 0x180e, 0x200b, 0x200c, 0x200d, 0x2060];
+
+  test('the table covers exactly the code points trim strips', () => {
+    const stripped: number[] = [];
+    for (let code = 0; code <= 0xffff; code++) {
+      if (String.fromCharCode(code).trim() === '') stripped.push(code);
+    }
+    expect(stripped).toEqual(trimmedCodePoints);
+  });
+
+  const edgeStrings: string[] = [
+    '',
+    '\n',
+    '\n\n\n',
+    ' \t\r\n',
+    'a',
+    'a\n',
+    'a\n\n\n',
+    '\n\na\n',
+    'a \t\r\n',
+    'a\r\n',
+    'a\n\r',
+    'a\n \t',
+    '  a',
+    '\t\na b\n',
+    'a\n\u00a0',
+    '\ufeffa\n',
+    'a\u2028',
+    'a\u2029\n',
+    'a\n\u3000\n',
+    '\ud83d\ude00\n',
+    'a\ud83d\n',
+    `${'x'.repeat(100)}\n\n`,
+  ];
+  for (const code of [...trimmedCodePoints, ...keptCodePoints]) {
+    const c = String.fromCharCode(code);
+    edgeStrings.push(c, `${c}a${c}`, `a${c}\n`, `a\n${c}`, `${c}\n${c}`, `a${c}`, `\n${c}a\n${c}\n`);
+  }
+
+  test.each(edgeStrings.map((input) => [JSON.stringify(input), input]))(
+    'matches trim() + newline for %s',
+    (_, input) => {
+      expect(trimAndTerminateOutput(input)).toBe(`${input.trim()}\n`);
+    },
+  );
+});
+
+describe('createRenderContext', () => {
+  const createContextWithContentReads = () => {
+    let contentReads = 0;
+    const file = (filePath: string, content: string) => ({
+      path: filePath,
+      get content() {
+        contentReads++;
+        return content;
+      },
+    });
+    const renderContext = createRenderContext({
+      config: createMockConfig({ output: { style: 'xml' } }),
+      generationDate: new Date().toISOString(),
+      treeString: 'tree',
+      instruction: '',
+      processedFiles: [file('a.md', 'one\n````js\ntwo\n'), file('b.txt', 'x')],
+      gitDiffResult: undefined,
+      gitLogResult: undefined,
+    });
+    return { renderContext, contentReads: () => contentReads };
+  };
+
+  test('computes fileLineCounts only when read, and only once', () => {
+    const { renderContext, contentReads } = createContextWithContentReads();
+    expect(contentReads()).toBe(0);
+    expect(renderContext.fileLineCounts).toEqual({ 'a.md': 3, 'b.txt': 1 });
+    const readsAfterFirstAccess = contentReads();
+    expect(readsAfterFirstAccess).toBeGreaterThan(0);
+    expect(renderContext.fileLineCounts).toBe(renderContext.fileLineCounts);
+    expect(contentReads()).toBe(readsAfterFirstAccess);
+  });
+
+  test('computes markdownCodeBlockDelimiter only when read, and only once', () => {
+    const { renderContext, contentReads } = createContextWithContentReads();
+    expect(contentReads()).toBe(0);
+    expect(renderContext.markdownCodeBlockDelimiter).toBe('`````');
+    const readsAfterFirstAccess = contentReads();
+    expect(readsAfterFirstAccess).toBeGreaterThan(0);
+    expect(renderContext.markdownCodeBlockDelimiter).toBe('`````');
+    expect(contentReads()).toBe(readsAfterFirstAccess);
+  });
+
+  test('takes the markdown delimiter from the longest backtick run in contents, tree and diffs', () => {
+    const renderContext = createRenderContext({
+      config: createMockConfig(),
+      generationDate: new Date().toISOString(),
+      treeString: 'no ticks',
+      instruction: '',
+      processedFiles: [
+        { path: 'a', content: '` `` ```' },
+        { path: 'b', content: '' },
+      ],
+      gitDiffResult: { workTreeDiffContent: '``````', stagedDiffContent: '`' },
+      gitLogResult: undefined,
+    });
+    expect(renderContext.markdownCodeBlockDelimiter).toBe('```````');
   });
 });
