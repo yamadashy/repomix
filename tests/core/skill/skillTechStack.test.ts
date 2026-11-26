@@ -445,6 +445,42 @@ tokio = { version = "1.0", features = ["full"] }`,
       expect(result.dependencies).toEqual([{ name: 'requests', version: undefined }]);
     });
 
+    test('should keep the hyphens in a repository name', () => {
+      // The version rule stops a wheel's name before `-<version>`; a repository path has no
+      // version, and applying that rule there read `python-dateutil` as `python`.
+      const result = detectSingle('requirements.txt', 'git+https://github.com/dateutil/python-dateutil.git');
+
+      expect(result.dependencies).toEqual([{ name: 'python-dateutil', version: undefined }]);
+    });
+
+    test('should name a VCS requirement that pins a revision after the repository path', () => {
+      // `repo.git@v2.31.0` ended on the revision, so the suffix check saw no distribution
+      // and the requirement was dropped entirely.
+      const result = detectSingle('requirements.txt', 'git+https://github.com/psf/requests.git@v2.31.0');
+
+      expect(result.dependencies).toEqual([{ name: 'requests', version: undefined }]);
+    });
+
+    test('should name a URL requirement that carries a trailing comment', () => {
+      // pip allows a comment after whitespace; kept, it rode along on the last segment and
+      // the archive suffix no longer matched.
+      const result = detectSingle(
+        'requirements.txt',
+        'https://example.com/pkg/thing-1.0-py3-none-any.whl  # pinned until the 2.0 API lands',
+      );
+
+      expect(result.dependencies).toEqual([{ name: 'thing', version: undefined }]);
+    });
+
+    test('should classify a framework installed from a URL', () => {
+      // The short form already fed the framework table; a URL requirement is the same
+      // distribution, so it has to be classified the same way.
+      const result = detectSingle('requirements.txt', 'git+https://github.com/tiangolo/fastapi.git');
+
+      expect(result.dependencies).toEqual([{ name: 'fastapi', version: undefined }]);
+      expect(result.frameworks).toEqual(['FastAPI']);
+    });
+
     test('should not invent a dependency for a path requirement', () => {
       // `-e` is an editable install and a directory URL names no distribution, so neither
       // is a library; the old pattern read them as dependencies called `e` and `vendor`.

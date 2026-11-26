@@ -93,6 +93,23 @@ function parsePackageJson(content: string): Partial<TechStackInfo> {
   }
 }
 
+// The Python frameworks the summary lists, keyed by the distribution that provides them.
+// A requirement named through a URL installs the same distribution as `name==version`,
+// so both branches classify it through this table instead of only the short form.
+const PYTHON_FRAMEWORKS: Record<string, string> = {
+  django: 'Django',
+  flask: 'Flask',
+  fastapi: 'FastAPI',
+  pytorch: 'PyTorch',
+  torch: 'PyTorch',
+  tensorflow: 'TensorFlow',
+};
+
+const detectPythonFramework = (name: string, frameworks: string[]): void => {
+  const framework = PYTHON_FRAMEWORKS[name.toLowerCase()];
+  if (framework !== undefined) frameworks.push(framework);
+};
+
 function parseRequirementsTxt(content: string): Partial<TechStackInfo> {
   const dependencies: DependencyInfo[] = [];
   const frameworks: string[] = [];
@@ -107,7 +124,10 @@ function parseRequirementsTxt(content: string): Partial<TechStackInfo> {
     // `requests`, and a wheel URL became one called `https`.
     if (REQUIREMENT_URL_START.test(trimmed) || trimmed.startsWith('.') || trimmed.startsWith('/')) {
       const fromUrl = requirementNameFromUrl(trimmed);
-      if (fromUrl !== undefined) dependencies.push({ name: fromUrl });
+      if (fromUrl !== undefined) {
+        dependencies.push({ name: fromUrl });
+        detectPythonFramework(fromUrl, frameworks);
+      }
       continue;
     }
 
@@ -119,13 +139,7 @@ function parseRequirementsTxt(content: string): Partial<TechStackInfo> {
       const rest = match[3] ?? '';
       const version = rest.startsWith('@') ? undefined : rest.replace(/^[=<>!~]+\s*/, '') || undefined;
       dependencies.push({ name, version });
-
-      // Detect frameworks
-      if (name.toLowerCase() === 'django') frameworks.push('Django');
-      if (name.toLowerCase() === 'flask') frameworks.push('Flask');
-      if (name.toLowerCase() === 'fastapi') frameworks.push('FastAPI');
-      if (name.toLowerCase() === 'pytorch' || name.toLowerCase() === 'torch') frameworks.push('PyTorch');
-      if (name.toLowerCase() === 'tensorflow') frameworks.push('TensorFlow');
+      detectPythonFramework(name, frameworks);
     }
   }
 
@@ -146,16 +160,27 @@ const REQUIREMENT_NAME = /^([A-Za-z0-9][A-Za-z0-9._-]*)\s*(\[[^\]]*\])?\s*(.*)$/
 const requirementNameFromUrl = (requirement: string): string | undefined => {
   const egg = /[#&]egg=([A-Za-z0-9][A-Za-z0-9._-]*)/.exec(requirement);
   if (egg) return egg[1];
-  const pathPart = requirement.split(/[#?]/)[0].replace(/\/+$/, '');
+  // pip allows a trailing comment after whitespace. Left on, it rides along on the last
+  // path segment, the suffix check below fails, and the dependency disappears.
+  const withoutComment = requirement.replace(/\s+#.*$/, '');
+  const pathPart = withoutComment.split(/[#?]/)[0].replace(/\/+$/, '');
   const last = pathPart.slice(pathPart.lastIndexOf('/') + 1);
+  // A VCS revision follows the repository path (`repo.git@main`), so the segment ends at
+  // the `@`; reading the whole thing lost the dependency whenever a revision was pinned.
+  const revisionAt = last.indexOf('@');
+  const segment = revisionAt === -1 ? last : last.slice(0, revisionAt);
   // Only a segment that carries a distribution's archive suffix names one. Anything else
   // is a directory or a path pip resolves at install time, and guessing a name from it
   // would put `wheels` or `local` in the dependency table.
-  if (!/\.(?:git|whl|zip|tgz|tar\.gz|tar\.bz2)$/i.test(last)) return undefined;
-  const base = last.replace(/\.(?:git|whl|zip|tgz|tar\.gz|tar\.bz2)$/i, '');
-  // `thing-1.0-py3-none-any` and `thing-1.0`: the name stops before the version.
-  const name = /^[A-Za-z0-9][A-Za-z0-9._]*/.exec(base)?.[0];
-  if (name === undefined || !/[A-Za-z]/.test(name)) return undefined;
+  const archive = /\.(?:whl|zip|tgz|tar\.gz|tar\.bz2)$/i.test(segment);
+  if (!archive && !/\.git$/i.test(segment)) return undefined;
+  const base = archive ? segment.replace(/\.(?:whl|zip|tgz|tar\.gz|tar\.bz2)$/i, '') : segment.replace(/\.git$/i, '');
+  // An sdist or wheel puts the version after the name (`thing-1.0-py3-none-any`,
+  // `python-dateutil-2.8.2`), so the name ends at the first `-<digit>`. A repository has
+  // no such marker and keeps its hyphens (`my-lib`), which the old pattern cut to `my`.
+  const versionAt = archive ? base.search(/-\d/) : -1;
+  const name = versionAt === -1 ? base : base.slice(0, versionAt);
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name) || !/[A-Za-z]/.test(name)) return undefined;
   return name;
 };
 
