@@ -534,6 +534,25 @@ pytest = "*"`,
       expect(result.dependencies).toEqual([{ name: 'requests' }, { name: 'flask' }]);
     });
 
+    test('should parse quoted Pipfile keys for packages with dots', () => {
+      const result = detectSingle(
+        'Pipfile',
+        `[packages]
+"zope.interface" = "*"
+'backports.zoneinfo' = "*"
+requests = "*"
+
+[dev-packages]
+pytest = "*"`,
+      );
+
+      expect(result.dependencies).toEqual([
+        { name: 'zope.interface' },
+        { name: 'backports.zoneinfo' },
+        { name: 'requests' },
+      ]);
+    });
+
     test('should detect Echo and Fiber from go.mod', () => {
       const result = detectSingle(
         'go.mod',

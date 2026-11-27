@@ -231,9 +231,13 @@ function parsePipfile(content: string): Partial<TechStackInfo> {
   if (packagesMatch) {
     const lines = packagesMatch[1].split('\n');
     for (const line of lines) {
-      const match = line.match(/^([a-zA-Z0-9_-]+)\s*=/);
-      if (match) {
-        dependencies.push({ name: match[1] });
+      // TOML only allows dots in a bare key as table separators, so a distribution such
+      // as `zope.interface` must be written as a quoted key. Accept both quoted forms
+      // alongside bare keys; otherwise those packages silently disappear from the skill.
+      const match = line.match(/^\s*(?:"([^"]+)"|'([^']+)'|([a-zA-Z0-9_-]+))\s*=/);
+      const name = match?.[1] ?? match?.[2] ?? match?.[3];
+      if (name) {
+        dependencies.push({ name });
       }
     }
   }
