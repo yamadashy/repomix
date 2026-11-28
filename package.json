@@ -94,7 +94,7 @@
     "jiti": "^2.7.0",
     "jschardet": "^4.1.0",
     "json5": "^2.2.3",
-    "minimatch": "^11.0.8",
+    "minimatch": "^11.0.9",
     "picocolors": "^1.1.1",
     "picospinner": "^3.1.2",
     "tar": "^7.5.23",
@@ -110,16 +110,16 @@
     "@types/node": "^26.6.6",
     "@types/strip-comments": "^2.0.4",
     "@valibot/to-json-schema": "^1.8.0",
-    "@vitest/coverage-v8": "^5.1.0",
+    "@vitest/coverage-v8": "^5.1.1",
     "@xmldom/xmldom": "^0.9.9",
     "git-up": "^8.1.1",
-    "oxlint": "^1.93.0",
+    "oxlint": "^1.94.0",
     "rimraf": "^6.1.4",
     "secretlint": "^14.0.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.1"
   },
   "engines": {
     "node": ">=22.0.0",
